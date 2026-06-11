@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  username   String?
+  email      String?
+  password   String?
+  created_at DateTime @default(now())
+}
+
+model Business {
+  id            Int            @id @default(autoincrement())
+  hash          String         @unique
+  name          String?
+  owner_name    String?
+  phone         String?
+  ruc           String?
+  address       String?
+  email         String?
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  deleted_at    DateTime?
+  plans         Plan[]
+  subscriptions Subscription[]
+  api_keys      ApiKey[]
+}
+
+model ApiKey {
+  id          Int      @id @default(autoincrement())
+  business    Business @relation(fields: [business_id], references: [id])
+  business_id Int
+  name        String
+  prefix      String   @unique
+  hash        String
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model Subscription {
+  id            Int                @id @default(autoincrement())
+  business      Business           @relation(fields: [business_hash], references: [hash])
+  business_hash String
+  plan_price    PlanPrice          @relation(fields: [plan_price_id], references: [id])
+  plan_price_id Int
+  start_at      DateTime?
+  expires_at    DateTime?
+  status        SubscriptionStatus
+  licenses      License[]
+}
+
+model License {
+  id           Int            @id @default(autoincrement())
+  subscription Subscription? @relation(fields: [sub_id], references: [id])
+  sub_id       Int?
+  plan_price   PlanPrice      @relation(fields: [plan_price_id], references: [id])
+  plan_price_id Int
+  key          String?
+  status       LicenseStatus
+  used_at      DateTime?
+}
+
+model Plan {
+  id          Int          @id @default(autoincrement())
+  name        String?
+  business    Business     @relation(fields: [business_id], references: [id])
+  business_id Int
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+  deleted_at  DateTime?
+  prices      PlanPrice[]
+  modules     PlanModule[]
+}
+
+model PlanPrice {
+  id            Int            @id @default(autoincrement())
+  price         Int?
+  plan          Plan           @relation(fields: [plan_id], references: [id])
+  plan_id       Int
+  period        Period
+  subscriptions Subscription[]
+  licenses      License[]
+}
+
+model PlanModule {
+  id        Int    @id @default(autoincrement())
+  plan      Plan   @relation(fields: [plan_id], references: [id])
+  plan_id   Int
+  module    Module @relation(fields: [module_id], references: [id])
+  module_id Int
+}
+
+model Module {
+  id         Int          @id @default(autoincrement())
+  name       String?
+  key        String       @unique
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  deleted_at DateTime?
+  modules    PlanModule[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+enum LicenseStatus {
+  AVAILABLE
+  USED
+  REVOKED
+}
+
+enum Period {
+  MONTHLY
+  ANNUALLY
+}
