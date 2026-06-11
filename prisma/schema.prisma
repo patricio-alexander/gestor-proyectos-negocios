@@ -70,6 +70,7 @@ model License {
   key          String?
   status       LicenseStatus
   used_at      DateTime?
+  method_pay   MethodPay?
 }
 
 model Plan {
@@ -127,4 +128,9 @@ enum LicenseStatus {
 enum Period {
   MONTHLY
   ANNUALLY
+}
+
+enum MethodPay {
+  CASH
+  TRANSFER
 }

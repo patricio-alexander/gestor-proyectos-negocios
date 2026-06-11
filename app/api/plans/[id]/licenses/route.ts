@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: Params) {
         key: l.key,
         status: l.status,
         used_at: l.used_at?.toISOString() ?? null,
-
+        method_pay: l.method_pay,
       }))
     );
 

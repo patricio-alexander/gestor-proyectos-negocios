@@ -6,9 +6,11 @@ export type License = {
   key: string | null;
   status: string;
   used_at: string | null;
+  method_pay: "CASH" | "TRANSFER" | null;
 };
 
 export type CreateLicenseInput = {
   plan_id: number;
   period: "MONTHLY" | "ANNUALLY";
+  method_pay?: "CASH" | "TRANSFER";
 };

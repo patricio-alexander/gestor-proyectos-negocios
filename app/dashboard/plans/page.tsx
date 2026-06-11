@@ -171,6 +171,7 @@ export default function PlansPage() {
   const [viewingLicenses, setViewingLicenses] = useState<Plan | null>(null);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [methodPay, setMethodPay] = useState<"CASH" | "TRANSFER" | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -275,10 +276,14 @@ export default function PlansPage() {
 
   async function handleCreateLicense(period: "MONTHLY" | "ANNUALLY") {
     if (!licensing) return;
+    if (!methodPay) {
+      setError("Seleccioná el método de pago");
+      return;
+    }
     setError("");
     setSubmitting(true);
     try {
-      const lic = await createLicense({ plan_id: licensing.id, period });
+      const lic = await createLicense({ plan_id: licensing.id, period, method_pay: methodPay });
       setGeneratedKey(lic.key);
       setError("");
     } catch (err) {
@@ -300,6 +305,7 @@ export default function PlansPage() {
     setLicensing(null);
     setGeneratedKey(null);
     setCopied(false);
+    setMethodPay(null);
     setError("");
   }
 
@@ -560,19 +566,47 @@ export default function PlansPage() {
                       Seleccioná el período para la licencia del plan{" "}
                       <strong>{licensing?.name}</strong>
                     </p>
-                    <div className="mt-4 flex flex-col gap-3">
-                      <Button
-                        isDisabled={submitting}
-                        onPress={() => handleCreateLicense("MONTHLY")}
-                      >
-                        {submitting ? <Spinner size="sm" /> : "Mensual (1 mes)"}
-                      </Button>
-                      <Button
-                        isDisabled={submitting}
-                        onPress={() => handleCreateLicense("ANNUALLY")}
-                      >
-                        {submitting ? <Spinner size="sm" /> : "Anual (12 meses)"}
-                      </Button>
+                    <div className="mt-4 space-y-3">
+                      <p className="text-xs font-medium text-zinc-500">Método de pago</p>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setMethodPay("CASH")}
+                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                            methodPay === "CASH"
+                              ? "border-zinc-900 bg-zinc-900 text-white"
+                              : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+                          }`}
+                        >
+                          Efectivo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMethodPay("TRANSFER")}
+                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                            methodPay === "TRANSFER"
+                              ? "border-zinc-900 bg-zinc-900 text-white"
+                              : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+                          }`}
+                        >
+                          Transferencia
+                        </button>
+                      </div>
+                      <p className="text-xs font-medium text-zinc-500">Período</p>
+                      <div className="flex flex-col gap-3">
+                        <Button
+                          isDisabled={submitting || !methodPay}
+                          onPress={() => handleCreateLicense("MONTHLY")}
+                        >
+                          {submitting ? <Spinner size="sm" /> : "Mensual (1 mes)"}
+                        </Button>
+                        <Button
+                          isDisabled={submitting || !methodPay}
+                          onPress={() => handleCreateLicense("ANNUALLY")}
+                        >
+                          {submitting ? <Spinner size="sm" /> : "Anual (12 meses)"}
+                        </Button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -623,6 +657,14 @@ export default function PlansPage() {
                               : lic.status === "USED"
                                 ? "Usada"
                                 : "Revocada"}
+                            {lic.method_pay && (
+                              <>
+                                {" "}&middot;{" "}
+                                {lic.method_pay === "CASH"
+                                  ? "Efectivo"
+                                  : "Transferencia"}
+                              </>
+                            )}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">

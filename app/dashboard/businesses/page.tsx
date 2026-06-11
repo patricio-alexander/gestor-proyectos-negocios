@@ -20,10 +20,6 @@ export default function BusinessesPage() {
   const editState = useOverlayState();
   const deleteState = useOverlayState();
 
-  function resetForm(form: HTMLFormElement) {
-    form.reset();
-  }
-
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");

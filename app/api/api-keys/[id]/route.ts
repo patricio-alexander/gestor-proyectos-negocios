@@ -15,7 +15,7 @@ export async function PATCH(request: Request, { params }: Params) {
     if (active === undefined) {
       return NextResponse.json(
         { error: "El campo active es obligatorio" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: Params) {
     if (!existing) {
       return NextResponse.json(
         { error: "API key no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -52,7 +52,7 @@ export async function PATCH(request: Request, { params }: Params) {
   } catch {
     return NextResponse.json(
       { error: "Error al actualizar API key" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
