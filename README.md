@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestor de Proyectos
 
-## Getting Started
+Sistema de gestión de proyectos con planes, módulos, licencias y suscripciones.
 
-First, run the development server:
+## Requisitos
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js >= 18
+- MySQL >= 8
+
+## Configuración de la base de datos
+
+### 1. Crear la base de datos
+
+```sql
+CREATE DATABASE gestor_proyectos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configurar variables de entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copiar `.env.example` a `.env` y ajustar los valores:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+DATABASE_URL="mysql://usuario:password@localhost:3306/gestor_proyectos"
+DATABASE_USER="usuario"
+DATABASE_PASSWORD="password"
+DATABASE_NAME="gestor_proyectos"
+DATABASE_HOST="localhost"
+DATABASE_PORT=3306
+JWT_SECRET="cambiar-por-un-secreto-seguro"
+```
 
-## Learn More
+### 3. Sincronizar el esquema
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npx prisma db push --accept-data-loss
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Esto crea las tablas sin necesidad de migraciones. Ideal para desarrollo.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> Para producción, usar `npx prisma migrate dev` para generar migraciones versionadas.
 
-## Deploy on Vercel
+### 4. Generar el cliente Prisma
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx prisma generate
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Crear un usuario inicial
+
+Ejecutar el seed (si existe) o crear un usuario manualmente insertando en la tabla `User`. Luego iniciar sesión en `/login`.
+
+## Script completo de setup
+
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Configurar .env (ver arriba)
+
+# 3. Sincronizar base de datos
+npx prisma db push --accept-data-loss
+
+# 4. Generar cliente Prisma
+npx prisma generate
+
+# 5. Iniciar en desarrollo
+npm run dev
+```
+
+## Variables de entorno
+
+| Variable            | Descripción                    | Ejemplo                                             |
+| ------------------- | ------------------------------ | --------------------------------------------------- |
+| `DATABASE_URL`      | Cadena de conexión MySQL       | `mysql://root:pass@localhost:3306/gestor_proyectos` |
+| `DATABASE_USER`     | Usuario de la DB               | `root`                                              |
+| `DATABASE_PASSWORD` | Contraseña de la DB            | `root123`                                           |
+| `DATABASE_NAME`     | Nombre de la base de datos     | `gestor_proyectos`                                  |
+| `DATABASE_HOST`     | Host de la DB                  | `localhost`                                         |
+| `DATABASE_PORT`     | Puerto de la DB                | `3306`                                              |
+| `JWT_SECRET`        | Secreto para firmar tokens JWT | `cambiar-por-un-secreto-seguro`                     |
+
+## Comandos útiles
+
+```bash
+npm run dev          # Iniciar servidor de desarrollo
+npm run build        # Compilar para producción
+npx prisma studio    # Abrir UI de Prisma para explorar datos
+npx prisma db push   # Sincronizar esquema con la DB
+npx prisma generate  # Regenerar cliente Prisma
+```
+
+## Arquitectura
+
+El proyecto usa **Feature-Driven Design**:
+
+```
+src/features/auth/          # Autenticación
+src/features/businesses/    # Negocios
+src/features/plans/         # Planes
+src/features/modules/       # Módulos
+src/features/licenses/      # Licencias
+src/features/subscriptions/ # Suscripciones
+src/shared/                 # Componentes y utilidades compartidas
+app/api/                    # API routes (REST)
+app/dashboard/              # Páginas del dashboard
+```
