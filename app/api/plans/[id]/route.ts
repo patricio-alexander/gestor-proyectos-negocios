@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { Period } from "../../../../prisma/generated/prisma/enums";
+import {
+  findPlanById,
+  mapPlan,
+  planInclude,
+} from "@/src/features/plans/lib/plan-query";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -11,36 +16,17 @@ export async function GET(_request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-
-    const plan = await prisma.plan.findFirst({
-      where: { id: Number(id), deleted_at: null },
-      include: {
-        business: { select: { name: true } },
-        prices: { select: { id: true, price: true, period: true } },
-        modules: {
-          select: { id: true, module_id: true, module: { select: { name: true } } },
-          where: { module: { deleted_at: null } },
-        },
-      },
-    });
+    const plan = await findPlanById(Number(id));
 
     if (!plan) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      ...plan,
-      business_name: plan.business.name,
-      modules: plan.modules.map((m) => ({
-        id: m.id,
-        module_id: m.module_id,
-        module_name: m.module.name,
-      })),
-    });
+    return NextResponse.json(mapPlan(plan));
   } catch {
     return NextResponse.json(
       { error: "Error al obtener el plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -51,12 +37,11 @@ export async function PATCH(request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    const { name, business_id, price_monthly, price_annual, module_ids } =
+    const planId = Number(id);
+    const { name, business_id, price_monthly, price_annual, app_module_ids, app_section_ids } =
       await request.json();
 
-    const existing = await prisma.plan.findFirst({
-      where: { id: Number(id), deleted_at: null },
-    });
+    const existing = await findPlanById(planId);
 
     if (!existing) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
@@ -69,87 +54,89 @@ export async function PATCH(request: Request, { params }: Params) {
       if (!business) {
         return NextResponse.json(
           { error: "El negocio seleccionado no existe" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
 
     const plan = await prisma.$transaction(async (tx) => {
-      const updated = await tx.plan.update({
-        where: { id: Number(id) },
+      await tx.plan.update({
+        where: { id: planId },
         data: {
           ...(name !== undefined && { name: name.trim() }),
           ...(business_id !== undefined && { business_id }),
-        },
-        include: {
-          business: { select: { name: true } },
-          prices: { select: { id: true, price: true, period: true } },
-          modules: {
-            select: { id: true, module_id: true, module: { select: { name: true } } },
-          },
         },
       });
 
       if (price_monthly !== undefined || price_annual !== undefined) {
         if (price_monthly != null && price_monthly !== "") {
-          const existing = await tx.planPrice.findFirst({ where: { plan_id: Number(id), period: Period.MONTHLY } });
-          if (existing) {
-            await tx.planPrice.update({ where: { id: existing.id }, data: { price: Number(price_monthly) } });
+          const monthly = await tx.planPrice.findFirst({
+            where: { plan_id: planId, period: Period.MONTHLY },
+          });
+          if (monthly) {
+            await tx.planPrice.update({
+              where: { id: monthly.id },
+              data: { price: Number(price_monthly) },
+            });
           } else {
-            await tx.planPrice.create({ data: { plan_id: Number(id), price: Number(price_monthly), period: Period.MONTHLY } });
+            await tx.planPrice.create({
+              data: { plan_id: planId, price: Number(price_monthly), period: Period.MONTHLY },
+            });
           }
         }
         if (price_annual != null && price_annual !== "") {
-          const existing = await tx.planPrice.findFirst({ where: { plan_id: Number(id), period: Period.ANNUALLY } });
-          if (existing) {
-            await tx.planPrice.update({ where: { id: existing.id }, data: { price: Number(price_annual) } });
+          const annual = await tx.planPrice.findFirst({
+            where: { plan_id: planId, period: Period.ANNUALLY },
+          });
+          if (annual) {
+            await tx.planPrice.update({
+              where: { id: annual.id },
+              data: { price: Number(price_annual) },
+            });
           } else {
-            await tx.planPrice.create({ data: { plan_id: Number(id), price: Number(price_annual), period: Period.ANNUALLY } });
+            await tx.planPrice.create({
+              data: { plan_id: planId, price: Number(price_annual), period: Period.ANNUALLY },
+            });
           }
         }
       }
 
-      if (module_ids !== undefined) {
-        await tx.planModule.deleteMany({ where: { plan_id: Number(id) } });
-
-        const modulesData = module_ids.map((mid: number) => ({
-          module_id: mid,
-          plan_id: Number(id),
-        }));
-
-        if (modulesData.length > 0) {
-          await tx.planModule.createMany({ data: modulesData });
+      if (app_module_ids !== undefined) {
+        await tx.planModule.deleteMany({ where: { plan_id: planId } });
+        if (app_module_ids.length > 0) {
+          await tx.planModule.createMany({
+            data: app_module_ids.map((app_module_id: number) => ({
+              app_module_id,
+              plan_id: planId,
+            })),
+          });
         }
       }
 
-      const finalPlan = await tx.plan.findUnique({
-        where: { id: Number(id) },
-        include: {
-          business: { select: { name: true } },
-          prices: { select: { id: true, price: true, period: true } },
-          modules: {
-            select: { id: true, module_id: true, module: { select: { name: true } } },
-          },
-        },
+      if (app_section_ids !== undefined) {
+        await tx.planSection.deleteMany({ where: { plan_id: planId } });
+        if (app_section_ids.length > 0) {
+          await tx.planSection.createMany({
+            data: app_section_ids.map((app_section_id: number) => ({
+              app_section_id,
+              plan_id: planId,
+            })),
+          });
+        }
+      }
+
+      return tx.plan.findUnique({
+        where: { id: planId },
+        include: planInclude,
       });
-
-      return finalPlan!;
     });
 
-    return NextResponse.json({
-      ...plan,
-      business_name: plan.business.name,
-      modules: plan.modules.map((m) => ({
-        id: m.id,
-        module_id: m.module_id,
-        module_name: m.module.name,
-      })),
-    });
+    return NextResponse.json(mapPlan(plan!));
   } catch (err) {
     console.error("Error al actualizar plan:", err);
     return NextResponse.json(
       { error: "Error al actualizar el plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -161,9 +148,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
 
-    const existing = await prisma.plan.findFirst({
-      where: { id: Number(id), deleted_at: null },
-    });
+    const existing = await findPlanById(Number(id));
 
     if (!existing) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
@@ -178,7 +163,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   } catch {
     return NextResponse.json(
       { error: "Error al eliminar el plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

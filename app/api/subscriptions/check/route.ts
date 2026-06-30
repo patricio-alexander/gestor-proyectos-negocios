@@ -28,19 +28,32 @@ export async function GET(request: NextRequest) {
                 name: true,
                 modules: {
                   select: {
-                    module: {
+                    app_module: {
                       select: {
                         name: true,
                         key: true,
                         sections: {
-                          select: {
-                            name: true,
-                          },
+                          where: { deleted_at: null, is_active: true },
+                          select: { name: true, key: true, route_path: true },
+                          orderBy: { sort_order: "asc" },
                         },
                       },
                     },
                   },
-                  where: { module: { deleted_at: null } },
+                  where: { app_module: { deleted_at: null, is_active: true } },
+                },
+                sections: {
+                  select: {
+                    app_section: {
+                      select: {
+                        name: true,
+                        key: true,
+                        route_path: true,
+                        app_module: { select: { name: true, key: true } },
+                      },
+                    },
+                  },
+                  where: { app_section: { deleted_at: null, is_active: true } },
                 },
               },
             },
@@ -57,19 +70,44 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const modules = subscription.plan_price.plan.modules
-      .map((pm) => ({
-        name: pm.module.name,
-        key: pm.module.key,
-        sections: pm.module.sections,
-      }))
-      .filter((m) => m.sections.length);
+    const plan = subscription.plan_price.plan;
+
+    const modulesFromPlan = plan.modules.map((pm) => ({
+      name: pm.app_module.name,
+      key: pm.app_module.key,
+      sections: pm.app_module.sections,
+    }));
+
+    const moduleKeys = new Set(modulesFromPlan.map((m) => m.key));
+    const extraByModule = new Map<
+      string,
+      { name: string; key: string; sections: { name: string; key: string; route_path: string | null }[] }
+    >();
+
+    for (const ps of plan.sections) {
+      const modKey = ps.app_section.app_module.key;
+      if (moduleKeys.has(modKey)) continue;
+
+      const existing = extraByModule.get(modKey) ?? {
+        name: ps.app_section.app_module.name,
+        key: modKey,
+        sections: [],
+      };
+      existing.sections.push({
+        name: ps.app_section.name,
+        key: ps.app_section.key,
+        route_path: ps.app_section.route_path,
+      });
+      extraByModule.set(modKey, existing);
+    }
+
+    const modules = [...modulesFromPlan, ...extraByModule.values()];
 
     return NextResponse.json({
       subscribed: subscription.status === "ACTIVE",
       subscription: {
         id: subscription.id,
-        plan_name: subscription.plan_price.plan.name,
+        plan_name: plan.name,
         period: subscription.plan_price.period,
         status: subscription.status,
         start_at: subscription.start_at?.toISOString() ?? null,

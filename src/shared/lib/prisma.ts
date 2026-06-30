@@ -1,7 +1,6 @@
 import "dotenv/config";
-import bcrypt from "bcryptjs";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../../../prisma/generated/prisma/client";
+import { PrismaClient } from "@/prisma/generated/prisma/client";
 
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
@@ -10,25 +9,11 @@ const adapter = new PrismaMariaDb({
   database: process.env.DATABASE_NAME,
   connectionLimit: 5,
 });
-const prisma = new PrismaClient({ adapter });
 
-void prisma.user
-  .findFirst({ where: { username: "admin" } })
-  .then((existing) => {
-    if (!existing) {
-      return bcrypt
-        .hash("123456", 10)
-        .then((hash) =>
-          prisma.user.create({
-            data: {
-              username: "admin",
-              email: "admin@mail.com",
-              password: hash,
-            },
-          })
-        )
-        .then(() => console.log("Admin user created"));
-    }
-  });
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-export { prisma };
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}

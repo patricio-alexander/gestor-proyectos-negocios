@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/src/shared/lib/prisma";
 import { signToken } from "@/src/shared/lib/jwt";
+import { getUserById } from "@/src/features/access/lib/access-service";
 import type { LoginInput, LoginResponse } from "@/src/features/auth/types";
 
 export async function POST(request: Request) {
@@ -10,25 +11,28 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Usuario y contraseña son obligatorios" },
         { status: 400 },
       );
     }
 
     const user = await prisma.user.findFirst({
-      where: { username },
+      where: {
+        deleted_at: null,
+        OR: [{ username }, { email: username }],
+      },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Credenciales inválidas" },
         { status: 401 },
       );
     }
 
     if (!user.password) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Credenciales inválidas" },
         { status: 401 },
       );
     }
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
 
     if (!isValid) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Credenciales inválidas" },
         { status: 401 },
       );
     }
@@ -48,12 +52,16 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
+    const profile = await getUserById(user.id);
+
     const response: LoginResponse = {
       token,
       user: {
         id: user.id,
-        username: user.username!,
+        username: user.username,
         email: user.email,
+        display_name: profile?.display_name ?? null,
+        roles: profile?.roles ?? [],
       },
     };
 

@@ -4,6 +4,46 @@ import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { Period, LicenseStatus, MethodPay } from "../../../prisma/generated/prisma/enums";
 import crypto from "crypto";
 
+export async function GET() {
+  const auth = await getAuthUser();
+  if (auth.error) return auth.error;
+
+  try {
+    const licenses = await prisma.license.findMany({
+      include: {
+        plan_price: {
+          select: {
+            period: true,
+            plan: { select: { id: true, name: true, deleted_at: true } },
+          },
+        },
+      },
+      orderBy: { id: "desc" },
+    });
+
+    return NextResponse.json(
+      licenses
+        .filter((l) => !l.plan_price.plan.deleted_at)
+        .map((l) => ({
+          id: l.id,
+          plan_price_id: l.plan_price_id,
+          plan_id: l.plan_price.plan.id,
+          plan_name: l.plan_price.plan.name,
+          period: l.plan_price.period,
+          key: l.key,
+          status: l.status,
+          used_at: l.used_at?.toISOString() ?? null,
+          method_pay: l.method_pay,
+        })),
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Error al obtener licencias" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;

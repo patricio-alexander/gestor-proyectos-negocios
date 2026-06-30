@@ -52,20 +52,20 @@ Ejecutar el seed (si existe) o crear un usuario manualmente insertando en la tab
 ## Script completo de setup
 
 ```bash
-# 1. Instalar dependencias
+# 1. Instalar dependencias (genera Prisma Client automáticamente)
 npm install
 
-# 2. Configurar .env (ver arriba)
+# 2. Configurar .env (copiar .env.example → .env)
 
-# 3. Sincronizar base de datos
-npx prisma db push --accept-data-loss
+# 3. Crear BD en MySQL y sincronizar esquema + usuario admin
+npm run setup
 
-# 4. Generar cliente Prisma
-npx prisma generate
-
-# 5. Iniciar en desarrollo
+# 4. Iniciar en desarrollo
 npm run dev
 ```
+
+> **Importante:** tras clonar, `npm install` ejecuta `prisma generate`. Si ves errores
+> `Can't resolve prisma/generated/prisma/client`, corré `npx prisma generate` y reiniciá `npm run dev`.
 
 ## Variables de entorno
 

@@ -126,11 +126,11 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="gp-page">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Key width={24} height={24} className="text-zinc-700" />
-          <h1 className="text-xl font-semibold text-zinc-900">API Keys</h1>
+          <h1 className="gp-title">API Keys</h1>
         </div>
 
         <Modal state={createState}>
@@ -179,7 +179,7 @@ export default function ApiKeysPage() {
                           <Alert.Description>{error}</Alert.Description>
                         </Alert>
                       )}
-                      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                      <label className="gp-label">
                         Negocio
                         <select
                           name="business_id"
@@ -194,7 +194,7 @@ export default function ApiKeysPage() {
                           ))}
                         </select>
                       </label>
-                      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                      <label className="gp-label">
                         Nombre descriptivo
                         <input
                           name="name"
@@ -220,7 +220,7 @@ export default function ApiKeysPage() {
         </Modal>
       </div>
 
-      <p className="-mt-4 text-sm text-zinc-500">
+      <p className="-mt-4 gp-subtitle">
         Las API keys se deben colocar en el backend de cada proyecto para
         autenticar las consultas a la API, como verificar suscripciones y
         acceder a los datos del negocio.
@@ -235,7 +235,7 @@ export default function ApiKeysPage() {
       {keys.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <Key width={48} height={48} className="text-zinc-300" />
-          <p className="text-sm text-zinc-500">
+          <p className="gp-subtitle">
             No hay API keys registradas todavía
           </p>
         </div>
