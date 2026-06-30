@@ -28,7 +28,17 @@ export async function GET(request: NextRequest) {
                 name: true,
                 modules: {
                   select: {
-                    module: { select: { name: true, key: true } },
+                    module: {
+                      select: {
+                        name: true,
+                        key: true,
+                        sections: {
+                          select: {
+                            name: true,
+                          },
+                        },
+                      },
+                    },
                   },
                   where: { module: { deleted_at: null } },
                 },
@@ -47,10 +57,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const modules = subscription.plan_price.plan.modules.map((pm) => ({
-      name: pm.module.name,
-      key: pm.module.key,
-    }));
+    const modules = subscription.plan_price.plan.modules
+      .map((pm) => ({
+        name: pm.module.name,
+        key: pm.module.key,
+        sections: pm.module.sections,
+      }))
+      .filter((m) => m.sections.length);
 
     return NextResponse.json({
       subscribed: subscription.status === "ACTIVE",
