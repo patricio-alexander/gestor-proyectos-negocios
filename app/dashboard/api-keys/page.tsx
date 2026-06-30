@@ -220,6 +220,12 @@ export default function ApiKeysPage() {
         </Modal>
       </div>
 
+      <p className="-mt-4 text-sm text-zinc-500">
+        Las API keys se deben colocar en el backend de cada proyecto para
+        autenticar las consultas a la API, como verificar suscripciones y
+        acceder a los datos del negocio.
+      </p>
+
       {error && (
         <Alert status="danger">
           <Alert.Description>{error}</Alert.Description>

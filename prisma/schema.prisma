@@ -13,11 +13,14 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  username   String?
-  email      String?
-  password   String?
-  created_at DateTime @default(now())
+  id          String    @id @default(uuid())
+  username    String?
+  email       String?
+  password    String?
+  business_id Int?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime?
+  deleted_at  DateTime?
 }
 
 model Business {
@@ -35,6 +38,7 @@ model Business {
   plans         Plan[]
   subscriptions Subscription[]
   api_keys      ApiKey[]
+  modules       Module[]
 }
 
 model ApiKey {
@@ -62,15 +66,15 @@ model Subscription {
 }
 
 model License {
-  id           Int            @id @default(autoincrement())
-  subscription Subscription? @relation(fields: [sub_id], references: [id])
-  sub_id       Int?
-  plan_price   PlanPrice      @relation(fields: [plan_price_id], references: [id])
+  id            Int           @id @default(autoincrement())
+  subscription  Subscription? @relation(fields: [sub_id], references: [id])
+  sub_id        Int?
+  plan_price    PlanPrice     @relation(fields: [plan_price_id], references: [id])
   plan_price_id Int
-  key          String?
-  status       LicenseStatus
-  used_at      DateTime?
-  method_pay   MethodPay?
+  key           String?
+  status        LicenseStatus
+  used_at       DateTime?
+  method_pay    MethodPay?
 }
 
 model Plan {
@@ -82,7 +86,7 @@ model Plan {
   updated_at  DateTime     @updatedAt
   deleted_at  DateTime?
   prices      PlanPrice[]
-  modules     PlanModule[]
+  modules    PlanModule[]
 }
 
 model PlanPrice {
@@ -104,13 +108,26 @@ model PlanModule {
 }
 
 model Module {
-  id         Int          @id @default(autoincrement())
-  name       String?
-  key        String       @unique
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
+  id          Int          @id @default(autoincrement())
+  name        String?
+  key         String       @unique
+  business    Business     @relation(fields: [business_id], references: [id])
+  business_id Int
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+  deleted_at  DateTime?
+  modules     PlanModule[]
+  sections    Section[]
+}
+
+model Section {
+  id        Int      @id @default(autoincrement())
+  name      String
+  module    Module   @relation(fields: [module_id], references: [id])
+  module_id Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   deleted_at DateTime?
-  modules    PlanModule[]
 }
 
 enum SubscriptionStatus {

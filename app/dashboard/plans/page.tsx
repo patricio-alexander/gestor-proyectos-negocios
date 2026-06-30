@@ -13,6 +13,7 @@ import { useBusinesses } from "@/src/features/businesses/hooks/useBusinesses";
 import { useModules } from "@/src/features/modules/hooks/useModules";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
 import type { Plan } from "@/src/features/plans/types";
+import type { Module } from "@/src/features/modules/types";
 import type { License } from "@/src/features/licenses/types";
 import { useState } from "react";
 import FileText from "@gravity-ui/icons/FileText";
@@ -33,7 +34,7 @@ type PlanFormProps = {
   submitting: boolean;
   editing?: Plan | null;
   businesses: { id: number; name: string | null }[];
-  modules: { id: number; name: string | null }[];
+  allModules: Module[];
   children: React.ReactNode;
 };
 
@@ -43,15 +44,23 @@ function PlanForm({
   submitting,
   editing,
   businesses,
-  modules,
+  allModules,
   children,
 }: PlanFormProps) {
+  const [selectedBusinessId, setSelectedBusinessId] = useState(
+    editing?.business_id ?? "",
+  );
+
   const monthlyPrice =
     editing?.prices?.find((p) => p.period === "MONTHLY")?.price ?? "";
   const annualPrice =
     editing?.prices?.find((p) => p.period === "ANNUALLY")?.price ?? "";
   const selectedModuleIds = new Set(
     editing?.modules?.map((m) => m.module_id) ?? [],
+  );
+
+  const filteredModules = allModules.filter(
+    (m) => m.business_id === Number(selectedBusinessId),
   );
 
   return (
@@ -77,7 +86,8 @@ function PlanForm({
           <select
             name="business_id"
             required
-            defaultValue={editing?.business_id ?? ""}
+            value={selectedBusinessId}
+            onChange={(e) => setSelectedBusinessId(e.target.value)}
             className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
           >
             <option value="">Seleccionar negocio</option>
@@ -114,13 +124,21 @@ function PlanForm({
             />
           </label>
         </div>
-        {modules.length > 0 && (
+        {!selectedBusinessId ? (
+          <p className="text-sm text-zinc-500">
+            Seleccioná un negocio para ver los módulos
+          </p>
+        ) : filteredModules.length === 0 ? (
+          <p className="text-sm text-zinc-500">
+            No existen módulos para ese negocio
+          </p>
+        ) : (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-zinc-700">
               Módulos
             </legend>
             <div className="space-y-2">
-              {modules.map((mod) => (
+              {filteredModules.map((mod) => (
                 <label
                   key={mod.id}
                   className="flex items-center gap-2 text-sm text-zinc-700"
@@ -338,11 +356,12 @@ export default function PlansPage() {
                   <Modal.Heading>Nuevo plan</Modal.Heading>
                 </Modal.Header>
                 <PlanForm
+                  key="create"
                   onSubmit={handleCreate}
                   error={error}
                   submitting={submitting}
                   businesses={businesses}
-                  modules={modules}
+                  allModules={modules}
                 >
                   Crear
                 </PlanForm>
@@ -466,7 +485,7 @@ export default function PlansPage() {
                 submitting={submitting}
                 editing={editing}
                 businesses={businesses}
-                modules={modules}
+                allModules={modules}
               >
                 Guardar
               </PlanForm>

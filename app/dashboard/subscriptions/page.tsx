@@ -72,6 +72,12 @@ export default function SubscriptionsPage() {
         <h1 className="text-xl font-semibold text-zinc-900">Suscripciones</h1>
       </div>
 
+      <p className="-mt-4 text-sm text-zinc-500">
+        Las suscripciones se crean cuando un cliente activa una licencia en su
+        proyecto. Una vez que la licencia es usada, se convierte en una
+        suscripción activa y el plan comienza a regir.
+      </p>
+
       {subscriptions.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <CreditCard width={48} height={48} className="text-zinc-300" />

@@ -9,9 +9,20 @@ export async function GET() {
   try {
     const modules = await prisma.module.findMany({
       where: { deleted_at: null },
+      include: {
+        business: { select: { name: true } },
+        sections: { where: { deleted_at: null } },
+      },
       orderBy: { created_at: "desc" },
     });
-    return NextResponse.json(modules);
+
+    const result = modules.map((m) => ({
+      ...m,
+      business_name: m.business.name ?? null,
+      business: undefined,
+    }));
+
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json(
       { error: "Error al obtener módulos" },
@@ -25,7 +36,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const { name, key } = await request.json();
+    const { name, key, business_id } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -41,13 +52,30 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!business_id) {
+      return NextResponse.json(
+        { error: "El negocio es obligatorio" },
+        { status: 400 }
+      );
+    }
+
     const moduleKey = key.trim();
 
     const mod = await prisma.module.create({
-      data: { name: name.trim(), key: moduleKey },
+      data: { name: name.trim(), key: moduleKey, business_id: Number(business_id) },
+      include: {
+        business: { select: { name: true } },
+        sections: { where: { deleted_at: null } },
+      },
     });
 
-    return NextResponse.json(mod, { status: 201 });
+    const result = {
+      ...mod,
+      business_name: mod.business.name ?? null,
+      business: undefined,
+    };
+
+    return NextResponse.json(result, { status: 201 });
   } catch {
     return NextResponse.json(
       { error: "Error al crear módulo" },

@@ -19,7 +19,7 @@ const navItems = [
   { label: "Módulos", href: "/dashboard/modules", Icon: LayoutCells },
   { label: "Suscripciones", href: "/dashboard/subscriptions", Icon: CreditCard },
   { label: "API Keys", href: "/dashboard/api-keys", Icon: Key },
-  { label: "Usuarios", href: "#", Icon: Person },
+  { label: "Usuarios", href: "/dashboard/users", Icon: Person },
 ];
 
 export default function DashboardLayout({

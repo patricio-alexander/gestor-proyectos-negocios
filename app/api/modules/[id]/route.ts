@@ -13,6 +13,10 @@ export async function GET(_request: Request, { params }: Params) {
 
     const mod = await prisma.module.findFirst({
       where: { id: Number(id), deleted_at: null },
+      include: {
+        business: { select: { name: true } },
+        sections: { where: { deleted_at: null } },
+      },
     });
 
     if (!mod) {
@@ -22,7 +26,13 @@ export async function GET(_request: Request, { params }: Params) {
       );
     }
 
-    return NextResponse.json(mod);
+    const result = {
+      ...mod,
+      business_name: mod.business.name ?? null,
+      business: undefined,
+    };
+
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json(
       { error: "Error al obtener el módulo" },
@@ -56,9 +66,19 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(name !== undefined && { name: name.trim() }),
         ...(key !== undefined && { key: key.trim() }),
       },
+      include: {
+        business: { select: { name: true } },
+        sections: { where: { deleted_at: null } },
+      },
     });
 
-    return NextResponse.json(mod);
+    const result = {
+      ...mod,
+      business_name: mod.business.name ?? null,
+      business: undefined,
+    };
+
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json(
       { error: "Error al actualizar el módulo" },
