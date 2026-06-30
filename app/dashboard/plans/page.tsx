@@ -10,10 +10,10 @@ import {
 } from "@heroui/react";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
 import { useBusinesses } from "@/src/features/businesses/hooks/useBusinesses";
-import { useModules } from "@/src/features/modules/hooks/useModules";
+import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
 import type { Plan } from "@/src/features/plans/types";
-import type { Module } from "@/src/features/modules/types";
+import type { AppModuleRecord } from "@/src/features/catalog/types";
 import type { License } from "@/src/features/licenses/types";
 import { useState } from "react";
 import FileText from "@gravity-ui/icons/FileText";
@@ -34,7 +34,7 @@ type PlanFormProps = {
   submitting: boolean;
   editing?: Plan | null;
   businesses: { id: number; name: string | null }[];
-  allModules: Module[];
+  allModules: AppModuleRecord[];
   children: React.ReactNode;
 };
 
@@ -56,12 +56,13 @@ function PlanForm({
   const annualPrice =
     editing?.prices?.find((p) => p.period === "ANNUALLY")?.price ?? "";
   const selectedModuleIds = new Set(
-    editing?.modules?.map((m) => m.module_id) ?? [],
+    editing?.modules?.map((m) => m.app_module_id) ?? [],
+  );
+  const selectedSectionIds = new Set(
+    editing?.sections?.map((s) => s.app_section_id) ?? [],
   );
 
-  const filteredModules = allModules.filter(
-    (m) => m.business_id === Number(selectedBusinessId),
-  );
+  const activeModules = allModules.filter((m) => m.is_active);
 
   return (
     <form onSubmit={onSubmit}>
@@ -71,7 +72,7 @@ function PlanForm({
             <Alert.Description>{error}</Alert.Description>
           </Alert>
         )}
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+        <label className="gp-label">
           Nombre
           <input
             name="name"
@@ -81,7 +82,7 @@ function PlanForm({
             className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+        <label className="gp-label">
           Negocio
           <select
             name="business_id"
@@ -99,7 +100,7 @@ function PlanForm({
           </select>
         </label>
         <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+          <label className="gp-label">
             Precio mensual ($)
             <input
               name="price_monthly"
@@ -111,7 +112,7 @@ function PlanForm({
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
             />
           </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+          <label className="gp-label">
             Precio anual ($)
             <input
               name="price_annual"
@@ -124,38 +125,53 @@ function PlanForm({
             />
           </label>
         </div>
-        {!selectedBusinessId ? (
-          <p className="text-sm text-zinc-500">
-            Seleccioná un negocio para ver los módulos
-          </p>
-        ) : filteredModules.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            No existen módulos para ese negocio
-          </p>
-        ) : (
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-zinc-700">
-              Módulos
-            </legend>
-            <div className="space-y-2">
-              {filteredModules.map((mod) => (
-                <label
-                  key={mod.id}
-                  className="flex items-center gap-2 text-sm text-zinc-700"
-                >
-                  <input
-                    type="checkbox"
-                    name="module_ids"
-                    value={mod.id}
-                    defaultChecked={selectedModuleIds.has(mod.id)}
-                    className="size-4 rounded border-zinc-300"
-                  />
-                  {mod.name}
-                </label>
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-zinc-700">
+            Módulos EdDeli (catálogo global)
+          </legend>
+          {activeModules.length === 0 ? (
+            <p className="gp-subtitle">No hay módulos en el catálogo</p>
+          ) : (
+            <div className="max-h-64 space-y-3 overflow-y-auto rounded-lg border border-zinc-200 p-3">
+              {activeModules.map((mod) => (
+                <div key={mod.id}>
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-800">
+                    <input
+                      type="checkbox"
+                      name="app_module_ids"
+                      value={mod.id}
+                      defaultChecked={selectedModuleIds.has(mod.id)}
+                      className="size-4 rounded border-zinc-300"
+                    />
+                    {mod.name}
+                    <span className="font-mono text-xs text-zinc-400">{mod.key}</span>
+                  </label>
+                  {mod.sections.length > 0 && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {mod.sections
+                        .filter((s) => s.is_active)
+                        .map((section) => (
+                          <label
+                            key={section.id}
+                            className="flex items-center gap-2 text-xs text-zinc-600"
+                          >
+                            <input
+                              type="checkbox"
+                              name="app_section_ids"
+                              value={section.id}
+                              defaultChecked={selectedSectionIds.has(section.id)}
+                              className="size-3.5 rounded border-zinc-300"
+                            />
+                            {section.name}
+                          </label>
+                        ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          </fieldset>
-        )}
+          )}
+        </fieldset>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" slot="close">
@@ -169,10 +185,10 @@ function PlanForm({
   );
 }
 
-function getModuleIds(form: HTMLFormElement) {
+function getCheckedIds(form: HTMLFormElement, name: string) {
   const formData = new FormData(form);
   const ids: number[] = [];
-  for (const entry of formData.getAll("module_ids")) {
+  for (const entry of formData.getAll(name)) {
     ids.push(Number(entry));
   }
   return ids;
@@ -181,7 +197,7 @@ function getModuleIds(form: HTMLFormElement) {
 export default function PlansPage() {
   const { plans, loading, create, update, remove } = usePlans();
   const { businesses } = useBusinesses();
-  const { modules } = useModules();
+  const { modules: catalogModules } = useCatalog();
   const { licenses, fetchByPlan, create: createLicense, revoke: revokeLicense } = useLicenses();
   const [editing, setEditing] = useState<Plan | null>(null);
   const [deleting, setDeleting] = useState<Plan | null>(null);
@@ -213,7 +229,8 @@ export default function PlansPage() {
         business_id: Number(formData.get("business_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : null,
         price_annual: priceAnnual ? Number(priceAnnual) : null,
-        module_ids: getModuleIds(form),
+        app_module_ids: getCheckedIds(form, "app_module_ids"),
+        app_section_ids: getCheckedIds(form, "app_section_ids"),
       });
       createState.close();
       setError("");
@@ -239,7 +256,8 @@ export default function PlansPage() {
         business_id: Number(formData.get("business_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : undefined,
         price_annual: priceAnnual ? Number(priceAnnual) : undefined,
-        module_ids: getModuleIds(form),
+        app_module_ids: getCheckedIds(form, "app_module_ids"),
+        app_section_ids: getCheckedIds(form, "app_section_ids"),
       });
       editState.close();
       setEditing(null);
@@ -336,11 +354,11 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="gp-page">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <FileText width={24} height={24} className="text-zinc-700" />
-          <h1 className="text-xl font-semibold text-zinc-900">Planes</h1>
+          <h1 className="gp-title">Planes</h1>
         </div>
 
         <Modal state={createState}>
@@ -361,7 +379,7 @@ export default function PlansPage() {
                   error={error}
                   submitting={submitting}
                   businesses={businesses}
-                  allModules={modules}
+                  allModules={catalogModules}
                 >
                   Crear
                 </PlanForm>
@@ -374,7 +392,7 @@ export default function PlansPage() {
       {plans.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <FileText width={48} height={48} className="text-zinc-300" />
-          <p className="text-sm text-zinc-500">
+          <p className="gp-subtitle">
             No hay planes registrados todavía
           </p>
         </div>
@@ -391,7 +409,7 @@ export default function PlansPage() {
                       <h3 className="truncate text-base font-semibold text-zinc-900">
                         {plan.name || "-"}
                       </h3>
-                      <p className="mt-0.5 text-sm text-zinc-500">
+                      <p className="mt-0.5 gp-subtitle">
                         {plan.business_name || "—"}
                       </p>
                     </div>
@@ -437,7 +455,7 @@ export default function PlansPage() {
                         {plan.modules.map((m) => (
                           <span
                             key={m.id}
-                            className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-700"
+                            className="rounded-md gp-card px-2 py-0.5 text-xs text-zinc-700"
                           >
                             {m.module_name}
                           </span>
@@ -485,7 +503,7 @@ export default function PlansPage() {
                 submitting={submitting}
                 editing={editing}
                 businesses={businesses}
-                allModules={modules}
+                allModules={catalogModules}
               >
                 Guardar
               </PlanForm>
@@ -508,7 +526,7 @@ export default function PlansPage() {
                     <Alert.Description>{error}</Alert.Description>
                   </Alert>
                 )}
-                <p className="text-sm text-zinc-600">
+                <p className="gp-subtitle">
                   ¿Estás seguro de que querés eliminar el plan{" "}
                   <strong>{deleting?.name}</strong>?
                 </p>
@@ -581,7 +599,7 @@ export default function PlansPage() {
                   </div>
                 ) : (
                   <>
-                    <p className="text-sm text-zinc-600">
+                    <p className="gp-subtitle">
                       Seleccioná el período para la licencia del plan{" "}
                       <strong>{licensing?.name}</strong>
                     </p>
@@ -652,7 +670,7 @@ export default function PlansPage() {
               </Modal.Header>
               <Modal.Body>
                 {licenses.length === 0 ? (
-                  <p className="text-sm text-zinc-500">
+                  <p className="gp-subtitle">
                     No hay licencias generadas para este plan
                   </p>
                 ) : (

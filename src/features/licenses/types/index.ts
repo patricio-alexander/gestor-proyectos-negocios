@@ -1,6 +1,7 @@
 export type License = {
   id: number;
   plan_price_id: number;
+  plan_id?: number;
   period: "MONTHLY" | "ANNUALLY";
   plan_name?: string | null;
   key: string | null;

@@ -105,11 +105,11 @@ export default function BusinessesPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="gp-page">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Briefcase width={24} height={24} className="text-zinc-700" />
-          <h1 className="text-xl font-semibold text-zinc-900">Negocios</h1>
+          <h1 className="gp-title">Negocios</h1>
         </div>
 
         <Modal state={createState}>
@@ -131,7 +131,7 @@ export default function BusinessesPage() {
                         <Alert.Description>{error}</Alert.Description>
                       </Alert>
                     )}
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       Nombre
                       <input
                         name="name"
@@ -140,7 +140,7 @@ export default function BusinessesPage() {
                         className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       Titular
                       <input
                         name="owner_name"
@@ -148,7 +148,7 @@ export default function BusinessesPage() {
                         className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       Teléfono
                       <input
                         name="phone"
@@ -156,7 +156,7 @@ export default function BusinessesPage() {
                         className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       RUC
                       <input
                         name="ruc"
@@ -164,7 +164,7 @@ export default function BusinessesPage() {
                         className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       Dirección
                       <input
                         name="address"
@@ -172,7 +172,7 @@ export default function BusinessesPage() {
                         className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                    <label className="gp-label">
                       Email
                       <input
                         name="email"
@@ -200,7 +200,7 @@ export default function BusinessesPage() {
       {businesses.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <Briefcase width={48} height={48} className="text-zinc-300" />
-          <p className="text-sm text-zinc-500">
+          <p className="gp-subtitle">
             No hay negocios registrados todavía
           </p>
         </div>
@@ -293,7 +293,7 @@ export default function BusinessesPage() {
                       <Alert.Description>{error}</Alert.Description>
                     </Alert>
                   )}
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     Nombre
                     <input
                       name="name"
@@ -302,7 +302,7 @@ export default function BusinessesPage() {
                       className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     Titular
                     <input
                       name="owner_name"
@@ -310,7 +310,7 @@ export default function BusinessesPage() {
                       className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     Teléfono
                     <input
                       name="phone"
@@ -318,7 +318,7 @@ export default function BusinessesPage() {
                       className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     RUC
                     <input
                       name="ruc"
@@ -326,7 +326,7 @@ export default function BusinessesPage() {
                       className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     Dirección
                     <input
                       name="address"
@@ -334,7 +334,7 @@ export default function BusinessesPage() {
                       className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
+                  <label className="gp-label">
                     Email
                     <input
                       name="email"
@@ -372,7 +372,7 @@ export default function BusinessesPage() {
                     <Alert.Description>{error}</Alert.Description>
                   </Alert>
                 )}
-                <p className="text-sm text-zinc-600">
+                <p className="gp-subtitle">
                   ¿Estás seguro de que querés eliminar el negocio{" "}
                   <strong>{deleting?.name}</strong>? Esta acción no eliminará
                   los datos permanentemente, pero dejará de estar visible.

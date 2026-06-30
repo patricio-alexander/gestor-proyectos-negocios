@@ -70,17 +70,11 @@ export function useUsers() {
       throw new Error(data.error || "Error al eliminar usuario");
     }
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, deleted_at: new Date().toISOString() } : u,
-      ),
-    );
+    setUsers((prev) => prev.filter((u) => u.id !== id));
   }
 
-  const activeUsers = users.filter((u) => !u.deleted_at);
-
   return {
-    users: activeUsers,
+    users,
     loading,
     create,
     update,

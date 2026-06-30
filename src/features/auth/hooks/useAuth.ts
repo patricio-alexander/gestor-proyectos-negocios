@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AuthUser } from "../types";
+import type { AuthRole, AuthUser } from "../types";
+
+const ACTIVE_ROLE_KEY = "gestor-active-role-id";
 
 export function useAuth() {
   const [state, setState] = useState<{
     user: AuthUser | null;
     loading: boolean;
   }>({ user: null, loading: true });
+  const [activeRoleId, setActiveRoleId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +34,42 @@ export function useAuth() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!state.user?.roles?.length) {
+      setActiveRoleId(null);
+      return;
+    }
+    const stored = localStorage.getItem(ACTIVE_ROLE_KEY);
+    const parsed = stored ? Number(stored) : null;
+    const valid =
+      parsed != null && state.user.roles.some((r) => r.id === parsed)
+        ? parsed
+        : state.user.roles[0].id;
+    setActiveRoleId(valid);
+    localStorage.setItem(ACTIVE_ROLE_KEY, String(valid));
+  }, [state.user]);
+
+  const activeRole: AuthRole | null =
+    state.user?.roles.find((r) => r.id === activeRoleId) ?? state.user?.roles[0] ?? null;
+
+  const changeRole = useCallback((roleId: number) => {
+    localStorage.setItem(ACTIVE_ROLE_KEY, String(roleId));
+    setActiveRoleId(roleId);
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    localStorage.removeItem(ACTIVE_ROLE_KEY);
+    setActiveRoleId(null);
     setState({ user: null, loading: false });
   }, []);
 
-  return { ...state, logout };
+  return {
+    user: state.user,
+    loading: state.loading,
+    activeRole,
+    activeRoleId,
+    changeRole,
+    logout,
+  };
 }

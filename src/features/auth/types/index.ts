@@ -3,17 +3,22 @@ export type LoginInput = {
   password: string;
 };
 
-export type LoginResponse = {
-  token: string;
-  user: {
-    id: string;
-    username: string;
-    email: string | null;
-  };
+export type AuthRole = {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
 };
 
 export type AuthUser = {
   id: string;
-  username: string;
+  username: string | null;
   email: string | null;
+  display_name: string | null;
+  roles: AuthRole[];
+};
+
+export type LoginResponse = {
+  token: string;
+  user: AuthUser;
 };

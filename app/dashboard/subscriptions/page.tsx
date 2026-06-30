@@ -66,13 +66,13 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="gp-page">
       <div className="flex items-center gap-3">
         <CreditCard width={24} height={24} className="text-zinc-700" />
-        <h1 className="text-xl font-semibold text-zinc-900">Suscripciones</h1>
+        <h1 className="gp-title">Suscripciones</h1>
       </div>
 
-      <p className="-mt-4 text-sm text-zinc-500">
+      <p className="-mt-4 gp-subtitle">
         Las suscripciones se crean cuando un cliente activa una licencia en su
         proyecto. Una vez que la licencia es usada, se convierte en una
         suscripción activa y el plan comienza a regir.
@@ -81,7 +81,7 @@ export default function SubscriptionsPage() {
       {subscriptions.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <CreditCard width={48} height={48} className="text-zinc-300" />
-          <p className="text-sm text-zinc-500">
+          <p className="gp-subtitle">
             No hay suscripciones registradas todavía
           </p>
         </div>
@@ -173,7 +173,7 @@ export default function SubscriptionsPage() {
                     <Alert.Description>{error}</Alert.Description>
                   </Alert>
                 )}
-                <p className="text-sm text-zinc-600">
+                <p className="gp-subtitle">
                   ¿Estás seguro de que querés cancelar la suscripción de{" "}
                   <strong>{canceling?.business_name}</strong> (
                   {canceling?.plan_name})?

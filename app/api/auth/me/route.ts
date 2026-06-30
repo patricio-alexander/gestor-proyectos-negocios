@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/src/shared/lib/jwt";
-import { prisma } from "@/src/shared/lib/prisma";
+import { getUserById } from "@/src/features/access/lib/access-service";
 
 export async function GET() {
   try {
@@ -13,11 +13,7 @@ export async function GET() {
     }
 
     const payload = await verifyToken(token);
-
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, username: true, email: true },
-    });
+    const user = await getUserById(payload.userId);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
