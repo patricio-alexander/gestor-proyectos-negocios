@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import type { Section } from "../types";
+import type { Section, CreateSectionInput } from "../types";
 
 export function useSections() {
   const [sections, setSections] = useState<Section[]>([]);
 
-  async function create(name: string, module_id: number) {
+  async function create(input: CreateSectionInput) {
     const res = await fetch("/api/sections", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, module_id }),
+      body: JSON.stringify(input),
     });
 
     if (!res.ok) {

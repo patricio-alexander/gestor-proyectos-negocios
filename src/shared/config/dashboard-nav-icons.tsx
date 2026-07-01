@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import Bell from "@gravity-ui/icons/Bell";
 import Briefcase from "@gravity-ui/icons/Briefcase";
 import CreditCard from "@gravity-ui/icons/CreditCard";
+import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import FileText from "@gravity-ui/icons/FileText";
 import House from "@gravity-ui/icons/House";
 import Key from "@gravity-ui/icons/Key";
@@ -15,9 +16,10 @@ type IconProps = { width?: number; height?: number; className?: string };
 export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard": House,
   "/dashboard/profile": Person,
+  "/dashboard/modules": Cubes3Overlap,
   "/dashboard/notifications": Bell,
   "/dashboard/accounts": Passport,
-  "/dashboard/businesses": Briefcase,
+  "/dashboard/apps": Briefcase,
   "/dashboard/plans": FileText,
   "/dashboard/subscriptions": CreditCard,
   "/dashboard/licenses": ShieldKeyhole,

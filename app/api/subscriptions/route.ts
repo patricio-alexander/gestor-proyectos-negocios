@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const subscriptions = await prisma.subscription.findMany({
       include: {
-        business: { select: { name: true } },
+        apps: { select: { name: true } },
         plan_price: {
           include: { plan: { select: { name: true } } },
         },
@@ -25,7 +25,7 @@ export async function GET() {
     const result = subscriptions.map((s) => ({
       id: s.id,
       business_hash: s.business_hash,
-      business_name: s.business.name,
+      business_name: s.apps.name,
       plan_price_id: s.plan_price_id,
       plan_name: s.plan_price.plan.name,
       period: s.plan_price.period,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         plan_price: {
           include: {
             plan: {
-              include: { business: { select: { hash: true } } },
+              include: { apps: { select: { hash: true } } },
             },
           },
         },
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     const subscription = await prisma.subscription.create({
       data: {
-        business_hash: license.plan_price.plan.business.hash,
+        business_hash: license.plan_price.plan.apps.hash,
         plan_price_id: license.plan_price_id,
         start_at: now,
         expires_at: expiresAt,

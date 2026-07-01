@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const planId = Number(id);
-    const { name, business_id, price_monthly, price_annual, app_module_ids, app_section_ids } =
+    const { name, business_id, price_monthly, price_annual, module_ids } =
       await request.json();
 
     const existing = await findPlanById(planId);
@@ -48,12 +48,12 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     if (business_id) {
-      const business = await prisma.business.findFirst({
+      const apps = await prisma.apps.findFirst({
         where: { id: business_id, deleted_at: null },
       });
-      if (!business) {
+      if (!apps) {
         return NextResponse.json(
-          { error: "El negocio seleccionado no existe" },
+          { error: "La aplicación seleccionada no existe" },
           { status: 404 },
         );
       }
@@ -101,24 +101,12 @@ export async function PATCH(request: Request, { params }: Params) {
         }
       }
 
-      if (app_module_ids !== undefined) {
+      if (module_ids !== undefined) {
         await tx.planModule.deleteMany({ where: { plan_id: planId } });
-        if (app_module_ids.length > 0) {
+        if (module_ids.length > 0) {
           await tx.planModule.createMany({
-            data: app_module_ids.map((app_module_id: number) => ({
-              app_module_id,
-              plan_id: planId,
-            })),
-          });
-        }
-      }
-
-      if (app_section_ids !== undefined) {
-        await tx.planSection.deleteMany({ where: { plan_id: planId } });
-        if (app_section_ids.length > 0) {
-          await tx.planSection.createMany({
-            data: app_section_ids.map((app_section_id: number) => ({
-              app_section_id,
+            data: module_ids.map((module_id: number) => ({
+              module_id,
               plan_id: planId,
             })),
           });

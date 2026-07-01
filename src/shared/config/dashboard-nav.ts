@@ -23,13 +23,19 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     items: [
       { label: "Usuarios", href: "/dashboard/access/users" },
       { label: "Roles", href: "/dashboard/access/roles" },
-      { label: "Cuentas", href: "/dashboard/accounts" },
+
+    ],
+  },
+  {
+    title: "Módulos",
+    items: [
+      { label: "Módulos", href: "/dashboard/modules" },
     ],
   },
   {
     title: "Licencias",
     items: [
-      { label: "Negocios", href: "/dashboard/businesses" },
+      { label: "Aplicaciones", href: "/dashboard/apps" },
       { label: "Planes", href: "/dashboard/plans" },
       { label: "Suscripciones", href: "/dashboard/subscriptions" },
       { label: "Licencias", href: "/dashboard/licenses" },

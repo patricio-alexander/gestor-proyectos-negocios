@@ -51,56 +51,15 @@ async function seedRoles() {
 }
 
 async function seedCatalog() {
-  let order = 0;
   for (const mod of EDDELI_PRODUCT_CATALOG) {
-    order += 10;
-    const appModule = await prisma.appModule.upsert({
-      where: { key: mod.key },
-      update: {
-        name: mod.name,
-        description: mod.description,
-        icon: mod.icon ?? null,
-        sort_order: order,
-        is_active: true,
-        deleted_at: null,
-      },
-      create: {
-        key: mod.key,
-        name: mod.name,
-        description: mod.description,
-        icon: mod.icon ?? null,
-        sort_order: order,
-        app_target: "eddeli",
-      },
-    });
-
-    let sectionOrder = 0;
-    for (const sec of mod.sections) {
-      sectionOrder += 10;
-      await prisma.appSection.upsert({
-        where: {
-          app_module_id_key: {
-            app_module_id: appModule.id,
-            key: sec.key,
-          },
-        },
-        update: {
-          name: sec.name,
-          route_path: sec.route_path,
-          description: sec.description ?? null,
-          sort_order: sectionOrder,
-          is_active: true,
-          deleted_at: null,
-        },
-        create: {
-          app_module_id: appModule.id,
-          key: sec.key,
-          name: sec.name,
-          route_path: sec.route_path,
-          description: sec.description ?? null,
-          sort_order: sectionOrder,
-        },
-      });
+    const existing = await prisma.module.findFirst({ where: { name: mod.name } });
+    if (!existing) {
+      const business = await prisma.apps.findFirst();
+      if (business) {
+        await prisma.module.create({
+  data: { name: mod.name, key: mod.key, business_id: business.id },
+});
+      }
     }
   }
 }

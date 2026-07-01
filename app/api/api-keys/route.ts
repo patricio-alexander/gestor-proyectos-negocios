@@ -9,7 +9,7 @@ export async function GET() {
 
   try {
     const keys = await prisma.apiKey.findMany({
-      include: { business: { select: { name: true } } },
+      include: { apps: { select: { name: true } } },
       orderBy: { created_at: "desc" },
     });
 
@@ -19,7 +19,7 @@ export async function GET() {
       prefix: k.prefix,
       active: k.active,
       business_id: k.business_id,
-      business_name: k.business.name,
+      business_name: k.apps.name,
       created_at: k.created_at.toISOString(),
       updated_at: k.updated_at.toISOString(),
     }));
@@ -49,18 +49,18 @@ export async function POST(request: Request) {
 
     if (!business_id) {
       return NextResponse.json(
-        { error: "Debe seleccionar un negocio" },
+        { error: "Debe seleccionar una aplicación" },
         { status: 400 }
       );
     }
 
-    const business = await prisma.business.findFirst({
+    const business = await prisma.apps.findFirst({
       where: { id: business_id, deleted_at: null },
     });
 
     if (!business) {
       return NextResponse.json(
-        { error: "El negocio seleccionado no existe" },
+        { error: "La aplicación seleccionada no existe" },
         { status: 404 }
       );
     }

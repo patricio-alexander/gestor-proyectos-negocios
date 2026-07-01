@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ModulesManager } from "@/src/features/modules/components/ModulesManager";
 
-export default function ModulesRedirectPage() {
-  redirect("/dashboard/catalog");
+export default function ModulesPage() {
+  return <ModulesManager />;
 }

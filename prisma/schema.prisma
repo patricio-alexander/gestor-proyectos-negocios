@@ -42,46 +42,44 @@ model UserRole {
   @@index([role_id])
 }
 
-// ─── Catálogo global EdDeli (módulos + secciones licenciables) ─────────────
+// ─── Módulos y secciones ────────────────────────────────────────────────────
 
-model AppModule {
-  id          Int          @id @default(autoincrement())
-  key         String       @unique
+model Module {
+  id          Int       @id @default(autoincrement())
+  business_id Int
+  key         String
   name        String
-  description String?      @db.Text
-  icon        String?      @db.VarChar(64)
-  sort_order  Int          @default(0)
-  app_target  String       @default("eddeli") @db.VarChar(32)
-  is_active   Boolean      @default(true)
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
+  description String?   @db.Text
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
-  sections    AppSection[]
-  plan_links  PlanModule[]
+  apps        Apps      @relation(fields: [business_id], references: [id], onDelete: Restrict)
+  secciones   Seccion[]
+  plan_modules PlanModule[]
+
+  @@unique([business_id, key])
+  @@index([business_id])
+  @@map("BusinessModule")
 }
 
-model AppSection {
-  id            Int           @id @default(autoincrement())
-  app_module_id Int
-  key           String
-  name          String
-  route_path    String?       @db.VarChar(255)
-  description   String?       @db.Text
-  sort_order    Int           @default(0)
-  is_active     Boolean       @default(true)
-  created_at    DateTime      @default(now())
-  updated_at    DateTime      @updatedAt
-  deleted_at    DateTime?
-  app_module    AppModule     @relation(fields: [app_module_id], references: [id], onDelete: Cascade)
-  plan_links    PlanSection[]
+model Seccion {
+  id         Int       @id @default(autoincrement())
+  module_id  Int
+  name       String
+  key        String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+  module     Module    @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
-  @@unique([app_module_id, key])
-  @@index([app_module_id])
+  @@index([module_id])
+  @@map("BusinessModuleSection")
 }
 
-// ─── Negocios / licencias ────────────────────────────────────────────────────
+// ─── Apps / licencias ───────────────────────────────────────────────────────
 
-model Business {
+model Apps {
   id            Int            @id @default(autoincrement())
   hash          String         @unique
   name          String?
@@ -94,13 +92,16 @@ model Business {
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?
   plans         Plan[]
+  modules       Module[]
   subscriptions Subscription[]
   api_keys      ApiKey[]
+
+  @@map("Business")
 }
 
 model ApiKey {
   id          Int      @id @default(autoincrement())
-  business    Business @relation(fields: [business_id], references: [id])
+  apps        Apps     @relation(fields: [business_id], references: [id])
   business_id Int
   name        String
   prefix      String   @unique
@@ -113,14 +114,25 @@ model ApiKey {
 model Plan {
   id            Int           @id @default(autoincrement())
   name          String?
-  business      Business      @relation(fields: [business_id], references: [id])
+  apps          Apps          @relation(fields: [business_id], references: [id])
   business_id   Int
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   deleted_at    DateTime?
   prices        PlanPrice[]
-  modules       PlanModule[]
-  sections      PlanSection[]
+  plan_modules  PlanModule[]
+}
+
+model PlanModule {
+  id        Int    @id @default(autoincrement())
+  plan_id   Int
+  module_id Int
+  plan      Plan   @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  module    Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+
+  @@index([plan_id])
+  @@index([module_id])
+  @@map("planes_modules")
 }
 
 model PlanPrice {
@@ -133,29 +145,9 @@ model PlanPrice {
   licenses      License[]
 }
 
-model PlanModule {
-  id            Int       @id @default(autoincrement())
-  plan          Plan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  plan_id       Int
-  app_module    AppModule @relation(fields: [app_module_id], references: [id], onDelete: Cascade)
-  app_module_id Int
-
-  @@unique([plan_id, app_module_id])
-}
-
-model PlanSection {
-  id             Int        @id @default(autoincrement())
-  plan           Plan       @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  plan_id        Int
-  app_section    AppSection @relation(fields: [app_section_id], references: [id], onDelete: Cascade)
-  app_section_id Int
-
-  @@unique([plan_id, app_section_id])
-}
-
 model Subscription {
   id            Int                @id @default(autoincrement())
-  business      Business           @relation(fields: [business_hash], references: [hash])
+  apps          Apps               @relation(fields: [business_hash], references: [hash])
   business_hash String
   plan_price    PlanPrice          @relation(fields: [plan_price_id], references: [id])
   plan_price_id Int

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
 import {
-  deleteAppModule,
-  updateAppModule,
+  deleteModule,
+  updateModule,
 } from "@/src/features/catalog/lib/catalog-service";
 
 type Params = { params: Promise<{ id: string }> };
@@ -14,7 +14,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    const module = await updateAppModule(Number(id), await request.json());
+    const module = await updateModule(Number(id), await request.json());
     return NextResponse.json(module);
   } catch (err) {
     return serviceErrorResponse(err, "Error al actualizar módulo");
@@ -27,7 +27,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    await deleteAppModule(Number(id));
+    await deleteModule(Number(id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     return serviceErrorResponse(err, "Error al eliminar módulo");

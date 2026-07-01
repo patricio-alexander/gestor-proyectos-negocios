@@ -14,36 +14,28 @@ import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import { useState } from "react";
 import { useCatalog } from "../hooks/useCatalog";
-import type { AppModuleRecord, AppSectionRecord } from "../types";
+import { useApps } from "@/src/features/apps/hooks/useApps";
+import type { ModuleRecord } from "../types";
 import { INPUT_CLASS } from "@/src/shared/ui/form-styles";
 
 export function CatalogManager() {
+  const { apps: businesses } = useApps();
   const {
     modules,
     loading,
     createModule,
     updateModule,
     removeModule,
-    createSection,
-    updateSection,
-    removeSection,
   } = useCatalog();
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [editingModule, setEditingModule] = useState<AppModuleRecord | null>(null);
-  const [deletingModule, setDeletingModule] = useState<AppModuleRecord | null>(null);
-  const [sectionModuleId, setSectionModuleId] = useState<number | null>(null);
-  const [editingSection, setEditingSection] = useState<{
-    section: AppSectionRecord;
-    moduleId: number;
-  } | null>(null);
+  const [editingModule, setEditingModule] = useState<ModuleRecord | null>(null);
+  const [deletingModule, setDeletingModule] = useState<ModuleRecord | null>(null);
 
   const moduleCreateState = useOverlayState();
   const moduleEditState = useOverlayState();
   const moduleDeleteState = useOverlayState();
-  const sectionCreateState = useOverlayState();
-  const sectionEditState = useOverlayState();
 
   async function handleCreateModule(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,12 +43,14 @@ export function CatalogManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
+      const businessId = Number(form.get("business_id"));
+      if (!businessId) {
+        setError("Debe seleccionar una aplicación");
+        return;
+      }
       await createModule({
-        key: form.get("key") as string,
         name: form.get("name") as string,
-        description: (form.get("description") as string) || undefined,
-        icon: (form.get("icon") as string) || undefined,
-        sort_order: Number(form.get("sort_order") || 0),
+        business_id: businessId,
       });
       moduleCreateState.close();
     } catch (err) {
@@ -74,12 +68,7 @@ export function CatalogManager() {
     const form = new FormData(e.currentTarget);
     try {
       await updateModule(editingModule.id, {
-        key: form.get("key") as string,
         name: form.get("name") as string,
-        description: (form.get("description") as string) || undefined,
-        icon: (form.get("icon") as string) || undefined,
-        sort_order: Number(form.get("sort_order") || 0),
-        is_active: form.get("is_active") === "on",
       });
       moduleEditState.close();
       setEditingModule(null);
@@ -105,54 +94,6 @@ export function CatalogManager() {
     }
   }
 
-  async function handleCreateSection(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!sectionModuleId) return;
-    setError("");
-    setSubmitting(true);
-    const form = new FormData(e.currentTarget);
-    try {
-      await createSection({
-        app_module_id: sectionModuleId,
-        key: form.get("key") as string,
-        name: form.get("name") as string,
-        route_path: (form.get("route_path") as string) || undefined,
-        description: (form.get("description") as string) || undefined,
-        sort_order: Number(form.get("sort_order") || 0),
-      });
-      sectionCreateState.close();
-      setSectionModuleId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleEditSection(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editingSection) return;
-    setError("");
-    setSubmitting(true);
-    const form = new FormData(e.currentTarget);
-    try {
-      await updateSection(editingSection.section.id, editingSection.moduleId, {
-        key: form.get("key") as string,
-        name: form.get("name") as string,
-        route_path: (form.get("route_path") as string) || undefined,
-        description: (form.get("description") as string) || undefined,
-        sort_order: Number(form.get("sort_order") || 0),
-        is_active: form.get("is_active") === "on",
-      });
-      sectionEditState.close();
-      setEditingSection(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -167,10 +108,10 @@ export function CatalogManager() {
         <div>
           <div className="flex items-center gap-3">
             <LayoutCells width={24} height={24} className="text-zinc-700" />
-            <h1 className="gp-title">Catálogo EdDeli</h1>
+            <h1 className="gp-title">Módulos</h1>
           </div>
           <p className="gp-subtitle mt-1">
-            Módulos y secciones licenciables de eddeliApp (notificaciones, themes, backups, etc.)
+            Módulos del sistema
           </p>
         </div>
 
@@ -194,27 +135,18 @@ export function CatalogManager() {
                       </Alert>
                     )}
                     <label className="gp-label">
-                      Clave (key)
-                      <input name="key" required placeholder="platform" className={INPUT_CLASS} />
+                      Aplicación
+                      <select name="business_id" required className={INPUT_CLASS}>
+                        <option value="">Seleccionar aplicación</option>
+                        {businesses.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
                     </label>
                     <label className="gp-label">
                       Nombre
                       <input name="name" required placeholder="Plataforma" className={INPUT_CLASS} />
                     </label>
-                    <label className="gp-label">
-                      Descripción
-                      <textarea name="description" rows={2} className={INPUT_CLASS} />
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <label className="gp-label">
-                        Icono
-                        <input name="icon" placeholder="Settings" className={INPUT_CLASS} />
-                      </label>
-                      <label className="gp-label">
-                        Orden
-                        <input name="sort_order" type="number" defaultValue={0} className={INPUT_CLASS} />
-                      </label>
-                    </div>
                   </Modal.Body>
                   <Modal.Footer>
                     <Button variant="secondary" slot="close">
@@ -234,36 +166,13 @@ export function CatalogManager() {
       <div className="grid gap-4">
         {modules.map((mod) => (
           <Card key={mod.id} className="gp-card px-5 py-4">
-            <div className="mb-4 flex flex-row items-start justify-between gap-4 border-b border-zinc-100 pb-4">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-zinc-900">{mod.name}</h2>
-                  <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs text-zinc-600">
-                    {mod.key}
-                  </span>
-                  {!mod.is_active && (
-                    <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-                      Inactivo
-                    </span>
-                  )}
                 </div>
-                {mod.description && (
-                  <p className="gp-subtitle mt-1">{mod.description}</p>
-                )}
               </div>
               <div className="flex shrink-0 gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onPress={() => {
-                    setSectionModuleId(mod.id);
-                    setError("");
-                    sectionCreateState.open();
-                  }}
-                >
-                  <Plus width={14} height={14} />
-                  Sección
-                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -289,44 +198,6 @@ export function CatalogManager() {
                 </Button>
               </div>
             </div>
-            <div className="pt-1">
-              {mod.sections.length === 0 ? (
-                <p className="text-sm text-zinc-400">Sin secciones</p>
-              ) : (
-                <ul className="divide-y divide-zinc-100">
-                  {mod.sections.map((section) => (
-                    <li
-                      key={section.id}
-                      className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-zinc-800">{section.name}</span>
-                          <span className="font-mono text-xs text-zinc-400">{section.key}</span>
-                          {!section.is_active && (
-                            <span className="text-xs text-amber-600">inactiva</span>
-                          )}
-                        </div>
-                        {section.route_path && (
-                          <p className="mt-0.5 font-mono text-xs text-zinc-400">{section.route_path}</p>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onPress={() => {
-                          setEditingSection({ section, moduleId: mod.id });
-                          setError("");
-                          sectionEditState.open();
-                        }}
-                      >
-                        <Pencil width={14} height={14} />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </Card>
         ))}
       </div>
@@ -348,30 +219,8 @@ export function CatalogManager() {
                       </Alert>
                     )}
                     <label className="gp-label">
-                      Clave
-                      <input name="key" required defaultValue={editingModule.key} className={INPUT_CLASS} />
-                    </label>
-                    <label className="gp-label">
                       Nombre
                       <input name="name" required defaultValue={editingModule.name} className={INPUT_CLASS} />
-                    </label>
-                    <label className="gp-label">
-                      Descripción
-                      <textarea
-                        name="description"
-                        rows={2}
-                        defaultValue={editingModule.description ?? ""}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-zinc-700">
-                      <input
-                        type="checkbox"
-                        name="is_active"
-                        defaultChecked={editingModule.is_active}
-                        className="size-4 rounded border-zinc-300"
-                      />
-                      Activo
                     </label>
                   </Modal.Body>
                   <Modal.Footer>
@@ -404,7 +253,7 @@ export function CatalogManager() {
                   </Alert>
                 )}
                 <p className="gp-subtitle">
-                  ¿Eliminar <strong>{deletingModule?.name}</strong> y todas sus secciones del catálogo?
+                  ¿Eliminar <strong>{deletingModule?.name}</strong>?
                 </p>
               </Modal.Body>
               <Modal.Footer>
@@ -419,119 +268,6 @@ export function CatalogManager() {
                   {submitting ? <Spinner size="sm" /> : "Eliminar"}
                 </Button>
               </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
-
-      <Modal state={sectionCreateState}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-lg">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>Nueva sección</Modal.Heading>
-              </Modal.Header>
-              <form onSubmit={handleCreateSection}>
-                <Modal.Body className="space-y-4">
-                  {error && (
-                    <Alert status="danger">
-                      <Alert.Description>{error}</Alert.Description>
-                    </Alert>
-                  )}
-                  <label className="gp-label">
-                    Clave
-                    <input name="key" required placeholder="json-backup" className={INPUT_CLASS} />
-                  </label>
-                  <label className="gp-label">
-                    Nombre
-                    <input name="name" required placeholder="Backup JSON" className={INPUT_CLASS} />
-                  </label>
-                  <label className="gp-label">
-                    Ruta en eddeliApp
-                    <input name="route_path" placeholder="/eddeli/platform/backups" className={INPUT_CLASS} />
-                  </label>
-                  <label className="gp-label">
-                    Orden
-                    <input name="sort_order" type="number" defaultValue={0} className={INPUT_CLASS} />
-                  </label>
-                </Modal.Body>
-                <Modal.Footer>
-                  <Button variant="secondary" slot="close">
-                    Cancelar
-                  </Button>
-                  <Button type="submit" isDisabled={submitting}>
-                    {submitting ? <Spinner size="sm" /> : "Crear"}
-                  </Button>
-                </Modal.Footer>
-              </form>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
-
-      <Modal state={sectionEditState}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-lg">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>Editar sección</Modal.Heading>
-              </Modal.Header>
-              {editingSection && (
-                <form onSubmit={handleEditSection}>
-                  <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
-                    <label className="gp-label">
-                      Clave
-                      <input
-                        name="key"
-                        required
-                        defaultValue={editingSection.section.key}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="gp-label">
-                      Nombre
-                      <input
-                        name="name"
-                        required
-                        defaultValue={editingSection.section.name}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="gp-label">
-                      Ruta
-                      <input
-                        name="route_path"
-                        defaultValue={editingSection.section.route_path ?? ""}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-zinc-700">
-                      <input
-                        type="checkbox"
-                        name="is_active"
-                        defaultChecked={editingSection.section.is_active}
-                        className="size-4 rounded border-zinc-300"
-                      />
-                      Activa
-                    </label>
-                  </Modal.Body>
-                  <Modal.Footer>
-                    <Button variant="secondary" slot="close">
-                      Cancelar
-                    </Button>
-                    <Button type="submit" isDisabled={submitting}>
-                      {submitting ? <Spinner size="sm" /> : "Guardar"}
-                    </Button>
-                  </Modal.Footer>
-                </form>
-              )}
             </Modal.Dialog>
           </Modal.Container>
         </Modal.Backdrop>

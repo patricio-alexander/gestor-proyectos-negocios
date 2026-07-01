@@ -20,7 +20,7 @@ export default function DashboardPage() {
       <div>
         <h1 className={gp.titleLg}>Hola, {label}</h1>
         <p className={gp.subtitleBlock}>
-          Panel de control para licencias EdDeli. Gestioná negocios, planes y acceso del equipo desde el menú lateral.
+          Panel de control para licencias EdDeli. Gestioná aplicaciones, planes y acceso del equipo desde el menú lateral.
         </p>
       </div>
 

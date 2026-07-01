@@ -90,7 +90,7 @@ export default function SubscriptionsPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b bg-zinc-50">
-                <th className="px-4 py-3 font-medium text-zinc-600">Negocio</th>
+                <th className="px-4 py-3 font-medium text-zinc-600">Aplicación</th>
                 <th className="px-4 py-3 font-medium text-zinc-600">Plan</th>
                 <th className="px-4 py-3 font-medium text-zinc-600">Período</th>
                 <th className="px-4 py-3 font-medium text-zinc-600">Precio</th>

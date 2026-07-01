@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
 import {
-  createAppModule,
-  listAppModules,
+  createModule,
+  listModules,
 } from "@/src/features/catalog/lib/catalog-service";
 
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
-    return NextResponse.json(await listAppModules());
+    return NextResponse.json(await listModules());
   } catch (err) {
     return serviceErrorResponse(err, "Error al obtener módulos");
   }
@@ -23,13 +23,13 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    if (!body.key?.trim() || !body.name?.trim()) {
+    if (!body.name?.trim() || !body.business_id) {
       return NextResponse.json(
-        { error: "key y name son obligatorios" },
+        { error: "name y business_id son obligatorios" },
         { status: 400 },
       );
     }
-    const module = await createAppModule(body);
+    const module = await createModule(body);
     return NextResponse.json(module, { status: 201 });
   } catch (err) {
     return serviceErrorResponse(err, "Error al crear módulo");

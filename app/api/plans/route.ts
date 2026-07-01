@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const { name, business_id, price_monthly, price_annual, app_module_ids, app_section_ids } =
+    const { name, business_id, price_monthly, price_annual, module_ids } =
       await request.json();
 
     if (!name || !name.trim()) {
@@ -41,18 +41,18 @@ export async function POST(request: Request) {
 
     if (!business_id) {
       return NextResponse.json(
-        { error: "Debe seleccionar un negocio" },
+        { error: "Debe seleccionar una aplicación" },
         { status: 400 },
       );
     }
 
-    const business = await prisma.business.findFirst({
+    const apps = await prisma.apps.findFirst({
       where: { id: business_id, deleted_at: null },
     });
 
-    if (!business) {
+    if (!apps) {
       return NextResponse.json(
-        { error: "El negocio seleccionado no existe" },
+        { error: "La aplicación seleccionada no existe" },
         { status: 404 },
       );
     }
@@ -65,18 +65,14 @@ export async function POST(request: Request) {
       pricesData.push({ price: Number(price_annual), period: Period.ANNUALLY });
     }
 
-    const modulesData =
-      app_module_ids?.map((id: number) => ({ app_module_id: id })) ?? [];
-    const sectionsData =
-      app_section_ids?.map((id: number) => ({ app_section_id: id })) ?? [];
-
     const plan = await prisma.plan.create({
       data: {
         name: name.trim(),
         business_id,
         prices: { create: pricesData },
-        modules: { create: modulesData },
-        sections: { create: sectionsData },
+        plan_modules: module_ids?.length
+          ? { create: module_ids.map((module_id: number) => ({ module_id })) }
+          : undefined,
       },
       include: planInclude,
     });

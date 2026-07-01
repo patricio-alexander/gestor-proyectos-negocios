@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
-  AppModuleRecord,
-  CreateAppModuleInput,
-  CreateAppSectionInput,
-  UpdateAppModuleInput,
-  UpdateAppSectionInput,
+  ModuleRecord,
+  CreateModuleInput,
+  UpdateModuleInput,
 } from "../types";
 
 export function useCatalog() {
-  const [modules, setModules] = useState<AppModuleRecord[]>([]);
+  const [modules, setModules] = useState<ModuleRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchModules = useCallback(async () => {
@@ -29,7 +27,7 @@ export function useCatalog() {
     fetchModules();
   }, [fetchModules]);
 
-  async function createModule(input: CreateAppModuleInput) {
+  async function createModule(input: CreateModuleInput) {
     const res = await fetch("/api/catalog/modules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,12 +37,12 @@ export function useCatalog() {
       const data = await res.json();
       throw new Error(data.error || "Error al crear módulo");
     }
-    const mod: AppModuleRecord = await res.json();
-    setModules((prev) => [...prev, mod].sort((a, b) => a.sort_order - b.sort_order));
+    const mod: ModuleRecord = await res.json();
+    setModules((prev) => [...prev, mod]);
     return mod;
   }
 
-  async function updateModule(id: number, input: UpdateAppModuleInput) {
+  async function updateModule(id: number, input: UpdateModuleInput) {
     const res = await fetch(`/api/catalog/modules/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -54,7 +52,7 @@ export function useCatalog() {
       const data = await res.json();
       throw new Error(data.error || "Error al actualizar módulo");
     }
-    const mod: AppModuleRecord = await res.json();
+    const mod: ModuleRecord = await res.json();
     setModules((prev) => prev.map((m) => (m.id === id ? mod : m)));
     return mod;
   }
@@ -68,61 +66,6 @@ export function useCatalog() {
     setModules((prev) => prev.filter((m) => m.id !== id));
   }
 
-  async function createSection(input: CreateAppSectionInput) {
-    const res = await fetch("/api/catalog/sections", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al crear sección");
-    }
-    const section = await res.json();
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === input.app_module_id
-          ? { ...m, sections: [...m.sections, section].sort((a, b) => a.sort_order - b.sort_order) }
-          : m,
-      ),
-    );
-    return section;
-  }
-
-  async function updateSection(id: number, moduleId: number, input: UpdateAppSectionInput) {
-    const res = await fetch(`/api/catalog/sections/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al actualizar sección");
-    }
-    const section = await res.json();
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === moduleId
-          ? { ...m, sections: m.sections.map((s) => (s.id === id ? section : s)) }
-          : m,
-      ),
-    );
-    return section;
-  }
-
-  async function removeSection(id: number, moduleId: number) {
-    const res = await fetch(`/api/catalog/sections/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al eliminar sección");
-    }
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === moduleId ? { ...m, sections: m.sections.filter((s) => s.id !== id) } : m,
-      ),
-    );
-  }
-
   return {
     modules,
     loading,
@@ -130,8 +73,5 @@ export function useCatalog() {
     createModule,
     updateModule,
     removeModule,
-    createSection,
-    updateSection,
-    removeSection,
   };
 }

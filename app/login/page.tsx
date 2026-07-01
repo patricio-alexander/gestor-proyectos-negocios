@@ -74,7 +74,7 @@ export default function LoginPage() {
         <div className="relative z-10 space-y-8 px-10 pb-12">
           <div>
             <h1 className="max-w-md text-3xl font-semibold leading-tight tracking-tight" style={{ color: "var(--gp-blue-frost)" }}>
-              Licencias, negocios y acceso en un solo lugar
+              Licencias, aplicaciones y acceso en un solo lugar
             </h1>
             <p className="mt-4 max-w-sm text-base leading-relaxed" style={{ color: "var(--gp-text-faint)" }}>
               Panel administrativo para gestionar planes, suscripciones y permisos de cada tenant EdDeli.
@@ -84,7 +84,7 @@ export default function LoginPage() {
           <ul className="space-y-4">
             {[
               { Icon: ShieldKeyhole, text: "Emisión y revocación de licencias" },
-              { Icon: Key, text: "API keys por negocio" },
+              { Icon: Key, text: "API keys por aplicación" },
               { Icon: Tachometer, text: "Usuarios, roles y cuentas del gestor" },
             ].map(({ Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-sm" style={{ color: "var(--gp-platinum)" }}>

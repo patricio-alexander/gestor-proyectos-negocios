@@ -50,7 +50,7 @@ export async function validateApiKey(
   try {
     const record = await prisma.apiKey.findFirst({
       where: { prefix, active: true },
-      include: { business: { select: { id: true, hash: true } } },
+      include: { apps: { select: { id: true, hash: true } } },
     });
 
     if (!record) {
@@ -71,8 +71,8 @@ export async function validateApiKey(
     }
 
     return {
-      business_id: record.business.id,
-      business_hash: record.business.hash,
+      business_id: record.apps.id,
+      business_hash: record.apps.hash,
       error: null,
     };
   } catch {

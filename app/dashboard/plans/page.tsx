@@ -9,11 +9,10 @@ import {
   useOverlayState,
 } from "@heroui/react";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
-import { useBusinesses } from "@/src/features/businesses/hooks/useBusinesses";
+import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
 import type { Plan } from "@/src/features/plans/types";
-import type { AppModuleRecord } from "@/src/features/catalog/types";
 import type { License } from "@/src/features/licenses/types";
 import { useState } from "react";
 import FileText from "@gravity-ui/icons/FileText";
@@ -34,7 +33,7 @@ type PlanFormProps = {
   submitting: boolean;
   editing?: Plan | null;
   businesses: { id: number; name: string | null }[];
-  allModules: AppModuleRecord[];
+  allModules: { id: number; name: string }[];
   children: React.ReactNode;
 };
 
@@ -56,13 +55,8 @@ function PlanForm({
   const annualPrice =
     editing?.prices?.find((p) => p.period === "ANNUALLY")?.price ?? "";
   const selectedModuleIds = new Set(
-    editing?.modules?.map((m) => m.app_module_id) ?? [],
+    editing?.plan_modules?.map((m) => m.module_id) ?? [],
   );
-  const selectedSectionIds = new Set(
-    editing?.sections?.map((s) => s.app_section_id) ?? [],
-  );
-
-  const activeModules = allModules.filter((m) => m.is_active);
 
   return (
     <form onSubmit={onSubmit}>
@@ -79,19 +73,19 @@ function PlanForm({
             required
             defaultValue={editing?.name ?? ""}
             placeholder="Nombre del plan"
-            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+            className="gp-input"
           />
         </label>
         <label className="gp-label">
-          Negocio
+          Aplicación
           <select
             name="business_id"
             required
             value={selectedBusinessId}
             onChange={(e) => setSelectedBusinessId(e.target.value)}
-            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+            className="gp-select"
           >
-            <option value="">Seleccionar negocio</option>
+            <option value="">Seleccionar aplicación</option>
             {businesses.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -109,7 +103,7 @@ function PlanForm({
               step="1"
               defaultValue={monthlyPrice}
               placeholder="Ej: 100"
-              className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+              className="gp-input"
             />
           </label>
           <label className="gp-label">
@@ -121,53 +115,32 @@ function PlanForm({
               step="1"
               defaultValue={annualPrice}
               placeholder="Ej: 1000"
-              className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+              className="gp-input"
             />
           </label>
         </div>
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-zinc-700">
-            Módulos EdDeli (catálogo global)
+            Módulos
           </legend>
-          {activeModules.length === 0 ? (
-            <p className="gp-subtitle">No hay módulos en el catálogo</p>
+          {allModules.length === 0 ? (
+            <p className="gp-subtitle">No hay módulos disponibles</p>
           ) : (
-            <div className="max-h-64 space-y-3 overflow-y-auto rounded-lg border border-zinc-200 p-3">
-              {activeModules.map((mod) => (
-                <div key={mod.id}>
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-800">
-                    <input
-                      type="checkbox"
-                      name="app_module_ids"
-                      value={mod.id}
-                      defaultChecked={selectedModuleIds.has(mod.id)}
-                      className="size-4 rounded border-zinc-300"
-                    />
-                    {mod.name}
-                    <span className="font-mono text-xs text-zinc-400">{mod.key}</span>
-                  </label>
-                  {mod.sections.length > 0 && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {mod.sections
-                        .filter((s) => s.is_active)
-                        .map((section) => (
-                          <label
-                            key={section.id}
-                            className="flex items-center gap-2 text-xs text-zinc-600"
-                          >
-                            <input
-                              type="checkbox"
-                              name="app_section_ids"
-                              value={section.id}
-                              defaultChecked={selectedSectionIds.has(section.id)}
-                              className="size-3.5 rounded border-zinc-300"
-                            />
-                            {section.name}
-                          </label>
-                        ))}
-                    </div>
-                  )}
-                </div>
+            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
+              {allModules.map((mod) => (
+                <label
+                  key={mod.id}
+                  className="flex items-center gap-2 text-sm font-medium text-zinc-800"
+                >
+                  <input
+                    type="checkbox"
+                    name="module_ids"
+                    value={mod.id}
+                    defaultChecked={selectedModuleIds.has(mod.id)}
+                    className="size-4 rounded border-zinc-300"
+                  />
+                  {mod.name}
+                </label>
               ))}
             </div>
           )}
@@ -196,7 +169,7 @@ function getCheckedIds(form: HTMLFormElement, name: string) {
 
 export default function PlansPage() {
   const { plans, loading, create, update, remove } = usePlans();
-  const { businesses } = useBusinesses();
+  const { apps: businesses } = useApps();
   const { modules: catalogModules } = useCatalog();
   const { licenses, fetchByPlan, create: createLicense, revoke: revokeLicense } = useLicenses();
   const [editing, setEditing] = useState<Plan | null>(null);
@@ -229,8 +202,7 @@ export default function PlansPage() {
         business_id: Number(formData.get("business_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : null,
         price_annual: priceAnnual ? Number(priceAnnual) : null,
-        app_module_ids: getCheckedIds(form, "app_module_ids"),
-        app_section_ids: getCheckedIds(form, "app_section_ids"),
+        module_ids: getCheckedIds(form, "module_ids"),
       });
       createState.close();
       setError("");
@@ -256,8 +228,7 @@ export default function PlansPage() {
         business_id: Number(formData.get("business_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : undefined,
         price_annual: priceAnnual ? Number(priceAnnual) : undefined,
-        app_module_ids: getCheckedIds(form, "app_module_ids"),
-        app_section_ids: getCheckedIds(form, "app_section_ids"),
+        module_ids: getCheckedIds(form, "module_ids"),
       });
       editState.close();
       setEditing(null);
@@ -402,86 +373,83 @@ export default function PlansPage() {
             const monthly = plan.prices?.find((p) => p.period === "MONTHLY");
             const annual = plan.prices?.find((p) => p.period === "ANNUALLY");
             return (
-              <Card key={plan.id}>
-                <Card.Content>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-base font-semibold text-zinc-900">
-                        {plan.name || "-"}
-                      </h3>
-                      <p className="mt-0.5 gp-subtitle">
-                        {plan.business_name || "—"}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(plan)}
-                        className="cursor-pointer rounded-lg border p-1.5 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-                        aria-label="Editar"
-                      >
-                        <Pencil width={14} height={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openDelete(plan)}
-                        className="cursor-pointer rounded-lg border p-1.5 text-red-600 transition-colors hover:bg-red-50"
-                        aria-label="Eliminar"
-                      >
-                        <TrashBin width={14} height={14} />
-                      </button>
-                    </div>
+              <Card key={plan.id} className="gp-card px-5 py-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold">{plan.name || "-"}</h3>
+                    <p className="gp-subtitle mt-0.5">
+                      {plan.business_name || "—"}
+                    </p>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-zinc-50 p-3">
-                      <p className="text-xs text-zinc-500">Mensual</p>
-                      <p className="mt-0.5 text-lg font-semibold text-zinc-900">
-                        {formatPrice(monthly?.price) || "—"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg bg-zinc-50 p-3">
-                      <p className="text-xs text-zinc-500">Anual</p>
-                      <p className="mt-0.5 text-lg font-semibold text-zinc-900">
-                        {formatPrice(annual?.price) || "—"}
-                      </p>
-                    </div>
-                  </div>
-                  {plan.modules && plan.modules.length > 0 && (
-                    <div className="mt-4">
-                      <p className="mb-1.5 text-xs font-medium text-zinc-500">
-                        Módulos
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {plan.modules.map((m) => (
-                          <span
-                            key={m.id}
-                            className="rounded-md gp-card px-2 py-0.5 text-xs text-zinc-700"
-                          >
-                            {m.module_name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openLicenseCreate(plan)}
-                      className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Editar"
+                      onPress={() => openEdit(plan)}
                     >
-                      <ShieldKeyhole width={14} height={14} />
-                      Crear licencia
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openLicenseList(plan)}
-                      className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+                      <Pencil width={14} height={14} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600"
+                      aria-label="Eliminar"
+                      onPress={() => openDelete(plan)}
                     >
-                      <Key width={14} height={14} />
-                      Ver licencias
-                    </button>
+                      <TrashBin width={14} height={14} />
+                    </Button>
                   </div>
-                </Card.Content>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-lg gp-card px-3 py-3">
+                    <p className="gp-subtitle text-xs">Mensual</p>
+                    <p className="mt-0.5 text-lg font-semibold">
+                      {formatPrice(monthly?.price) || "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg gp-card px-3 py-3">
+                    <p className="gp-subtitle text-xs">Anual</p>
+                    <p className="mt-0.5 text-lg font-semibold">
+                      {formatPrice(annual?.price) || "—"}
+                    </p>
+                  </div>
+                </div>
+                {plan.plan_modules && plan.plan_modules.length > 0 && (
+                  <div className="mt-4">
+                    <p className="gp-subtitle mb-1.5 text-xs font-medium">
+                      Módulos
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {plan.plan_modules.map((m) => (
+                        <span
+                          key={m.id}
+                          className="rounded-md gp-card px-2 py-0.5 text-xs"
+                        >
+                          {m.module_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => openLicenseCreate(plan)}
+                  >
+                    <ShieldKeyhole width={14} height={14} />
+                    Crear licencia
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => openLicenseList(plan)}
+                  >
+                    <Key width={14} height={14} />
+                    Ver licencias
+                  </Button>
+                </div>
               </Card>
             );
           })}

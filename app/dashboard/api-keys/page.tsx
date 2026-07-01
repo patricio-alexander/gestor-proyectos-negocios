@@ -7,7 +7,7 @@ import {
   Spinner,
   useOverlayState,
 } from "@heroui/react";
-import { useBusinesses } from "@/src/features/businesses/hooks/useBusinesses";
+import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCallback, useEffect, useState } from "react";
 import Key from "@gravity-ui/icons/Key";
 import Plus from "@gravity-ui/icons/Plus";
@@ -25,7 +25,7 @@ type ApiKeyRecord = {
 };
 
 export default function ApiKeysPage() {
-  const { businesses } = useBusinesses();
+  const { apps: businesses } = useApps();
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,7 +62,7 @@ export default function ApiKeysPage() {
     const business_id = Number(form.get("business_id"));
 
     if (!business_id) {
-      setError("Debe seleccionar un negocio");
+      setError("Debe seleccionar una aplicación");
       setSubmitting(false);
       return;
     }
@@ -180,13 +180,13 @@ export default function ApiKeysPage() {
                         </Alert>
                       )}
                       <label className="gp-label">
-                        Negocio
+                        Aplicación
                         <select
                           name="business_id"
                           required
                           className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                         >
-                          <option value="">Seleccionar negocio</option>
+                          <option value="">Seleccionar aplicación</option>
                           {businesses.map((b) => (
                             <option key={b.id} value={b.id}>
                               {b.name}
@@ -223,7 +223,7 @@ export default function ApiKeysPage() {
       <p className="-mt-4 gp-subtitle">
         Las API keys se deben colocar en el backend de cada proyecto para
         autenticar las consultas a la API, como verificar suscripciones y
-        acceder a los datos del negocio.
+        acceder a los datos de la aplicación.
       </p>
 
       {error && (
@@ -245,7 +245,7 @@ export default function ApiKeysPage() {
             <thead>
               <tr className="border-b bg-zinc-50">
                 <th className="px-4 py-3 font-medium text-zinc-600">
-                  Negocio
+                  Aplicación
                 </th>
                 <th className="px-4 py-3 font-medium text-zinc-600">Nombre</th>
                 <th className="px-4 py-3 font-medium text-zinc-600">

@@ -159,6 +159,6 @@ export const EDDELI_PRODUCT_CATALOG: CatalogModuleDef[] = [
 
 export const DEFAULT_ROLES = [
   { key: "programador", name: "Programador", description: "Acceso total al gestor y catálogo." },
-  { key: "admin", name: "Administrador", description: "Gestiona negocios, planes y licencias." },
+  { key: "admin", name: "Administrador", description: "Gestiona aplicaciones, planes y licencias." },
   { key: "operator", name: "Operador", description: "Consulta suscripciones y soporte básico." },
 ] as const;

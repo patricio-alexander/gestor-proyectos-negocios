@@ -12,7 +12,7 @@ const PLACEHOLDER_ITEMS = [
   },
   {
     title: "Nueva suscripción activada",
-    body: "Aviso cuando un negocio activa una licencia.",
+    body: "Aviso cuando una aplicación activa una licencia.",
   },
   {
     title: "API key revocada",
