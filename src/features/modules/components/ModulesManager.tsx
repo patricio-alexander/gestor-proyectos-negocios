@@ -148,7 +148,7 @@ export function ModulesManager() {
       }
       const section: Section = await res.json();
       setSelectedModule((prev) =>
-        prev ? { ...prev, secciones: [...prev.secciones, section] } : prev
+        prev ? { ...prev, sections: [...prev.sections, section] } : prev
       );
       sectionCreateState.close();
     } catch (err) {
@@ -179,7 +179,7 @@ export function ModulesManager() {
         prev
           ? {
               ...prev,
-              secciones: prev.secciones.map((s) =>
+              sections: prev.sections.map((s) =>
                 s.id === section.id ? section : s
               ),
             }
@@ -210,7 +210,7 @@ export function ModulesManager() {
         prev
           ? {
               ...prev,
-              secciones: prev.secciones.filter(
+              sections: prev.sections.filter(
                 (s) => s.id !== deletingSection.id
               ),
             }
@@ -337,7 +337,7 @@ export function ModulesManager() {
                   <tr key={mod.id}>
                     <td className="font-medium">{mod.name}</td>
                     <td>{mod.business_name || "—"}</td>
-                    <td>{mod.secciones.length}</td>
+                    <td>{mod.sections.length}</td>
                     <td>
                       <div className="gp-table-actions">
                         <Button
@@ -442,14 +442,14 @@ export function ModulesManager() {
               </Modal>
             </div>
 
-            {selectedModule.secciones.length === 0 ? (
+            {selectedModule.sections.length === 0 ? (
               <p className="py-4 text-center text-sm text-zinc-400">
                 Este módulo no tiene secciones.
               </p>
             ) : (
               <table className="w-full text-left text-sm">
                 <tbody>
-                  {selectedModule.secciones.map((sec) => (
+                  {selectedModule.sections.map((sec) => (
                     <tr key={sec.id} className="border-b last:border-none">
                       <td className="py-2 pl-4">{sec.name}</td>
                       <td className="w-24 py-2">

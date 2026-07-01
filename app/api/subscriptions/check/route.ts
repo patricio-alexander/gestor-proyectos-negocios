@@ -32,6 +32,11 @@ export async function GET(request: NextRequest) {
                       select: {
                         id: true,
                         name: true,
+                        sections: {
+                          select: {
+                            name: true,
+                          },
+                        },
                       },
                     },
                   },
@@ -56,6 +61,7 @@ export async function GET(request: NextRequest) {
     const modules = plan.plan_modules.map((pm) => ({
       id: pm.module.id,
       name: pm.module.name,
+      sections: pm.module.sections.map((s) => s.name),
     }));
 
     return NextResponse.json({

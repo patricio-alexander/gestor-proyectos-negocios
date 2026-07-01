@@ -1,6 +1,7 @@
 export type ModuleRecord = {
   id: number;
   name: string;
+  business_id: number;
 };
 
 export type CreateModuleInput = {

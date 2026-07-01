@@ -55,15 +55,14 @@ model Module {
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
   apps        Apps      @relation(fields: [business_id], references: [id], onDelete: Restrict)
-  secciones   Seccion[]
+  sections   Section[]
   plan_modules PlanModule[]
 
   @@unique([business_id, key])
   @@index([business_id])
-  @@map("BusinessModule")
 }
 
-model Seccion {
+model Section {
   id         Int       @id @default(autoincrement())
   module_id  Int
   name       String
@@ -74,7 +73,6 @@ model Seccion {
   module     Module    @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
   @@index([module_id])
-  @@map("BusinessModuleSection")
 }
 
 // ─── Apps / licencias ───────────────────────────────────────────────────────
@@ -95,8 +93,6 @@ model Apps {
   modules       Module[]
   subscriptions Subscription[]
   api_keys      ApiKey[]
-
-  @@map("Business")
 }
 
 model ApiKey {
@@ -132,7 +128,6 @@ model PlanModule {
 
   @@index([plan_id])
   @@index([module_id])
-  @@map("planes_modules")
 }
 
 model PlanPrice {

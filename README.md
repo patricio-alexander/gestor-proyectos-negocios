@@ -27,6 +27,7 @@ DATABASE_NAME="gestor_proyectos"
 DATABASE_HOST="localhost"
 DATABASE_PORT=3306
 JWT_SECRET="cambiar-por-un-secreto-seguro"
+NEXT_PUBLIC_BASE_PATH=/gestor-proyectos-negocios # no cambiar
 ```
 
 ### 3. Sincronizar el esquema

@@ -16,7 +16,7 @@ export type Module = {
   description: string | null;
   is_active: boolean;
   business_name?: string | null;
-  secciones: Section[];
+  sections: Section[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

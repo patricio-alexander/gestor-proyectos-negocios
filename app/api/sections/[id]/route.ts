@@ -12,14 +12,14 @@ export async function PATCH(request: Request, { params }: Params) {
     const { id } = await params;
     const updates: Record<string, unknown> = await request.json();
 
-    const existing = await prisma.seccion.findFirst({
+    const existing = await prisma.section.findFirst({
       where: { id: Number(id), deleted_at: null },
     });
     if (!existing) {
       return NextResponse.json({ error: "Sección no encontrada" }, { status: 404 });
     }
 
-    const section = await prisma.seccion.update({
+    const section = await prisma.section.update({
       where: { id: Number(id) },
       data: {
         ...(updates.name !== undefined && {
@@ -43,14 +43,14 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    const existing = await prisma.seccion.findFirst({
+    const existing = await prisma.section.findFirst({
       where: { id: Number(id), deleted_at: null },
     });
     if (!existing) {
       return NextResponse.json({ error: "Sección no encontrada" }, { status: 404 });
     }
 
-    await prisma.seccion.update({
+    await prisma.section.update({
       where: { id: Number(id) },
       data: { deleted_at: new Date() },
     });

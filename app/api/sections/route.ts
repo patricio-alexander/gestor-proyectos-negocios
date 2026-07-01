@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       where.module_id = Number(module_id);
     }
 
-    const sections = await prisma.seccion.findMany({
+    const sections = await prisma.section.findMany({
       where,
       orderBy: { created_at: "asc" },
     });
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
     }
 
-    const section = await prisma.seccion.create({
+    const section = await prisma.section.create({
       data: {
         name: name.trim(),
         module_id: Number(module_id),

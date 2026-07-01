@@ -14,6 +14,7 @@ import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
 import type { Plan } from "@/src/features/plans/types";
 import type { License } from "@/src/features/licenses/types";
+import type { ModuleRecord } from "@/src/features/catalog/types";
 import { useState } from "react";
 import FileText from "@gravity-ui/icons/FileText";
 import Pencil from "@gravity-ui/icons/Pencil";
@@ -33,7 +34,7 @@ type PlanFormProps = {
   submitting: boolean;
   editing?: Plan | null;
   businesses: { id: number; name: string | null }[];
-  allModules: { id: number; name: string }[];
+  allModules: ModuleRecord[];
   children: React.ReactNode;
 };
 
@@ -123,25 +124,32 @@ function PlanForm({
           <legend className="mb-2 text-sm font-medium text-zinc-700">
             Módulos
           </legend>
-          {allModules.length === 0 ? (
-            <p className="gp-subtitle">No hay módulos disponibles</p>
+          {!selectedBusinessId ? (
+            <p className="gp-subtitle">Seleccioná una aplicación primero</p>
           ) : (
             <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
-              {allModules.map((mod) => (
-                <label
-                  key={mod.id}
-                  className="flex items-center gap-2 text-sm font-medium text-zinc-800"
-                >
-                  <input
-                    type="checkbox"
-                    name="module_ids"
-                    value={mod.id}
-                    defaultChecked={selectedModuleIds.has(mod.id)}
-                    className="size-4 rounded border-zinc-300"
-                  />
-                  {mod.name}
-                </label>
-              ))}
+              {allModules.filter((mod) => mod.business_id === Number(selectedBusinessId))
+                .length === 0 ? (
+                <p className="gp-subtitle">No hay módulos para esta aplicación</p>
+              ) : (
+                allModules
+                  .filter((mod) => mod.business_id === Number(selectedBusinessId))
+                  .map((mod) => (
+                    <label
+                      key={mod.id}
+                      className="flex items-center gap-2 text-sm font-medium text-zinc-800"
+                    >
+                      <input
+                        type="checkbox"
+                        name="module_ids"
+                        value={mod.id}
+                        defaultChecked={selectedModuleIds.has(mod.id)}
+                        className="size-4 rounded border-zinc-300"
+                      />
+                      {mod.name}
+                    </label>
+                  ))
+              )}
             </div>
           )}
         </fieldset>
