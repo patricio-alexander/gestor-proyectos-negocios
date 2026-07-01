@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { User, CreateUserInput, UpdateUserInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -10,7 +11,7 @@ export function useUsers() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/users");
+      const res = await fetch(apiUrl("/api/users"));
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
@@ -27,7 +28,7 @@ export function useUsers() {
   }, [fetchUsers]);
 
   async function create(input: CreateUserInput) {
-    const res = await fetch("/api/users", {
+    const res = await fetch(apiUrl("/api/users"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -44,7 +45,7 @@ export function useUsers() {
   }
 
   async function update(id: string, input: UpdateUserInput) {
-    const res = await fetch(`/api/users/${id}`, {
+    const res = await fetch(apiUrl(`/api/users/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -61,7 +62,7 @@ export function useUsers() {
   }
 
   async function remove(id: string) {
-    const res = await fetch(`/api/users/${id}`, {
+    const res = await fetch(apiUrl(`/api/users/${id}`), {
       method: "DELETE",
     });
 

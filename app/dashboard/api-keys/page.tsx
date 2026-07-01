@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import Key from "@gravity-ui/icons/Key";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 type ApiKeyRecord = {
   id: number;
@@ -37,7 +38,7 @@ export default function ApiKeysPage() {
   const fetchKeys = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/api-keys");
+      const res = await fetch(apiUrl("/api/api-keys"));
       if (res.ok) {
         const data = await res.json();
         setKeys(data);
@@ -68,7 +69,7 @@ export default function ApiKeysPage() {
     }
 
     try {
-      const res = await fetch("/api/api-keys", {
+      const res = await fetch(apiUrl("/api/api-keys"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,7 +98,7 @@ export default function ApiKeysPage() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/api-keys/${key.id}`, {
+      const res = await fetch(apiUrl(`/api/api-keys/${key.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: false }),

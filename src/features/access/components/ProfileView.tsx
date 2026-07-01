@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { PageHeader } from "@/src/shared/components/PageHeader";
 import { gp } from "@/src/shared/ui/theme";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function ProfileView() {
   const { user, loading } = useAuth();
@@ -21,7 +22,7 @@ export function ProfileView() {
     const form = new FormData(e.currentTarget);
     const password = form.get("password") as string;
     try {
-      const res = await fetch("/api/access/profile", {
+      const res = await fetch(apiUrl("/api/access/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

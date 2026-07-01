@@ -20,6 +20,7 @@ import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSear
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 const PAGE_SIZE = 10;
 
@@ -133,7 +134,7 @@ export function ModulesManager() {
     setSectionSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const res = await fetch("/api/sections", {
+      const res = await fetch(apiUrl("/api/sections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -164,7 +165,7 @@ export function ModulesManager() {
     setSectionSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const res = await fetch(`/api/sections/${editingSection.id}`, {
+      const res = await fetch(apiUrl(`/api/sections/${editingSection.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: form.get("name") as string }),
@@ -198,7 +199,7 @@ export function ModulesManager() {
     setSectionError("");
     setSectionSubmitting(true);
     try {
-      const res = await fetch(`/api/sections/${deletingSection.id}`, {
+      const res = await fetch(apiUrl(`/api/sections/${deletingSection.id}`), {
         method: "DELETE",
       });
       if (!res.ok) {

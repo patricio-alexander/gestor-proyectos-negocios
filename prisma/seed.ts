@@ -30,8 +30,12 @@ async function seedRoles() {
     });
   }
 
-  const legacySuperadmin = await prisma.role.findUnique({ where: { key: "superadmin" } });
-  const programador = await prisma.role.findUnique({ where: { key: "programador" } });
+  const legacySuperadmin = await prisma.role.findUnique({
+    where: { key: "superadmin" },
+  });
+  const programador = await prisma.role.findUnique({
+    where: { key: "programador" },
+  });
   if (legacySuperadmin && programador) {
     const links = await prisma.userRole.findMany({
       where: { role_id: legacySuperadmin.id },
@@ -45,20 +49,24 @@ async function seedRoles() {
         create: { user_id: link.user_id, role_id: programador.id },
       });
     }
-    await prisma.userRole.deleteMany({ where: { role_id: legacySuperadmin.id } });
+    await prisma.userRole.deleteMany({
+      where: { role_id: legacySuperadmin.id },
+    });
     await prisma.role.delete({ where: { id: legacySuperadmin.id } });
   }
 }
 
 async function seedCatalog() {
   for (const mod of EDDELI_PRODUCT_CATALOG) {
-    const existing = await prisma.module.findFirst({ where: { name: mod.name } });
+    const existing = await prisma.module.findFirst({
+      where: { name: mod.name },
+    });
     if (!existing) {
       const business = await prisma.apps.findFirst();
       if (business) {
         await prisma.module.create({
-  data: { name: mod.name, key: mod.key, business_id: business.id },
-});
+          data: { name: mod.name, key: mod.key, business_id: business.id },
+        });
       }
     }
   }

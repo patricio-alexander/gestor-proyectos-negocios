@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import type { Section, CreateSectionInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useSections() {
   const [sections, setSections] = useState<Section[]>([]);
 
   async function create(input: CreateSectionInput) {
-    const res = await fetch("/api/sections", {
+    const res = await fetch(apiUrl("/api/sections"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -24,7 +25,7 @@ export function useSections() {
   }
 
   async function update(id: number, name: string) {
-    const res = await fetch(`/api/sections/${id}`, {
+    const res = await fetch(apiUrl(`/api/sections/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
@@ -41,7 +42,7 @@ export function useSections() {
   }
 
   async function remove(id: number) {
-    const res = await fetch(`/api/sections/${id}`, {
+    const res = await fetch(apiUrl(`/api/sections/${id}`), {
       method: "DELETE",
     });
 

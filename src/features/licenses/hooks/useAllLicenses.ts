@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { License } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useAllLicenses() {
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -10,7 +11,7 @@ export function useAllLicenses() {
   const fetchLicenses = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/licenses");
+      const res = await fetch(apiUrl("/api/licenses"));
       if (res.ok) setLicenses(await res.json());
     } catch {
       console.error("Error fetching licenses");
@@ -24,7 +25,7 @@ export function useAllLicenses() {
   }, [fetchLicenses]);
 
   async function revoke(id: number) {
-    const res = await fetch(`/api/licenses/${id}`, { method: "PATCH" });
+    const res = await fetch(apiUrl(`/api/licenses/${id}`), { method: "PATCH" });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error || "Error al revocar licencia");

@@ -14,6 +14,7 @@ import Tachometer from "@gravity-ui/icons/Tachometer";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
 import Key from "@gravity-ui/icons/Key";
 import { gp } from "@/src/shared/ui/theme";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(apiUrl("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),

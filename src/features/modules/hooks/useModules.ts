@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Module, CreateModuleInput, UpdateModuleInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useModules() {
   const [modules, setModules] = useState<Module[]>([]);
@@ -10,7 +11,7 @@ export function useModules() {
   const fetchModules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/modules");
+      const res = await fetch(apiUrl("/api/modules"));
       if (res.ok) {
         const data = await res.json();
         setModules(data);
@@ -27,7 +28,7 @@ export function useModules() {
   }, [fetchModules]);
 
   async function create(input: CreateModuleInput) {
-    const res = await fetch("/api/modules", {
+    const res = await fetch(apiUrl("/api/modules"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -44,7 +45,7 @@ export function useModules() {
   }
 
   async function update(id: number, input: UpdateModuleInput) {
-    const res = await fetch(`/api/modules/${id}`, {
+    const res = await fetch(apiUrl(`/api/modules/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -61,7 +62,7 @@ export function useModules() {
   }
 
   async function remove(id: number) {
-    const res = await fetch(`/api/modules/${id}`, {
+    const res = await fetch(apiUrl(`/api/modules/${id}`), {
       method: "DELETE",
     });
 

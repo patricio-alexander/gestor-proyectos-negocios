@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CreateRoleInput, RoleRecord, UpdateRoleInput } from "@/src/features/access/types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useRoles() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -10,7 +11,7 @@ export function useRoles() {
   const fetchRoles = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/roles");
+      const res = await fetch(apiUrl("/api/roles"));
       if (res.ok) setRoles(await res.json());
     } catch {
       console.error("Error fetching roles");
@@ -24,7 +25,7 @@ export function useRoles() {
   }, [fetchRoles]);
 
   async function create(input: CreateRoleInput) {
-    const res = await fetch("/api/roles", {
+    const res = await fetch(apiUrl("/api/roles"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -39,7 +40,7 @@ export function useRoles() {
   }
 
   async function update(id: number, input: UpdateRoleInput) {
-    const res = await fetch(`/api/roles/${id}`, {
+    const res = await fetch(apiUrl(`/api/roles/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -54,7 +55,7 @@ export function useRoles() {
   }
 
   async function remove(id: number) {
-    const res = await fetch(`/api/roles/${id}`, { method: "DELETE" });
+    const res = await fetch(apiUrl(`/api/roles/${id}`), { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error || "Error al eliminar rol");

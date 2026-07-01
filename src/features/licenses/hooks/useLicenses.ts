@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { License, CreateLicenseInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useLicenses() {
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -10,7 +11,7 @@ export function useLicenses() {
   const fetchByPlan = useCallback(async (planId: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/plans/${planId}/licenses`);
+      const res = await fetch(apiUrl(`/api/plans/${planId}/licenses`));
       if (res.ok) {
         setLicenses(await res.json());
       }
@@ -22,7 +23,7 @@ export function useLicenses() {
   }, []);
 
   async function revoke(id: number) {
-    const res = await fetch(`/api/licenses/${id}`, {
+    const res = await fetch(apiUrl(`/api/licenses/${id}`), {
       method: "PATCH",
     });
 
@@ -39,7 +40,7 @@ export function useLicenses() {
   }
 
   async function create(input: CreateLicenseInput) {
-    const res = await fetch("/api/licenses", {
+    const res = await fetch(apiUrl("/api/licenses"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),

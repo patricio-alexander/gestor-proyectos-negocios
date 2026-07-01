@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { App, CreateAppInput, UpdateAppInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useApps() {
   const [apps, setApps] = useState<App[]>([]);
@@ -10,7 +11,7 @@ export function useApps() {
   const fetchApps = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/apps");
+      const res = await fetch(apiUrl("/api/apps"));
       if (res.ok) {
         const data = await res.json();
         setApps(data);
@@ -27,7 +28,7 @@ export function useApps() {
   }, [fetchApps]);
 
   async function create(input: CreateAppInput) {
-    const res = await fetch("/api/apps", {
+    const res = await fetch(apiUrl("/api/apps"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -44,7 +45,7 @@ export function useApps() {
   }
 
   async function update(id: number, input: UpdateAppInput) {
-    const res = await fetch(`/api/apps/${id}`, {
+    const res = await fetch(apiUrl(`/api/apps/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -61,7 +62,7 @@ export function useApps() {
   }
 
   async function remove(id: number) {
-    const res = await fetch(`/api/apps/${id}`, {
+    const res = await fetch(apiUrl(`/api/apps/${id}`), {
       method: "DELETE",
     });
 

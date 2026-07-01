@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Plan, CreatePlanInput, UpdatePlanInput } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function usePlans() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -10,7 +11,7 @@ export function usePlans() {
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/plans");
+      const res = await fetch(apiUrl("/api/plans"));
       if (res.ok) {
         const data = await res.json();
         setPlans(data);
@@ -27,7 +28,7 @@ export function usePlans() {
   }, [fetchPlans]);
 
   async function create(input: CreatePlanInput) {
-    const res = await fetch("/api/plans", {
+    const res = await fetch(apiUrl("/api/plans"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -44,7 +45,7 @@ export function usePlans() {
   }
 
   async function update(id: number, input: UpdatePlanInput) {
-    const res = await fetch(`/api/plans/${id}`, {
+    const res = await fetch(apiUrl(`/api/plans/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -61,7 +62,7 @@ export function usePlans() {
   }
 
   async function remove(id: number) {
-    const res = await fetch(`/api/plans/${id}`, {
+    const res = await fetch(apiUrl(`/api/plans/${id}`), {
       method: "DELETE",
     });
 

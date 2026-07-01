@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AuthRole, AuthUser } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 const ACTIVE_ROLE_KEY = "gestor-active-role-id";
 
@@ -15,7 +16,7 @@ export function useAuth() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/auth/me")
+      fetch(apiUrl("/api/auth/me"))
       .then((res) => {
         if (!res.ok) {
           if (!cancelled) setState({ user: null, loading: false });
@@ -58,7 +59,7 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch(apiUrl("/api/auth/logout"), { method: "POST" });
     localStorage.removeItem(ACTIVE_ROLE_KEY);
     setActiveRoleId(null);
     setState({ user: null, loading: false });

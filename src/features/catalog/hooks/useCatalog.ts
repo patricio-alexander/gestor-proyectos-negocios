@@ -6,6 +6,7 @@ import type {
   CreateModuleInput,
   UpdateModuleInput,
 } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useCatalog() {
   const [modules, setModules] = useState<ModuleRecord[]>([]);
@@ -14,7 +15,7 @@ export function useCatalog() {
   const fetchModules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/catalog/modules");
+      const res = await fetch(apiUrl("/api/catalog/modules"));
       if (res.ok) setModules(await res.json());
     } catch {
       console.error("Error fetching catalog");
@@ -28,7 +29,7 @@ export function useCatalog() {
   }, [fetchModules]);
 
   async function createModule(input: CreateModuleInput) {
-    const res = await fetch("/api/catalog/modules", {
+    const res = await fetch(apiUrl("/api/catalog/modules"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -43,7 +44,7 @@ export function useCatalog() {
   }
 
   async function updateModule(id: number, input: UpdateModuleInput) {
-    const res = await fetch(`/api/catalog/modules/${id}`, {
+    const res = await fetch(apiUrl(`/api/catalog/modules/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -58,7 +59,7 @@ export function useCatalog() {
   }
 
   async function removeModule(id: number) {
-    const res = await fetch(`/api/catalog/modules/${id}`, { method: "DELETE" });
+    const res = await fetch(apiUrl(`/api/catalog/modules/${id}`), { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error || "Error al eliminar módulo");

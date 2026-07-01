@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Subscription } from "../types";
+import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -10,7 +11,7 @@ export function useSubscriptions() {
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/subscriptions");
+      const res = await fetch(apiUrl("/api/subscriptions"));
       if (res.ok) {
         setSubscriptions(await res.json());
       }
@@ -26,7 +27,7 @@ export function useSubscriptions() {
   }, [fetchSubscriptions]);
 
   async function cancel(id: number) {
-    const res = await fetch(`/api/subscriptions/${id}/cancel`, {
+    const res = await fetch(apiUrl(`/api/subscriptions/${id}/cancel`), {
       method: "PATCH",
     });
 
