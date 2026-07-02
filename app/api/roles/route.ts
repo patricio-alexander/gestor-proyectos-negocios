@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
-import { createRole, listRoles } from "@/src/features/access/lib/access-service";
+import {
+  createRole,
+  listRoles,
+} from "@/src/features/access/lib/access-service";
 
 export async function GET() {
   const auth = await getAuthUser();
