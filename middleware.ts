@@ -6,7 +6,7 @@ const publicPaths = ["/login"];
 const allowedOrigins = [
   "http://localhost:5173", // dev
   "https://tudominio.com", // producción
-  "http://localhost:3000", // NO BORRAR ES EL ORIGIN DE ESTE PROYECTO
+  "http://localhost:3000", // NO BORRAR ES EL ORIGEN DE ESTE PROYECTO
 ];
 
 export function middleware(request: NextRequest) {
