@@ -41,5 +41,27 @@ export function useSubscriptions() {
     );
   }
 
-  return { subscriptions, loading, cancel, refetch: fetchSubscriptions };
+  async function update(id: number, data: { start_at?: string | null; expires_at?: string | null }) {
+    const res = await fetch(apiUrl(`/api/subscriptions/${id}`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Error al actualizar suscripción");
+    }
+
+    const result = await res.json();
+    setSubscriptions((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? { ...s, start_at: result.start_at, expires_at: result.expires_at }
+          : s
+      )
+    );
+  }
+
+  return { subscriptions, loading, cancel, update, refetch: fetchSubscriptions };
 }

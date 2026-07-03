@@ -5,7 +5,7 @@ const publicPaths = ["/login"];
 
 const allowedOrigins = [
   "http://localhost:5173", // dev
-  "https://tudominio.com", // producción
+  "https://aplicaciones.marianosamaniego.edu.ec", // producción
   "http://localhost:3000", // NO BORRAR ES EL ORIGEN DE ESTE PROYECTO
 ];
 

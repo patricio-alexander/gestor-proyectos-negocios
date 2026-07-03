@@ -11,7 +11,16 @@ import { useSubscriptions } from "@/src/features/subscriptions/hooks/useSubscrip
 import type { Subscription } from "@/src/features/subscriptions/types";
 import { useState } from "react";
 import CreditCard from "@gravity-ui/icons/CreditCard";
+import Pencil from "@gravity-ui/icons/Pencil";
 import Ban from "@gravity-ui/icons/Ban";
+import { gp } from "@/src/shared/ui/theme";
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "—";
@@ -28,17 +37,47 @@ function formatPrice(price: number | null | undefined) {
 }
 
 export default function SubscriptionsPage() {
-  const { subscriptions, loading, cancel } = useSubscriptions();
+  const { subscriptions, loading, cancel, update } = useSubscriptions();
+  const [editing, setEditing] = useState<Subscription | null>(null);
   const [canceling, setCanceling] = useState<Subscription | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const editState = useOverlayState();
   const cancelState = useOverlayState();
+
+  function openEdit(sub: Subscription) {
+    setEditing(sub);
+    setError("");
+    editState.open();
+  }
 
   function openCancel(sub: Subscription) {
     setCanceling(sub);
     setError("");
     cancelState.open();
+  }
+
+  async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editing) return;
+    setError("");
+    setSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      const startAtRaw = form.get("start_at") as string;
+      const expiresAtRaw = form.get("expires_at") as string;
+      await update(editing.id, {
+        start_at: startAtRaw ? new Date(startAtRaw).toISOString() : null,
+        expires_at: expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null,
+      });
+      editState.close();
+      setEditing(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al actualizar");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleCancel() {
@@ -141,16 +180,26 @@ export default function SubscriptionsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {sub.status === "ACTIVE" && (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => openCancel(sub)}
-                        className="flex cursor-pointer items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                        onClick={() => openEdit(sub)}
+                        className="flex cursor-pointer items-center gap-1 rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
                       >
-                        <Ban width={12} height={12} />
-                        Cancelar
+                        <Pencil width={12} height={12} />
+                        Editar
                       </button>
-                    )}
+                      {sub.status === "ACTIVE" && (
+                        <button
+                          type="button"
+                          onClick={() => openCancel(sub)}
+                          className="flex cursor-pointer items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          <Ban width={12} height={12} />
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -158,6 +207,65 @@ export default function SubscriptionsPage() {
           </table>
         </div>
       )}
+
+      <Modal state={editState}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-[500px]">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>Editar suscripción</Modal.Heading>
+              </Modal.Header>
+              {editing && (
+                <form onSubmit={handleEdit}>
+                  <Modal.Body className="space-y-4">
+                    {error && (
+                      <Alert status="danger">
+                        <Alert.Description>{error}</Alert.Description>
+                      </Alert>
+                    )}
+                    <p className="gp-subtitle">
+                      Editando suscripción de{" "}
+                      <strong>{editing.business_name}</strong> (
+                      {editing.plan_name})
+                    </p>
+                    <label className={gp.label}>
+                      Fecha inicio
+                      <input
+                        type="datetime-local"
+                        name="start_at"
+                        defaultValue={toDatetimeLocal(editing.start_at)}
+                        className={gp.input}
+                      />
+                    </label>
+                    <label className={gp.label}>
+                      Fecha vencimiento
+                      <input
+                        type="datetime-local"
+                        name="expires_at"
+                        defaultValue={toDatetimeLocal(editing.expires_at)}
+                        className={gp.input}
+                      />
+                    </label>
+                  </Modal.Body>
+                  <Modal.Footer>
+                    <Button variant="secondary" slot="close">
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="bg-blue-600 text-white"
+                      type="submit"
+                      isDisabled={submitting}
+                    >
+                      {submitting ? <Spinner size="sm" /> : "Guardar"}
+                    </Button>
+                  </Modal.Footer>
+                </form>
+              )}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
 
       <Modal state={cancelState}>
         <Modal.Backdrop>
