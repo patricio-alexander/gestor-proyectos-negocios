@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const publicPaths = ["/login"];
-
 const allowedOrigins = [
   "http://localhost:5173", // dev
   "https://aplicaciones.marianosamaniego.edu.ec", // producción
@@ -13,6 +12,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const origin = request.headers.get("origin");
+
   const isAllowed = allowedOrigins.includes(origin as string);
   const isApiRoute = pathname.includes("/api/");
   const response = NextResponse.next();

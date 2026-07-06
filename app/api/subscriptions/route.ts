@@ -24,8 +24,8 @@ export async function GET() {
 
     const result = subscriptions.map((s) => ({
       id: s.id,
-      business_hash: s.business_hash,
-      business_name: s.apps.name,
+      app_hash: s.app_hash,
+      app_name: s.apps.name,
       plan_price_id: s.plan_price_id,
       plan_name: s.plan_price.plan.name,
       period: s.plan_price.period,
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     const subscription = await prisma.subscription.create({
       data: {
-        business_hash: license.plan_price.plan.apps.hash,
+        app_hash: license.plan_price.plan.apps.hash,
         plan_price_id: license.plan_price_id,
         start_at: now,
         expires_at: expiresAt,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         id: subscription.id,
-        business_hash: subscription.business_hash,
+        app_hash: subscription.app_hash,
         plan_price_id: subscription.plan_price_id,
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,

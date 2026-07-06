@@ -56,22 +56,6 @@ async function seedRoles() {
   }
 }
 
-async function seedCatalog() {
-  for (const mod of EDDELI_PRODUCT_CATALOG) {
-    const existing = await prisma.module.findFirst({
-      where: { name: mod.name },
-    });
-    if (!existing) {
-      const business = await prisma.apps.findFirst();
-      if (business) {
-        await prisma.module.create({
-          data: { name: mod.name, key: mod.key, business_id: business.id },
-        });
-      }
-    }
-  }
-}
-
 async function assignRoles(userId: string, roleKeys: string[]) {
   for (const key of roleKeys) {
     const role = await prisma.role.findUnique({ where: { key } });
@@ -163,7 +147,6 @@ async function seedGestorAccounts() {
 
 async function main() {
   await seedRoles();
-  await seedCatalog();
   await seedGestorAccounts();
   console.log(
     "Seed OK: roles, catálogo EdDeli (%d módulos), cuentas (administrador/Edgar Torres + demo)",

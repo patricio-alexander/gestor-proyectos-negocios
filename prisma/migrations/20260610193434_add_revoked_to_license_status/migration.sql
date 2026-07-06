@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE `License` MODIFY `status` ENUM('AVAILABLE', 'USED', 'REVOKED') NOT NULL;

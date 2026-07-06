@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const planId = Number(id);
-    const { name, business_id, price_monthly, price_annual, module_ids } =
+    const { name, app_id, price_monthly, price_annual, module_ids, offer_ids } =
       await request.json();
 
     const existing = await findPlanById(planId);
@@ -47,9 +47,9 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    if (business_id) {
+    if (app_id) {
       const apps = await prisma.apps.findFirst({
-        where: { id: business_id, deleted_at: null },
+        where: { id: app_id, deleted_at: null },
       });
       if (!apps) {
         return NextResponse.json(
@@ -64,7 +64,7 @@ export async function PATCH(request: Request, { params }: Params) {
         where: { id: planId },
         data: {
           ...(name !== undefined && { name: name.trim() }),
-          ...(business_id !== undefined && { business_id }),
+          ...(app_id !== undefined && { app_id }),
         },
       });
 
@@ -107,6 +107,18 @@ export async function PATCH(request: Request, { params }: Params) {
           await tx.planModule.createMany({
             data: module_ids.map((module_id: number) => ({
               module_id,
+              plan_id: planId,
+            })),
+          });
+        }
+      }
+
+      if (offer_ids !== undefined) {
+        await tx.planOffer.deleteMany({ where: { plan_id: planId } });
+        if (offer_ids.length > 0) {
+          await tx.planOffer.createMany({
+            data: offer_ids.map((offer_id: number) => ({
+              offer_id,
               plan_id: planId,
             })),
           });

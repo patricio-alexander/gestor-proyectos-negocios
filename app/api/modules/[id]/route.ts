@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: Params) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json({ ...mod, business_name: mod.apps.name });
+    return NextResponse.json({ ...mod, app_name: mod.apps.name });
   } catch {
     return NextResponse.json({ error: "Error al obtener el módulo" }, { status: 500 });
   }
@@ -66,7 +66,7 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
 
-    return NextResponse.json({ ...mod, business_name: mod.apps.name });
+    return NextResponse.json({ ...mod, app_name: mod.apps.name });
   } catch {
     return NextResponse.json({ error: "Error al actualizar el módulo" }, { status: 500 });
   }

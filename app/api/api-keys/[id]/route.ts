@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     if (active) {
       await prisma.apiKey.updateMany({
-        where: { business_id: existing.business_id, active: true },
+        where: { app_id: existing.app_id, active: true },
         data: { active: false },
       });
     }
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: Params) {
       name: updated.name,
       prefix: updated.prefix,
       active: updated.active,
-      business_id: updated.business_id,
+      app_id: updated.app_id,
     });
   } catch {
     return NextResponse.json(

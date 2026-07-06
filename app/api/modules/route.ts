@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json(
       modules.map((m) => ({
         ...m,
-        business_name: m.apps.name,
+        app_name: m.apps.name,
       }))
     );
   } catch {
@@ -42,12 +42,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = body.name as string | undefined;
-    const business_id = body.business_id as number | undefined;
+    const app_id = body.app_id as number | undefined;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "El nombre del módulo es obligatorio" }, { status: 400 });
     }
-    if (!business_id) {
+    if (!app_id) {
       return NextResponse.json({ error: "La aplicación es obligatoria" }, { status: 400 });
     }
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         key,
-        business_id: Number(business_id),
+        app_id: Number(app_id),
       },
       include: {
         apps: { select: { name: true } },
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ ...mod, business_name: mod.apps.name }, { status: 201 });
+    return NextResponse.json({ ...mod, app_name: mod.apps.name }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Error al crear módulo" }, { status: 500 });
   }

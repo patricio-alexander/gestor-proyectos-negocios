@@ -18,8 +18,8 @@ export async function GET() {
       name: k.name,
       prefix: k.prefix,
       active: k.active,
-      business_id: k.business_id,
-      business_name: k.apps.name,
+      app_id: k.app_id,
+      app_name: k.apps.name,
       created_at: k.created_at.toISOString(),
       updated_at: k.updated_at.toISOString(),
     }));
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const { name, business_id } = await request.json();
+    const { name, app_id } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!business_id) {
+    if (!app_id) {
       return NextResponse.json(
         { error: "Debe seleccionar una aplicación" },
         { status: 400 }
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     const business = await prisma.apps.findFirst({
-      where: { id: business_id, deleted_at: null },
+      where: { id: app_id, deleted_at: null },
     });
 
     if (!business) {
@@ -70,12 +70,12 @@ export async function POST(request: Request) {
     const hash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
     await prisma.apiKey.updateMany({
-      where: { business_id, active: true },
+      where: { app_id, active: true },
       data: { active: false },
     });
 
     const apiKey = await prisma.apiKey.create({
-      data: { name: name.trim(), business_id, prefix, hash, active: true },
+      data: { name: name.trim(), app_id, prefix, hash, active: true },
     });
 
     return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         name: apiKey.name,
         prefix: apiKey.prefix,
         key: rawKey,
-        business_id: apiKey.business_id,
+        app_id: apiKey.app_id,
         active: apiKey.active,
       },
       { status: 201 }

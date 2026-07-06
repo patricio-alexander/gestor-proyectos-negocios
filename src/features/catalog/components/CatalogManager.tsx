@@ -43,14 +43,14 @@ export function CatalogManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const businessId = Number(form.get("business_id"));
-      if (!businessId) {
+      const appId = Number(form.get("app_id"));
+      if (!appId) {
         setError("Debe seleccionar una aplicación");
         return;
       }
       await createModule({
         name: form.get("name") as string,
-        business_id: businessId,
+        app_id: appId,
       });
       moduleCreateState.close();
     } catch (err) {
@@ -136,7 +136,7 @@ export function CatalogManager() {
                     )}
                     <label className="gp-label">
                       Aplicación
-                      <select name="business_id" required className={INPUT_CLASS}>
+                      <select name="app_id" required className={INPUT_CLASS}>
                         <option value="">Seleccionar aplicación</option>
                         {businesses.map((b) => (
                           <option key={b.id} value={b.id}>{b.name}</option>

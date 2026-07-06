@@ -10,12 +10,18 @@ export const planInclude = {
       module: { select: { name: true } },
     },
   },
+  planOffers: {
+    select: {
+      offer_id: true,
+      offer: { select: { name: true } },
+    },
+  },
 } as const;
 
 export function mapPlan(plan: {
   id: number;
   name: string | null;
-  business_id: number;
+  app_id: number;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -26,12 +32,16 @@ export function mapPlan(plan: {
     module_id: number;
     module: { name: string };
   }[];
+  planOffers: {
+    offer_id: number;
+    offer: { name: string };
+  }[];
 }) {
   return {
     id: plan.id,
     name: plan.name,
-    business_id: plan.business_id,
-    business_name: plan.apps.name,
+    app_id: plan.app_id,
+    app_name: plan.apps.name,
     created_at: plan.created_at.toISOString(),
     updated_at: plan.updated_at.toISOString(),
     deleted_at: plan.deleted_at?.toISOString() ?? null,
@@ -40,6 +50,10 @@ export function mapPlan(plan: {
       id: pm.id,
       module_id: pm.module_id,
       module_name: pm.module.name,
+    })),
+    plan_offers: plan.planOffers.map((po) => ({
+      offer_id: po.offer_id,
+      offer_name: po.offer.name,
     })),
   };
 }

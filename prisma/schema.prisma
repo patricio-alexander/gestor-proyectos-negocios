@@ -15,7 +15,6 @@ model User {
   email        String?
   password     String?
   display_name String?
-  business_id  Int?
   created_at   DateTime   @default(now())
   updated_at   DateTime?  @updatedAt
   deleted_at   DateTime?
@@ -35,31 +34,71 @@ model Role {
 model UserRole {
   user_id String
   role_id Int
-  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role    Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@id([user_id, role_id])
   @@index([role_id])
 }
 
+// -- OFERTAS 
+model Offer {
+  id         Int       @id @default(autoincrement())
+  app_id     Int
+  apps       Apps      @relation(fields: [app_id], references: [id])
+  name       String
+  price      Int?
+  start_at   DateTime
+  expires_at DateTime
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  offersModules OfferModule[]
+  planOffers    PlanOffer[]
+
+  @@index([app_id])
+}
+
+model OfferModule {
+  offer_id  Int
+  module_id Int
+
+  offer   Offer  @relation(fields: [offer_id], references: [id])
+  modules Module @relation(fields: [module_id], references: [id])
+
+  @@id([offer_id, module_id])
+}
+
+model PlanOffer {
+  plan_id  Int
+  offer_id Int
+  plan     Plan  @relation(fields: [plan_id], references: [id])
+  offer    Offer @relation(fields: [offer_id], references: [id])
+
+  @@id([plan_id, offer_id])
+  @@index([plan_id])
+}
+
 // ─── Módulos y secciones ────────────────────────────────────────────────────
 
 model Module {
-  id          Int       @id @default(autoincrement())
-  business_id Int
-  key         String
-  name        String
-  description String?   @db.Text
-  is_active   Boolean   @default(true)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  deleted_at  DateTime?
-  apps        Apps      @relation(fields: [business_id], references: [id], onDelete: Restrict)
-  sections   Section[]
-  plan_modules PlanModule[]
+  id            Int           @id @default(autoincrement())
+  app_id        Int
+  key           String
+  name          String
+  description   String?       @db.Text
+  is_active     Boolean       @default(true)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  deleted_at    DateTime?
+  apps          Apps          @relation(fields: [app_id], references: [id], onDelete: Restrict)
+  sections      Section[]
+  plan_modules  PlanModule[]
+  offersModules OfferModule[]
 
-  @@unique([business_id, key])
-  @@index([business_id])
+  @@unique([app_id, key])
+  @@index([app_id])
 }
 
 model Section {
@@ -93,30 +132,32 @@ model Apps {
   modules       Module[]
   subscriptions Subscription[]
   api_keys      ApiKey[]
+  offers        Offer[]
 }
 
 model ApiKey {
-  id          Int      @id @default(autoincrement())
-  apps        Apps     @relation(fields: [business_id], references: [id])
-  business_id Int
-  name        String
-  prefix      String   @unique
-  hash        String
-  active      Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  apps       Apps     @relation(fields: [app_id], references: [id])
+  app_id     Int
+  name       String
+  prefix     String   @unique
+  hash       String
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model Plan {
-  id            Int           @id @default(autoincrement())
-  name          String?
-  apps          Apps          @relation(fields: [business_id], references: [id])
-  business_id   Int
-  created_at    DateTime      @default(now())
-  updated_at    DateTime      @updatedAt
-  deleted_at    DateTime?
-  prices        PlanPrice[]
-  plan_modules  PlanModule[]
+  id           Int          @id @default(autoincrement())
+  name         String?
+  apps         Apps         @relation(fields: [app_id], references: [id])
+  app_id       Int
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  deleted_at   DateTime?
+  prices       PlanPrice[]
+  plan_modules PlanModule[]
+  planOffers   PlanOffer[]
 }
 
 model PlanModule {
@@ -142,8 +183,8 @@ model PlanPrice {
 
 model Subscription {
   id            Int                @id @default(autoincrement())
-  apps          Apps               @relation(fields: [business_hash], references: [hash])
-  business_hash String
+  apps          Apps               @relation(fields: [app_hash], references: [hash])
+  app_hash      String
   plan_price    PlanPrice          @relation(fields: [plan_price_id], references: [id])
   plan_price_id Int
   start_at      DateTime?

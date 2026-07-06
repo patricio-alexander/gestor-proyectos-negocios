@@ -74,7 +74,7 @@ export default function ApiKeysPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.get("name") as string,
-          business_id,
+          app_id: business_id,
         }),
       });
 

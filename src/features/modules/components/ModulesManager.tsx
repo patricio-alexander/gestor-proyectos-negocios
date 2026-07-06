@@ -27,7 +27,7 @@ const PAGE_SIZE = 10;
 function matchesModuleSearch(mod: Module, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [mod.name, mod.business_name]
+  return [mod.name, mod.app_name]
     .filter(Boolean)
     .some((v) => String(v).toLowerCase().includes(q));
 }
@@ -76,14 +76,14 @@ export function ModulesManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const businessId = Number(form.get("business_id"));
-      if (!businessId) {
+      const appId = Number(form.get("app_id"));
+      if (!appId) {
         setError("Debe seleccionar una aplicación");
         return;
       }
       await create({
         name: form.get("name") as string,
-        business_id: businessId,
+        app_id: appId,
       });
       moduleCreateState.close();
     } catch (err) {
@@ -266,7 +266,7 @@ export function ModulesManager() {
                       )}
                       <label className={gp.label}>
                         Aplicación
-                        <select name="business_id" required className={gp.input}>
+                        <select name="app_id" required className={gp.input}>
                           <option value="">Seleccionar aplicación</option>
                           {businesses.map((b) => (
                             <option key={b.id} value={b.id}>
@@ -336,7 +336,7 @@ export function ModulesManager() {
                 return (
                   <tr key={mod.id}>
                     <td className="font-medium">{mod.name}</td>
-                    <td>{mod.business_name || "—"}</td>
+                    <td>{mod.app_name || "—"}</td>
                     <td>{mod.sections.length}</td>
                     <td>
                       <div className="gp-table-actions">

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const business = await prisma.apps.findFirst({
-      where: { hash: apiKey.business_hash, deleted_at: null },
+      where: { hash: apiKey.app_hash, deleted_at: null },
     });
 
     if (!business) {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { business_hash: apiKey.business_hash },
+      where: { app_hash: apiKey.app_hash },
       include: {
         plan_price: {
           include: {
@@ -35,6 +35,28 @@ export async function GET(request: NextRequest) {
                         sections: {
                           select: {
                             name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                planOffers: {
+                  select: {
+                    offer: {
+                      select: {
+                        name: true,
+                        price: true,
+                        start_at: true,
+                        expires_at: true,
+                        offersModules: {
+                          select: {
+                            modules: {
+                              select: {
+                                id: true,
+                                name: true,
+                              },
+                            },
                           },
                         },
                       },
@@ -64,6 +86,17 @@ export async function GET(request: NextRequest) {
       sections: pm.module.sections.map((s) => s.name),
     }));
 
+    const offers = (plan.planOffers ?? []).map((po) => ({
+      name: po.offer.name,
+      price: po.offer.price ?? null,
+      start_at: po.offer.start_at.toISOString(),
+      expires_at: po.offer.expires_at.toISOString(),
+      modules: (po.offer.offersModules ?? []).map((om) => ({
+        id: om.modules.id,
+        name: om.modules.name,
+      })),
+    }));
+
     return NextResponse.json({
       subscribed: subscription.status === "ACTIVE",
       subscription: {
@@ -74,6 +107,7 @@ export async function GET(request: NextRequest) {
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,
         modules,
+        offers,
       },
     });
   } catch {

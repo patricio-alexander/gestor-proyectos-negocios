@@ -16,6 +16,7 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
       { label: "Inicio", href: "/dashboard" },
       { label: "Mi perfil", href: "/dashboard/profile" },
       { label: "Notificaciones", href: "/dashboard/notifications" },
+      { label: "Aplicaciones", href: "/dashboard/apps" },
     ],
   },
   {
@@ -23,23 +24,21 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     items: [
       { label: "Usuarios", href: "/dashboard/access/users" },
       { label: "Roles", href: "/dashboard/access/roles" },
+    ],
+  },
+  {
+    title: "Planes y Subscripciones",
 
-    ],
-  },
-  {
-    title: "Módulos",
     items: [
-      { label: "Módulos", href: "/dashboard/modules" },
-    ],
-  },
-  {
-    title: "Licencias",
-    items: [
-      { label: "Aplicaciones", href: "/dashboard/apps" },
+      { label: "Ofertas", href: "/dashboard/offers" },
       { label: "Planes", href: "/dashboard/plans" },
-      { label: "Suscripciones", href: "/dashboard/subscriptions" },
       { label: "Licencias", href: "/dashboard/licenses" },
-      { label: "API Keys", href: "/dashboard/api-keys" },
+      { label: "Módulos", href: "/dashboard/modules" },
+      { label: "Suscripciones", href: "/dashboard/subscriptions" },
     ],
+  },
+  {
+    title: "APIS",
+    items: [{ label: "API Keys", href: "/dashboard/api-keys" }],
   },
 ];

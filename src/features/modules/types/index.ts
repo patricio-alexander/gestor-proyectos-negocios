@@ -12,10 +12,10 @@ export type Module = {
   id: number;
   name: string;
   key: string;
-  business_id: number;
+  app_id: number;
   description: string | null;
   is_active: boolean;
-  business_name?: string | null;
+  app_name?: string | null;
   sections: Section[];
   created_at: string;
   updated_at: string;
@@ -24,7 +24,7 @@ export type Module = {
 
 export type CreateModuleInput = {
   name: string;
-  business_id: number;
+  app_id: number;
 };
 
 export type UpdateModuleInput = {

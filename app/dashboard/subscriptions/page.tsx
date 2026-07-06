@@ -145,7 +145,7 @@ export default function SubscriptionsPage() {
               {subscriptions.map((sub) => (
                 <tr key={sub.id} className="border-b last:border-0">
                   <td className="px-4 py-3 text-zinc-900">
-                    {sub.business_name || "—"}
+                    {sub.app_name || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {sub.plan_name || "—"}
@@ -226,7 +226,7 @@ export default function SubscriptionsPage() {
                     )}
                     <p className="gp-subtitle">
                       Editando suscripción de{" "}
-                      <strong>{editing.business_name}</strong> (
+                      <strong>{editing.app_name}</strong> (
                       {editing.plan_name})
                     </p>
                     <label className={gp.label}>
@@ -283,7 +283,7 @@ export default function SubscriptionsPage() {
                 )}
                 <p className="gp-subtitle">
                   ¿Estás seguro de que querés cancelar la suscripción de{" "}
-                  <strong>{canceling?.business_name}</strong> (
+                  <strong>{canceling?.app_name}</strong> (
                   {canceling?.plan_name})?
                 </p>
               </Modal.Body>

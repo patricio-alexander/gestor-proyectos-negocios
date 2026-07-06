@@ -12,9 +12,10 @@ import { usePlans } from "@/src/features/plans/hooks/usePlans";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
+import { useOffers } from "@/src/features/offers/hooks/useOffers";
 import type { Plan } from "@/src/features/plans/types";
-import type { License } from "@/src/features/licenses/types";
 import type { ModuleRecord } from "@/src/features/catalog/types";
+import type { Offer } from "@/src/features/offers/types";
 import { useState } from "react";
 import FileText from "@gravity-ui/icons/FileText";
 import Pencil from "@gravity-ui/icons/Pencil";
@@ -29,12 +30,13 @@ function formatPrice(price: number | null | undefined) {
 }
 
 type PlanFormProps = {
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
   error: string;
   submitting: boolean;
   editing?: Plan | null;
   businesses: { id: number; name: string | null }[];
   allModules: ModuleRecord[];
+  allOffers: Offer[];
   children: React.ReactNode;
 };
 
@@ -45,10 +47,11 @@ function PlanForm({
   editing,
   businesses,
   allModules,
+  allOffers,
   children,
 }: PlanFormProps) {
   const [selectedBusinessId, setSelectedBusinessId] = useState(
-    editing?.business_id ?? "",
+    editing?.app_id ?? "",
   );
 
   const monthlyPrice =
@@ -57,6 +60,9 @@ function PlanForm({
     editing?.prices?.find((p) => p.period === "ANNUALLY")?.price ?? "";
   const selectedModuleIds = new Set(
     editing?.plan_modules?.map((m) => m.module_id) ?? [],
+  );
+  const selectedOfferIds = new Set(
+    editing?.plan_offers?.map((o) => o.offer_id) ?? [],
   );
 
   return (
@@ -80,7 +86,7 @@ function PlanForm({
         <label className="gp-label">
           Aplicación
           <select
-            name="business_id"
+            name="app_id"
             required
             value={selectedBusinessId}
             onChange={(e) => setSelectedBusinessId(e.target.value)}
@@ -128,12 +134,15 @@ function PlanForm({
             <p className="gp-subtitle">Seleccioná una aplicación primero</p>
           ) : (
             <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
-              {allModules.filter((mod) => mod.business_id === Number(selectedBusinessId))
-                .length === 0 ? (
-                <p className="gp-subtitle">No hay módulos para esta aplicación</p>
+              {allModules.filter(
+                (mod) => mod.app_id === Number(selectedBusinessId),
+              ).length === 0 ? (
+                <p className="gp-subtitle">
+                  No hay módulos para esta aplicación
+                </p>
               ) : (
                 allModules
-                  .filter((mod) => mod.business_id === Number(selectedBusinessId))
+                  .filter((mod) => mod.app_id === Number(selectedBusinessId))
                   .map((mod) => (
                     <label
                       key={mod.id}
@@ -147,6 +156,42 @@ function PlanForm({
                         className="size-4 rounded border-zinc-300"
                       />
                       {mod.name}
+                    </label>
+                  ))
+              )}
+            </div>
+          )}
+        </fieldset>
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-zinc-700">
+            Ofertas
+          </legend>
+          {!selectedBusinessId ? (
+            <p className="gp-subtitle">Seleccioná una aplicación primero</p>
+          ) : (
+            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
+              {allOffers.filter(
+                (off) => off.app_id === Number(selectedBusinessId),
+              ).length === 0 ? (
+                <p className="gp-subtitle">
+                  No hay ofertas para esta aplicación
+                </p>
+              ) : (
+                allOffers
+                  .filter((off) => off.app_id === Number(selectedBusinessId))
+                  .map((off) => (
+                    <label
+                      key={off.id}
+                      className="flex items-center gap-2 text-sm font-medium text-zinc-800"
+                    >
+                      <input
+                        type="checkbox"
+                        name="offer_ids"
+                        value={off.id}
+                        defaultChecked={selectedOfferIds.has(off.id)}
+                        className="size-4 rounded border-zinc-300"
+                      />
+                      {off.name}
                     </label>
                   ))
               )}
@@ -179,7 +224,13 @@ export default function PlansPage() {
   const { plans, loading, create, update, remove } = usePlans();
   const { apps: businesses } = useApps();
   const { modules: catalogModules } = useCatalog();
-  const { licenses, fetchByPlan, create: createLicense, revoke: revokeLicense } = useLicenses();
+  const { offers } = useOffers();
+  const {
+    licenses,
+    fetchByPlan,
+    create: createLicense,
+    revoke: revokeLicense,
+  } = useLicenses();
   const [editing, setEditing] = useState<Plan | null>(null);
   const [deleting, setDeleting] = useState<Plan | null>(null);
   const [licensing, setLicensing] = useState<Plan | null>(null);
@@ -196,7 +247,7 @@ export default function PlansPage() {
   const licenseCreateState = useOverlayState();
   const licenseListState = useOverlayState();
 
-  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+  async function handleCreate(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -207,10 +258,11 @@ export default function PlansPage() {
     try {
       await create({
         name: formData.get("name") as string,
-        business_id: Number(formData.get("business_id")),
+        app_id: Number(formData.get("app_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : null,
         price_annual: priceAnnual ? Number(priceAnnual) : null,
         module_ids: getCheckedIds(form, "module_ids"),
+        offer_ids: getCheckedIds(form, "offer_ids"),
       });
       createState.close();
       setError("");
@@ -221,7 +273,7 @@ export default function PlansPage() {
     }
   }
 
-  async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleEdit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
     setError("");
@@ -233,10 +285,11 @@ export default function PlansPage() {
     try {
       await update(editing.id, {
         name: formData.get("name") as string,
-        business_id: Number(formData.get("business_id")),
+        app_id: Number(formData.get("app_id")),
         price_monthly: priceMonthly ? Number(priceMonthly) : undefined,
         price_annual: priceAnnual ? Number(priceAnnual) : undefined,
         module_ids: getCheckedIds(form, "module_ids"),
+        offer_ids: getCheckedIds(form, "offer_ids"),
       });
       editState.close();
       setEditing(null);
@@ -298,7 +351,11 @@ export default function PlansPage() {
     setError("");
     setSubmitting(true);
     try {
-      const lic = await createLicense({ plan_id: licensing.id, period, method_pay: methodPay });
+      const lic = await createLicense({
+        plan_id: licensing.id,
+        period,
+        method_pay: methodPay,
+      });
       setGeneratedKey(lic.key);
       setError("");
     } catch (err) {
@@ -347,7 +404,7 @@ export default function PlansPage() {
           </Button>
           <Modal.Backdrop>
             <Modal.Container>
-              <Modal.Dialog className="sm:max-w-[500px]">
+              <Modal.Dialog className="sm:max-w-200">
                 <Modal.CloseTrigger />
                 <Modal.Header>
                   <Modal.Heading>Nuevo plan</Modal.Heading>
@@ -359,6 +416,7 @@ export default function PlansPage() {
                   submitting={submitting}
                   businesses={businesses}
                   allModules={catalogModules}
+                  allOffers={offers}
                 >
                   Crear
                 </PlanForm>
@@ -371,9 +429,7 @@ export default function PlansPage() {
       {plans.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
           <FileText width={48} height={48} className="text-zinc-300" />
-          <p className="gp-subtitle">
-            No hay planes registrados todavía
-          </p>
+          <p className="gp-subtitle">No hay planes registrados todavía</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -385,9 +441,7 @@ export default function PlansPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold">{plan.name || "-"}</h3>
-                    <p className="gp-subtitle mt-0.5">
-                      {plan.business_name || "—"}
-                    </p>
+                    <p className="gp-subtitle mt-0.5">{plan.app_name || "—"}</p>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button
@@ -440,6 +494,23 @@ export default function PlansPage() {
                     </div>
                   </div>
                 )}
+                {plan.plan_offers && plan.plan_offers.length > 0 && (
+                  <div className="mt-4">
+                    <p className="gp-subtitle mb-1.5 text-xs font-medium">
+                      Ofertas
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {plan.plan_offers.map((o) => (
+                        <span
+                          key={o.offer_id}
+                          className="rounded-md gp-card px-2 py-0.5 text-xs"
+                        >
+                          {o.offer_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-4 flex gap-2">
                   <Button
                     size="sm"
@@ -480,6 +551,7 @@ export default function PlansPage() {
                 editing={editing}
                 businesses={businesses}
                 allModules={catalogModules}
+                allOffers={offers}
               >
                 Guardar
               </PlanForm>
@@ -580,7 +652,9 @@ export default function PlansPage() {
                       <strong>{licensing?.name}</strong>
                     </p>
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs font-medium text-zinc-500">Método de pago</p>
+                      <p className="text-xs font-medium text-zinc-500">
+                        Método de pago
+                      </p>
                       <div className="flex gap-3">
                         <button
                           type="button"
@@ -605,19 +679,29 @@ export default function PlansPage() {
                           Transferencia
                         </button>
                       </div>
-                      <p className="text-xs font-medium text-zinc-500">Período</p>
+                      <p className="text-xs font-medium text-zinc-500">
+                        Período
+                      </p>
                       <div className="flex flex-col gap-3">
                         <Button
                           isDisabled={submitting || !methodPay}
                           onPress={() => handleCreateLicense("MONTHLY")}
                         >
-                          {submitting ? <Spinner size="sm" /> : "Mensual (1 mes)"}
+                          {submitting ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            "Mensual (1 mes)"
+                          )}
                         </Button>
                         <Button
                           isDisabled={submitting || !methodPay}
                           onPress={() => handleCreateLicense("ANNUALLY")}
                         >
-                          {submitting ? <Spinner size="sm" /> : "Anual (12 meses)"}
+                          {submitting ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            "Anual (12 meses)"
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -661,9 +745,7 @@ export default function PlansPage() {
                             {lic.key}
                           </p>
                           <p className="mt-0.5 text-xs text-zinc-500">
-                            {lic.period === "MONTHLY"
-                              ? "Mensual"
-                              : "Anual"}{" "}
+                            {lic.period === "MONTHLY" ? "Mensual" : "Anual"}{" "}
                             &middot;{" "}
                             {lic.status === "AVAILABLE"
                               ? "Disponible"
@@ -672,7 +754,8 @@ export default function PlansPage() {
                                 : "Revocada"}
                             {lic.method_pay && (
                               <>
-                                {" "}&middot;{" "}
+                                {" "}
+                                &middot;{" "}
                                 {lic.method_pay === "CASH"
                                   ? "Efectivo"
                                   : "Transferencia"}

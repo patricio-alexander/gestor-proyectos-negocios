@@ -32,14 +32,14 @@ export async function getAuthUser(): Promise<
 export async function validateApiKey(
   request: NextRequest,
 ): Promise<
-  | { business_id: number; business_hash: string; error: null }
-  | { business_id: null; business_hash: null; error: NextResponse }
+  | { app_id: number; app_hash: string; error: null }
+  | { app_id: null; app_hash: null; error: NextResponse }
 > {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return {
-      business_id: null,
-      business_hash: null,
+      app_id: null,
+      app_hash: null,
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
@@ -55,8 +55,8 @@ export async function validateApiKey(
 
     if (!record) {
       return {
-        business_id: null,
-        business_hash: null,
+        app_id: null,
+        app_hash: null,
         error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
       };
     }
@@ -64,21 +64,21 @@ export async function validateApiKey(
     const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
     if (hash !== record.hash) {
       return {
-        business_id: null,
-        business_hash: null,
+        app_id: null,
+        app_hash: null,
         error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
       };
     }
 
     return {
-      business_id: record.apps.id,
-      business_hash: record.apps.hash,
+      app_id: record.apps.id,
+      app_hash: record.apps.hash,
       error: null,
     };
   } catch {
     return {
-      business_id: null,
-      business_hash: null,
+      app_id: null,
+      app_hash: null,
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }

@@ -10,13 +10,19 @@ export type PlanModule = {
   module_name: string;
 };
 
+export type PlanOffer = {
+  offer_id: number;
+  offer_name: string;
+};
+
 export type Plan = {
   id: number;
   name: string | null;
-  business_id: number;
-  business_name?: string | null;
+  app_id: number;
+  app_name?: string | null;
   prices: PlanPrice[];
   plan_modules: PlanModule[];
+  plan_offers: PlanOffer[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -24,16 +30,18 @@ export type Plan = {
 
 export type CreatePlanInput = {
   name: string;
-  business_id: number;
+  app_id: number;
   price_monthly?: number | null;
   price_annual?: number | null;
   module_ids?: number[];
+  offer_ids?: number[];
 };
 
 export type UpdatePlanInput = {
   name?: string;
-  business_id?: number;
+  app_id?: number;
   price_monthly?: number | null;
   price_annual?: number | null;
   module_ids?: number[];
+  offer_ids?: number[];
 };
