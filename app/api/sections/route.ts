@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { parseMaxRecordsLimit } from "@/src/shared/utils/max-records-limit";
 
 export async function GET(request: Request) {
   const auth = await getAuthUser();
@@ -29,13 +30,18 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const { name, module_id } = await request.json();
+    const { name, module_id, max_records_limit } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "El nombre de la sección es obligatorio" }, { status: 400 });
     }
     if (!module_id) {
       return NextResponse.json({ error: "El módulo es obligatorio" }, { status: 400 });
+    }
+
+    const limitResult = parseMaxRecordsLimit(max_records_limit);
+    if (!limitResult.ok) {
+      return NextResponse.json({ error: limitResult.error }, { status: 400 });
     }
 
     const mod = await prisma.module.findFirst({
@@ -49,6 +55,7 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         module_id: Number(module_id),
+        max_records_limit: limitResult.value,
       },
     });
 

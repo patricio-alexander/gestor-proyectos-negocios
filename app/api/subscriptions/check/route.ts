@@ -33,8 +33,12 @@ export async function GET(request: NextRequest) {
                         id: true,
                         name: true,
                         sections: {
+                          where: { deleted_at: null },
                           select: {
+                            id: true,
+                            key: true,
                             name: true,
+                            max_records_limit: true,
                           },
                         },
                       },
@@ -83,7 +87,12 @@ export async function GET(request: NextRequest) {
     const modules = plan.plan_modules.map((pm) => ({
       id: pm.module.id,
       name: pm.module.name,
-      sections: pm.module.sections.map((s) => s.name),
+      sections: pm.module.sections.map((s) => ({
+        id: s.id,
+        key: s.key,
+        name: s.name,
+        max_records_limit: s.max_records_limit,
+      })),
     }));
 
     const offers = (plan.planOffers ?? []).map((po) => ({

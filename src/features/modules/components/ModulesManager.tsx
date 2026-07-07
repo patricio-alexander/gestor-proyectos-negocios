@@ -8,21 +8,21 @@ import {
   useOverlayState,
 } from "@heroui/react";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
-import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
-import TrashBin from "@gravity-ui/icons/TrashBin";
-import CirclePlus from "@gravity-ui/icons/CirclePlus";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useModules } from "../hooks/useModules";
 import { useApps } from "@/src/features/apps/hooks/useApps";
-import type { Module, Section } from "../types";
+import type { Module } from "../types";
 import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSearchBar";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
-import { apiUrl } from "@/src/utils/apiUrl";
+import { ModulesDashboard } from "./ModulesDashboard";
+import { ModuleCard } from "./ModuleCard";
+import { ModuleSectionsPanel } from "./ModuleSectionsPanel";
+import { getModuleStats } from "../lib/module-stats";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 9;
 
 function matchesModuleSearch(mod: Module, query: string) {
   const q = query.trim().toLowerCase();
@@ -34,7 +34,7 @@ function matchesModuleSearch(mod: Module, query: string) {
 
 export function ModulesManager() {
   const { apps: businesses } = useApps();
-  const { modules, loading, create, update, remove } = useModules();
+  const { modules, loading, create, update, remove, patchModule } = useModules();
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -43,18 +43,12 @@ export function ModulesManager() {
   const [deletingModule, setDeletingModule] = useState<Module | null>(null);
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
-  const [deletingSection, setDeletingSection] = useState<Section | null>(null);
-  const [sectionError, setSectionError] = useState("");
-  const [sectionSubmitting, setSectionSubmitting] = useState(false);
 
   const moduleCreateState = useOverlayState();
   const moduleEditState = useOverlayState();
   const moduleDeleteState = useOverlayState();
 
-  const sectionCreateState = useOverlayState();
-  const sectionEditState = useOverlayState();
-  const sectionDeleteState = useOverlayState();
+  const stats = useMemo(() => getModuleStats(modules), [modules]);
 
   const filterModules = useCallback(
     (mod: Module, query: string) => matchesModuleSearch(mod, query),
@@ -69,6 +63,10 @@ export function ModulesManager() {
     paginated: paginatedModules,
     total: filteredTotal,
   } = usePaginatedSearch(modules, filterModules, PAGE_SIZE);
+
+  function handleManageSections(mod: Module) {
+    setSelectedModule(mod);
+  }
 
   async function handleCreateModule(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -100,9 +98,12 @@ export function ModulesManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      await update(editingModule.id, {
+      const mod = await update(editingModule.id, {
         name: form.get("name") as string,
       });
+      if (selectedModule?.id === mod.id) {
+        setSelectedModule(mod);
+      }
       moduleEditState.close();
       setEditingModule(null);
     } catch (err) {
@@ -118,6 +119,9 @@ export function ModulesManager() {
     setSubmitting(true);
     try {
       await remove(deletingModule.id);
+      if (selectedModule?.id === deletingModule.id) {
+        setSelectedModule(null);
+      }
       moduleDeleteState.close();
       setDeletingModule(null);
     } catch (err) {
@@ -127,102 +131,9 @@ export function ModulesManager() {
     }
   }
 
-  async function handleCreateSection(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!selectedModule) return;
-    setSectionError("");
-    setSectionSubmitting(true);
-    const form = new FormData(e.currentTarget);
-    try {
-      const res = await fetch(apiUrl("/api/sections"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.get("name") as string,
-          module_id: selectedModule.id,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al crear sección");
-      }
-      const section: Section = await res.json();
-      setSelectedModule((prev) =>
-        prev ? { ...prev, sections: [...prev.sections, section] } : prev
-      );
-      sectionCreateState.close();
-    } catch (err) {
-      setSectionError(err instanceof Error ? err.message : "Error al crear");
-    } finally {
-      setSectionSubmitting(false);
-    }
-  }
-
-  async function handleEditSection(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editingSection) return;
-    setSectionError("");
-    setSectionSubmitting(true);
-    const form = new FormData(e.currentTarget);
-    try {
-      const res = await fetch(apiUrl(`/api/sections/${editingSection.id}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.get("name") as string }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al actualizar sección");
-      }
-      const section: Section = await res.json();
-      setSelectedModule((prev) =>
-        prev
-          ? {
-              ...prev,
-              sections: prev.sections.map((s) =>
-                s.id === section.id ? section : s
-              ),
-            }
-          : prev
-      );
-      sectionEditState.close();
-      setEditingSection(null);
-    } catch (err) {
-      setSectionError(err instanceof Error ? err.message : "Error al actualizar");
-    } finally {
-      setSectionSubmitting(false);
-    }
-  }
-
-  async function handleDeleteSection() {
-    if (!deletingSection) return;
-    setSectionError("");
-    setSectionSubmitting(true);
-    try {
-      const res = await fetch(apiUrl(`/api/sections/${deletingSection.id}`), {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al eliminar sección");
-      }
-      setSelectedModule((prev) =>
-        prev
-          ? {
-              ...prev,
-              sections: prev.sections.filter(
-                (s) => s.id !== deletingSection.id
-              ),
-            }
-          : prev
-      );
-      sectionDeleteState.close();
-      setDeletingSection(null);
-    } catch (err) {
-      setSectionError(err instanceof Error ? err.message : "Error al eliminar");
-    } finally {
-      setSectionSubmitting(false);
-    }
+  function handleModuleUpdate(updated: Module) {
+    patchModule(updated.id, () => updated);
+    setSelectedModule(updated);
   }
 
   if (loading) {
@@ -237,7 +148,7 @@ export function ModulesManager() {
     <div className={gp.page}>
       <ManagerHeader
         title="Módulos"
-        description="Módulos del sistema"
+        description="Catálogo de módulos, secciones y límites remotos de registros"
         Icon={Cubes3Overlap}
         action={
           <Modal state={moduleCreateState}>
@@ -301,6 +212,8 @@ export function ModulesManager() {
         }
       />
 
+      <ModulesDashboard stats={stats} />
+
       <TableSearchBar
         value={search}
         onChange={setSearch}
@@ -309,191 +222,61 @@ export function ModulesManager() {
         totalLabel="módulos"
       />
 
-      <div className={gp.tableWrap}>
-        <table className={gp.table}>
-          <thead>
-            <tr>
-              <th>Módulo</th>
-              <th>Aplicación</th>
-              <th>Secciones</th>
-              <th className="text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedModules.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-10 text-center">
-                  <p className={gp.subtitle}>
-                    {search.trim()
-                      ? "No hay módulos que coincidan con la búsqueda."
-                      : "Aún no hay módulos registrados."}
-                  </p>
-                </td>
-              </tr>
-            ) : (
-              paginatedModules.map((mod) => {
-                const expanded = selectedModule?.id === mod.id;
-                return (
-                  <tr key={mod.id}>
-                    <td className="font-medium">{mod.name}</td>
-                    <td>{mod.app_name || "—"}</td>
-                    <td>{mod.sections.length}</td>
-                    <td>
-                      <div className="gp-table-actions">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-label="Gestionar secciones"
-                          onPress={() =>
-                            setSelectedModule(
-                              expanded ? null : mod
-                            )
-                          }
-                        >
-                          <Cubes3Overlap width={14} height={14} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-label={`Editar ${mod.name}`}
-                          onPress={() => {
-                            setEditingModule(mod);
-                            setError("");
-                            moduleEditState.open();
-                          }}
-                        >
-                          <Pencil width={14} height={14} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-500"
-                          aria-label={`Eliminar ${mod.name}`}
-                          onPress={() => {
-                            setDeletingModule(mod);
-                            setError("");
-                            moduleDeleteState.open();
-                          }}
-                        >
-                          <TrashBin width={14} height={14} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-
-        {selectedModule && (
-          <div className="border-t px-4 py-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">
-                Secciones de <strong>{selectedModule.name}</strong>
-              </h3>
-              <Modal state={sectionCreateState}>
-                <Button size="sm" variant="ghost">
-                  <CirclePlus width={14} height={14} />
-                  Nueva sección
-                </Button>
-                <Modal.Backdrop>
-                  <Modal.Container>
-                    <Modal.Dialog className="sm:max-w-md">
-                      <Modal.CloseTrigger />
-                      <Modal.Header>
-                        <Modal.Heading>Nueva sección</Modal.Heading>
-                      </Modal.Header>
-                      <form onSubmit={handleCreateSection}>
-                        <Modal.Body className="space-y-4">
-                          {sectionError && (
-                            <Alert status="danger">
-                              <Alert.Description>
-                                {sectionError}
-                              </Alert.Description>
-                            </Alert>
-                          )}
-                          <label className={gp.label}>
-                            Nombre
-                            <input
-                              name="name"
-                              required
-                              placeholder="Ej: Módulo de ventas"
-                              className={gp.input}
-                            />
-                          </label>
-                        </Modal.Body>
-                        <Modal.Footer>
-                          <Button variant="secondary" slot="close">
-                            Cancelar
-                          </Button>
-                          <Button type="submit" isDisabled={sectionSubmitting}>
-                            {sectionSubmitting ? (
-                              <Spinner size="sm" />
-                            ) : (
-                              "Crear"
-                            )}
-                          </Button>
-                        </Modal.Footer>
-                      </form>
-                    </Modal.Dialog>
-                  </Modal.Container>
-                </Modal.Backdrop>
-              </Modal>
-            </div>
-
-            {selectedModule.sections.length === 0 ? (
-              <p className="py-4 text-center text-sm text-zinc-400">
-                Este módulo no tiene secciones.
-              </p>
-            ) : (
-              <table className="w-full text-left text-sm">
-                <tbody>
-                  {selectedModule.sections.map((sec) => (
-                    <tr key={sec.id} className="border-b last:border-none">
-                      <td className="py-2 pl-4">{sec.name}</td>
-                      <td className="w-24 py-2">
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onPress={() => {
-                              setEditingSection(sec);
-                              setSectionError("");
-                              sectionEditState.open();
-                            }}
-                          >
-                            <Pencil width={12} height={12} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-500"
-                            onPress={() => {
-                              setDeletingSection(sec);
-                              setSectionError("");
-                              sectionDeleteState.open();
-                            }}
-                          >
-                            <TrashBin width={12} height={12} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+      {paginatedModules.length === 0 ? (
+        <div className={`${gp.empty} flex flex-col items-center gap-3 py-16`}>
+          <Cubes3Overlap width={40} height={40} className="text-[var(--gp-text-faint)]" />
+          <div className="text-center">
+            <p className="text-sm font-medium text-[var(--gp-text)]">
+              {search.trim()
+                ? "No hay módulos que coincidan"
+                : "No hay módulos registrados"}
+            </p>
+            <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
+              {search.trim()
+                ? "Probá con otro término de búsqueda."
+                : "Creá el primer módulo para organizar secciones y límites."}
+            </p>
           </div>
-        )}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {paginatedModules.map((mod) => (
+              <ModuleCard
+                key={mod.id}
+                module={mod}
+                onManageSections={handleManageSections}
+                onEdit={(m) => {
+                  setEditingModule(m);
+                  setError("");
+                  moduleEditState.open();
+                }}
+                onDelete={(m) => {
+                  setDeletingModule(m);
+                  setError("");
+                  moduleDeleteState.open();
+                }}
+              />
+            ))}
+          </div>
 
-        <TablePagination
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={filteredTotal}
-          onPageChange={setPage}
+          <TablePagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filteredTotal}
+            onPageChange={setPage}
+          />
+        </>
+      )}
+
+      {selectedModule && (
+        <ModuleSectionsPanel
+          module={selectedModule}
+          open
+          onClose={() => setSelectedModule(null)}
+          onModuleUpdate={handleModuleUpdate}
         />
-      </div>
+      )}
 
       <Modal state={moduleEditState}>
         <Modal.Backdrop>
@@ -566,94 +349,6 @@ export function ModulesManager() {
                   isDisabled={submitting}
                 >
                   {submitting ? <Spinner size="sm" /> : "Eliminar"}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
-
-      <Modal state={sectionEditState}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-md">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>Editar sección</Modal.Heading>
-              </Modal.Header>
-              {editingSection && (
-                <form onSubmit={handleEditSection}>
-                  <Modal.Body className="space-y-4">
-                    {sectionError && (
-                      <Alert status="danger">
-                        <Alert.Description>
-                          {sectionError}
-                        </Alert.Description>
-                      </Alert>
-                    )}
-                    <label className={gp.label}>
-                      Nombre
-                      <input
-                        name="name"
-                        required
-                        defaultValue={editingSection.name}
-                        className={gp.input}
-                      />
-                    </label>
-                  </Modal.Body>
-                  <Modal.Footer>
-                    <Button variant="secondary" slot="close">
-                      Cancelar
-                    </Button>
-                    <Button type="submit" isDisabled={sectionSubmitting}>
-                      {sectionSubmitting ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        "Guardar"
-                      )}
-                    </Button>
-                  </Modal.Footer>
-                </form>
-              )}
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
-
-      <Modal state={sectionDeleteState}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>Eliminar sección</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                {sectionError && (
-                  <Alert status="danger">
-                    <Alert.Description>
-                      {sectionError}
-                    </Alert.Description>
-                  </Alert>
-                )}
-                <p className={gp.subtitle}>
-                  ¿Eliminar la sección <strong>{deletingSection?.name}</strong>?
-                </p>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="secondary" slot="close">
-                  Cancelar
-                </Button>
-                <Button
-                  className="bg-red-600 text-white"
-                  onPress={handleDeleteSection}
-                  isDisabled={sectionSubmitting}
-                >
-                  {sectionSubmitting ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    "Eliminar"
-                  )}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { parseMaxRecordsLimit } from "@/src/shared/utils/max-records-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,6 +20,14 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Sección no encontrada" }, { status: 404 });
     }
 
+    if (updates.max_records_limit !== undefined) {
+      const limitResult = parseMaxRecordsLimit(updates.max_records_limit);
+      if (!limitResult.ok) {
+        return NextResponse.json({ error: limitResult.error }, { status: 400 });
+      }
+      updates.max_records_limit = limitResult.value;
+    }
+
     const section = await prisma.section.update({
       where: { id: Number(id) },
       data: {
@@ -27,6 +36,9 @@ export async function PATCH(request: Request, { params }: Params) {
         }),
         ...(updates.key !== undefined && {
           key: updates.key ? String(updates.key).trim() : null,
+        }),
+        ...(updates.max_records_limit !== undefined && {
+          max_records_limit: updates.max_records_limit as number | null,
         }),
       },
     });

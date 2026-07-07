@@ -3,6 +3,7 @@ export type Section = {
   name: string;
   module_id: number;
   key: string | null;
+  max_records_limit: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -36,4 +37,11 @@ export type UpdateModuleInput = {
 export type CreateSectionInput = {
   name: string;
   module_id: number;
+  max_records_limit?: number | null;
+};
+
+export type UpdateSectionInput = {
+  name?: string;
+  key?: string | null;
+  max_records_limit?: number | null;
 };

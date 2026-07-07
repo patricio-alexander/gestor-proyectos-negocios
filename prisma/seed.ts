@@ -1,10 +1,12 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "./generated/prisma/client";
 import {
   DEFAULT_ROLES,
   EDDELI_PRODUCT_CATALOG,
+  type CatalogModuleDef,
 } from "../src/shared/config/eddeli-product-catalog";
 
 const adapter = new PrismaMariaDb({
@@ -145,12 +147,88 @@ async function seedGestorAccounts() {
   }
 }
 
+const EDDELI_APP_HASH = crypto
+  .createHash("sha256")
+  .update("eddeli-seed-app")
+  .digest("hex")
+  .slice(0, 32);
+
+async function seedEdDeliApp() {
+  return prisma.apps.upsert({
+    where: { hash: EDDELI_APP_HASH },
+    update: { name: "EdDeli", deleted_at: null },
+    create: {
+      hash: EDDELI_APP_HASH,
+      name: "EdDeli",
+      owner_name: "EdDeli",
+      email: "soporte@eddeli.com",
+    },
+  });
+}
+
+async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
+  let sectionCount = 0;
+
+  for (const modDef of catalog) {
+    const mod = await prisma.module.upsert({
+      where: {
+        app_id_key: { app_id: appId, key: modDef.key },
+      },
+      update: {
+        name: modDef.name,
+        description: modDef.description,
+        is_active: true,
+        deleted_at: null,
+      },
+      create: {
+        app_id: appId,
+        key: modDef.key,
+        name: modDef.name,
+        description: modDef.description,
+        is_active: true,
+      },
+    });
+
+    for (const secDef of modDef.sections) {
+      const existing = await prisma.section.findFirst({
+        where: { module_id: mod.id, key: secDef.key, deleted_at: null },
+      });
+
+      if (existing) {
+        await prisma.section.update({
+          where: { id: existing.id },
+          data: { name: secDef.name },
+        });
+      } else {
+        await prisma.section.create({
+          data: {
+            module_id: mod.id,
+            key: secDef.key,
+            name: secDef.name,
+          },
+        });
+      }
+
+      sectionCount += 1;
+    }
+  }
+
+  return sectionCount;
+}
+
 async function main() {
   await seedRoles();
   await seedGestorAccounts();
+  const eddeliApp = await seedEdDeliApp();
+  const sectionCount = await seedEdDeliCatalog(
+    eddeliApp.id,
+    EDDELI_PRODUCT_CATALOG,
+  );
+
   console.log(
-    "Seed OK: roles, catálogo EdDeli (%d módulos), cuentas (administrador/Edgar Torres + demo)",
+    "Seed OK: roles, EdDeli (%d módulos, %d secciones), cuentas (administrador/Edgar Torres + demo)",
     EDDELI_PRODUCT_CATALOG.length,
+    sectionCount,
   );
 }
 

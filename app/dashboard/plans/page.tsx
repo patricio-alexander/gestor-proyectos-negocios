@@ -3,12 +3,12 @@
 import {
   Alert,
   Button,
-  Card,
   Modal,
   Spinner,
   useOverlayState,
 } from "@heroui/react";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
+import { PlanCard } from "@/src/features/plans/components/PlanCard";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
@@ -17,17 +17,10 @@ import type { Plan } from "@/src/features/plans/types";
 import type { ModuleRecord } from "@/src/features/catalog/types";
 import type { Offer } from "@/src/features/offers/types";
 import { useState } from "react";
+import { gp } from "@/src/shared/ui/theme";
+import { ManagerHeader } from "@/src/shared/components/TableSearchBar";
 import FileText from "@gravity-ui/icons/FileText";
-import Pencil from "@gravity-ui/icons/Pencil";
-import TrashBin from "@gravity-ui/icons/TrashBin";
 import Plus from "@gravity-ui/icons/Plus";
-import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
-import Key from "@gravity-ui/icons/Key";
-
-function formatPrice(price: number | null | undefined) {
-  if (price == null) return null;
-  return `$${price}`;
-}
 
 type PlanFormProps = {
   onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
@@ -383,155 +376,78 @@ export default function PlansPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className={`${gp.page} items-center justify-center`}>
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="gp-page">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText width={24} height={24} className="text-zinc-700" />
-          <h1 className="gp-title">Planes</h1>
-        </div>
-
-        <Modal state={createState}>
-          <Button>
-            <Plus width={16} height={16} />
-            Nuevo plan
-          </Button>
-          <Modal.Backdrop>
-            <Modal.Container>
-              <Modal.Dialog className="sm:max-w-200">
-                <Modal.CloseTrigger />
-                <Modal.Header>
-                  <Modal.Heading>Nuevo plan</Modal.Heading>
-                </Modal.Header>
-                <PlanForm
-                  key="create"
-                  onSubmit={handleCreate}
-                  error={error}
-                  submitting={submitting}
-                  businesses={businesses}
-                  allModules={catalogModules}
-                  allOffers={offers}
-                >
-                  Crear
-                </PlanForm>
-              </Modal.Dialog>
-            </Modal.Container>
-          </Modal.Backdrop>
-        </Modal>
-      </div>
+    <div className={gp.page}>
+      <ManagerHeader
+        title="Planes"
+        description="Planes comerciales, precios y licencias por aplicación"
+        Icon={FileText}
+        action={
+          <Modal state={createState}>
+            <Button
+              style={{
+                backgroundColor: "var(--gp-primary)",
+                color: "var(--gp-primary-text)",
+              }}
+            >
+              <Plus width={16} height={16} />
+              Nuevo plan
+            </Button>
+            <Modal.Backdrop>
+              <Modal.Container>
+                <Modal.Dialog className="sm:max-w-200">
+                  <Modal.CloseTrigger />
+                  <Modal.Header>
+                    <Modal.Heading>Nuevo plan</Modal.Heading>
+                  </Modal.Header>
+                  <PlanForm
+                    key="create"
+                    onSubmit={handleCreate}
+                    error={error}
+                    submitting={submitting}
+                    businesses={businesses}
+                    allModules={catalogModules}
+                    allOffers={offers}
+                  >
+                    Crear
+                  </PlanForm>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
+          </Modal>
+        }
+      />
 
       {plans.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-zinc-300 py-16 text-center">
-          <FileText width={48} height={48} className="text-zinc-300" />
-          <p className="gp-subtitle">No hay planes registrados todavía</p>
+        <div className={`${gp.empty} flex flex-col items-center gap-3 py-16`}>
+          <FileText width={40} height={40} className="text-[var(--gp-text-faint)]" />
+          <div>
+            <p className="text-sm font-medium text-[var(--gp-text)]">
+              No hay planes registrados
+            </p>
+            <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
+              Creá el primer plan para definir precios, módulos y licencias.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {plans.map((plan) => {
-            const monthly = plan.prices?.find((p) => p.period === "MONTHLY");
-            const annual = plan.prices?.find((p) => p.period === "ANNUALLY");
-            return (
-              <Card key={plan.id} className="gp-card px-5 py-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold">{plan.name || "-"}</h3>
-                    <p className="gp-subtitle mt-0.5">{plan.app_name || "—"}</p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label="Editar"
-                      onPress={() => openEdit(plan)}
-                    >
-                      <Pencil width={14} height={14} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600"
-                      aria-label="Eliminar"
-                      onPress={() => openDelete(plan)}
-                    >
-                      <TrashBin width={14} height={14} />
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-lg gp-card px-3 py-3">
-                    <p className="gp-subtitle text-xs">Mensual</p>
-                    <p className="mt-0.5 text-lg font-semibold">
-                      {formatPrice(monthly?.price) || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg gp-card px-3 py-3">
-                    <p className="gp-subtitle text-xs">Anual</p>
-                    <p className="mt-0.5 text-lg font-semibold">
-                      {formatPrice(annual?.price) || "—"}
-                    </p>
-                  </div>
-                </div>
-                {plan.plan_modules && plan.plan_modules.length > 0 && (
-                  <div className="mt-4">
-                    <p className="gp-subtitle mb-1.5 text-xs font-medium">
-                      Módulos
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {plan.plan_modules.map((m) => (
-                        <span
-                          key={m.id}
-                          className="rounded-md gp-card px-2 py-0.5 text-xs"
-                        >
-                          {m.module_name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {plan.plan_offers && plan.plan_offers.length > 0 && (
-                  <div className="mt-4">
-                    <p className="gp-subtitle mb-1.5 text-xs font-medium">
-                      Ofertas
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {plan.plan_offers.map((o) => (
-                        <span
-                          key={o.offer_id}
-                          className="rounded-md gp-card px-2 py-0.5 text-xs"
-                        >
-                          {o.offer_name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => openLicenseCreate(plan)}
-                  >
-                    <ShieldKeyhole width={14} height={14} />
-                    Crear licencia
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => openLicenseList(plan)}
-                  >
-                    <Key width={14} height={14} />
-                    Ver licencias
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {plans.map((plan) => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              onEdit={openEdit}
+              onDelete={openDelete}
+              onCreateLicense={openLicenseCreate}
+              onViewLicenses={openLicenseList}
+            />
+          ))}
         </div>
       )}
 

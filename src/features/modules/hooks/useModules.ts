@@ -80,12 +80,19 @@ export function useModules() {
 
   const activeModules = modules.filter((m) => !m.deleted_at);
 
+  function patchModule(id: number, updater: (module: Module) => Module) {
+    setModules((prev) =>
+      prev.map((m) => (m.id === id ? updater(m) : m)),
+    );
+  }
+
   return {
     modules: activeModules,
     loading,
     create,
     update,
     remove,
+    patchModule,
     refetch: fetchModules,
   };
 }

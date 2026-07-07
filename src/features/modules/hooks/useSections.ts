@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Section, CreateSectionInput } from "../types";
+import type { Section, CreateSectionInput, UpdateSectionInput } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 
 export function useSections() {
@@ -24,11 +24,11 @@ export function useSections() {
     return section;
   }
 
-  async function update(id: number, name: string) {
+  async function update(id: number, input: UpdateSectionInput) {
     const res = await fetch(apiUrl(`/api/sections/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(input),
     });
 
     if (!res.ok) {

@@ -11,9 +11,12 @@ export type DashboardNavGroup = {
 /** Navegación esencial del gestor (licencias + acceso). */
 export const DASHBOARD_NAV: DashboardNavGroup[] = [
   {
+    title: "Dashboard",
+    items: [{ label: "Resumen general", href: "/dashboard" }],
+  },
+  {
     title: "General",
     items: [
-      { label: "Inicio", href: "/dashboard" },
       { label: "Mi perfil", href: "/dashboard/profile" },
       { label: "Notificaciones", href: "/dashboard/notifications" },
       { label: "Aplicaciones", href: "/dashboard/apps" },
@@ -28,7 +31,6 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
   },
   {
     title: "Planes y Subscripciones",
-
     items: [
       { label: "Ofertas", href: "/dashboard/offers" },
       { label: "Planes", href: "/dashboard/plans" },
