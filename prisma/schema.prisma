@@ -102,16 +102,16 @@ model Module {
 }
 
 model Section {
-  id                 Int          @id @default(autoincrement())
-  module_id          Int
-  name               String
-  key                String?
-  max_records_limit  Int?
-  created_at         DateTime     @default(now())
-  updated_at         DateTime     @updatedAt
-  deleted_at         DateTime?
-  module             Module       @relation(fields: [module_id], references: [id], onDelete: Cascade)
-  capabilities       Capability[]
+  id                Int          @id @default(autoincrement())
+  module_id         Int
+  name              String
+  key               String?
+  max_records_limit Int?
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+  deleted_at        DateTime?
+  module            Module       @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  capabilities      Capability[]
 
   @@index([module_id])
 }
@@ -141,6 +141,7 @@ model Apps {
   ruc           String?
   address       String?
   email         String?
+  maintenance  Boolean        @default(false)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?

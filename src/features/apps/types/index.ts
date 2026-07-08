@@ -7,6 +7,7 @@ export type App = {
   ruc: string | null;
   address: string | null;
   email: string | null;
+  maintenance: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -19,6 +20,7 @@ export type CreateAppInput = {
   ruc?: string | null;
   address?: string | null;
   email?: string | null;
+  maintenance?: boolean;
 };
 
 export type UpdateAppInput = {
@@ -28,4 +30,5 @@ export type UpdateAppInput = {
   ruc?: string | null;
   address?: string | null;
   email?: string | null;
+  maintenance?: boolean;
 };

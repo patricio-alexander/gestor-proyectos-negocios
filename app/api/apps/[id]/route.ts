@@ -30,6 +30,7 @@ export async function GET(_request: Request, { params }: Params) {
       ruc: app.ruc,
       address: app.address,
       email: app.email,
+      maintenance: app.maintenance,
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: app.deleted_at?.toISOString() ?? null,
@@ -70,6 +71,7 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(body.ruc !== undefined && { ruc: String(body.ruc).trim() }),
         ...(body.address !== undefined && { address: String(body.address).trim() }),
         ...(body.email !== undefined && { email: String(body.email).trim() }),
+        ...(body.maintenance !== undefined && { maintenance: Boolean(body.maintenance) }),
       },
     });
 
@@ -82,6 +84,7 @@ export async function PATCH(request: Request, { params }: Params) {
       ruc: app.ruc,
       address: app.address,
       email: app.email,
+      maintenance: app.maintenance,
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: null,

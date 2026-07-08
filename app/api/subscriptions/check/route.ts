@@ -83,7 +83,12 @@ export async function GET(request: NextRequest) {
       orderBy: { id: "desc" },
     });
 
-    if (!subscription) {
+    const app = await prisma.apps.findFirst({
+      where: { hash: apiKey.app_hash },
+      select: { maintenance: true },
+    });
+
+    if (!subscription || !app) {
       return NextResponse.json({
         subscribed: false,
         subscription: null,
@@ -125,6 +130,7 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({
+      maintenance: app.maintenance,
       subscribed: subscription.status === "ACTIVE",
       subscription: {
         id: subscription.id,

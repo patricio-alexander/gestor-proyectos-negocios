@@ -5,6 +5,7 @@ import {
   Button,
   Modal,
   Spinner,
+  Switch,
   useOverlayState,
 } from "@heroui/react";
 import Briefcase from "@gravity-ui/icons/Briefcase";
@@ -38,6 +39,7 @@ export default function AppsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
   const createState = useOverlayState();
   const editState = useOverlayState();
@@ -68,6 +70,7 @@ export default function AppsPage() {
         ruc: (form.get("ruc") as string) || null,
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
+        maintenance: form.get("maintenance") === "on",
       });
       createState.close();
     } catch (err) {
@@ -91,6 +94,7 @@ export default function AppsPage() {
         ruc: (form.get("ruc") as string) || null,
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
+        maintenance: form.get("maintenance") === "on",
       });
       editState.close();
       setEditingApp(null);
@@ -98,6 +102,22 @@ export default function AppsPage() {
       setError(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleToggleMantenimiento(app: App) {
+    setTogglingIds((prev) => new Set(prev).add(app.id));
+    setError("");
+    try {
+      await update(app.id, { maintenance: !app.maintenance });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cambiar estado");
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(app.id);
+        return next;
+      });
     }
   }
 
@@ -205,6 +225,16 @@ export default function AppsPage() {
                           className={gp.input}
                         />
                       </label>
+                      <label className={gp.label}>
+                        <Switch name="maintenance" size="sm">
+                          <Switch.Content>
+                            <Switch.Control>
+                              <Switch.Thumb />
+                            </Switch.Control>
+                            Maintenance mode
+                          </Switch.Content>
+                        </Switch>
+                      </label>
                     </Modal.Body>
                     <Modal.Footer>
                       <Button variant="secondary" slot="close">
@@ -238,13 +268,14 @@ export default function AppsPage() {
               <th>Propietario</th>
               <th>RUC</th>
               <th>Email</th>
+              <th>Mantenimiento</th>
               <th className="text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {paginatedApps.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-10 text-center">
+                <td colSpan={6} className="py-10 text-center">
                   <p className={gp.subtitle}>
                     {search.trim()
                       ? "No hay aplicaciones que coincidan con la búsqueda."
@@ -259,6 +290,20 @@ export default function AppsPage() {
                   <td>{app.owner_name || "—"}</td>
                   <td>{app.ruc || "—"}</td>
                   <td>{app.email || "—"}</td>
+                  <td>
+                    <Switch
+                      size="sm"
+                      isSelected={app.maintenance}
+                      isDisabled={togglingIds.has(app.id)}
+                      onChange={() => handleToggleMantenimiento(app)}
+                    >
+                      <Switch.Content>
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
+                      </Switch.Content>
+                    </Switch>
+                  </td>
                   <td>
                     <div className="gp-table-actions">
                       <Button
@@ -360,15 +405,29 @@ export default function AppsPage() {
                         className={gp.input}
                       />
                     </label>
-                    <label className={gp.label}>
-                      Dirección
-                      <input
-                        name="address"
-                        defaultValue={editingApp.address ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
-                  </Modal.Body>
+                      <label className={gp.label}>
+                        Dirección
+                        <input
+                          name="address"
+                          defaultValue={editingApp.address ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        <Switch
+                          name="maintenance"
+                          size="sm"
+                          defaultSelected={editingApp.maintenance}
+                        >
+                          <Switch.Content>
+                            <Switch.Control>
+                              <Switch.Thumb />
+                            </Switch.Control>
+                            Maintenance mode
+                          </Switch.Content>
+                        </Switch>
+                      </label>
+                    </Modal.Body>
                   <Modal.Footer>
                     <Button variant="secondary" slot="close">
                       Cancelar
