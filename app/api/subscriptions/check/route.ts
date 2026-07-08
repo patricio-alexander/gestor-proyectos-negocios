@@ -110,13 +110,22 @@ export async function GET(request: NextRequest) {
       })),
     }));
 
-    const capabilities = plan.plan_modules.flatMap((pm) =>
-      pm.module.sections.flatMap((s) => {
+    const capabilitiesMapped = new Map();
+
+    plan.plan_modules.forEach((pm) =>
+      pm.module.sections.forEach((s) => {
+        if (!capabilitiesMapped.has(s.key)) {
+          capabilitiesMapped.set(s.key, []);
+        }
+
         const availableCapabilities = s.capabilities.map((c) => [
           c.code,
           c.is_active,
         ]);
-        return Object.fromEntries(availableCapabilities);
+
+        capabilitiesMapped
+          .get(s.key)
+          .push(Object.fromEntries(availableCapabilities));
       }),
     );
 
@@ -142,7 +151,7 @@ export async function GET(request: NextRequest) {
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,
         modules,
-        capabilities,
+        capabilities: Object.fromEntries(capabilitiesMapped),
         offers,
       },
     });
