@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
+    "worker:usage": "tsx workers/usage-reset-worker.ts",
     "postinstall": "prisma generate",
     "setup": "prisma generate && prisma db push --accept-data-loss && npm run seed"
   },
