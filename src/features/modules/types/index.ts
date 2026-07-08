@@ -14,6 +14,7 @@ export type Section = {
   module_id: number;
   key: string | null;
   max_records_limit: number | null;
+  usage_count: number;
   capabilities?: Capability[];
   created_at: string;
   updated_at: string;

@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
                             key: true,
                             name: true,
                             max_records_limit: true,
+                            usage_count: true,
                             capabilities: {
                               select: {
                                 id: true,
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
         key: s.key,
         name: s.name,
         max_records_limit: s.max_records_limit,
+        usage_count: s.usage_count,
       })),
     }));
 
