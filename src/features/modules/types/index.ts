@@ -48,6 +48,7 @@ export type UpdateModuleInput = {
 export type CreateSectionInput = {
   name: string;
   module_id: number;
+  key?: string | null;
   max_records_limit?: number | null;
 };
 

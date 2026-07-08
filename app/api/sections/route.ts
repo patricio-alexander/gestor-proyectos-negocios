@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const { name, module_id, max_records_limit } = await request.json();
+    const { name, module_id, key, max_records_limit } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "El nombre de la sección es obligatorio" }, { status: 400 });
@@ -55,6 +55,9 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         module_id: Number(module_id),
+        ...(key !== undefined && {
+          key: key ? String(key).trim() : null,
+        }),
         max_records_limit: limitResult.value,
       },
     });

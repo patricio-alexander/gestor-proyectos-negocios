@@ -93,6 +93,7 @@ export function ModuleSectionsPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.get("name") as string,
+          key: (form.get("key") as string) || null,
           module_id: module.id,
           max_records_limit: parseMaxRecordsLimitInput(
             form.get("max_records_limit"),
@@ -128,6 +129,7 @@ export function ModuleSectionsPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.get("name") as string,
+          key: (form.get("key") as string) || null,
           max_records_limit: parseMaxRecordsLimitInput(
             form.get("max_records_limit"),
           ),
@@ -208,7 +210,7 @@ export function ModuleSectionsPanel({
                   </div>
                 ) : (
                   <div className="max-h-[min(50vh,420px)] overflow-auto rounded-xl border">
-                    <table className="w-full min-w-[560px] text-left text-sm">
+                    <table className="w-full min-w-[640px] text-left text-sm">
                       <thead className="sticky top-0 z-10">
                         <tr
                           className="border-b text-xs uppercase tracking-wide"
@@ -219,6 +221,7 @@ export function ModuleSectionsPanel({
                           }}
                         >
                           <th className="px-5 py-2.5 font-medium">Sección</th>
+                          <th className="px-5 py-2.5 font-medium">Key</th>
                           <th className="px-5 py-2.5 font-medium">
                             Límite remoto
                           </th>
@@ -242,6 +245,17 @@ export function ModuleSectionsPanel({
                               style={{ borderColor: "var(--gp-border)" }}
                             >
                               <td className="px-5 py-3 font-medium">{sec.name}</td>
+                              <td className="px-5 py-3">
+                                {sec.key ? (
+                                  <code className="rounded bg-[var(--gp-surface-muted)] px-1.5 py-0.5 text-xs text-[var(--gp-text-muted)]">
+                                    {sec.key}
+                                  </code>
+                                ) : (
+                                  <span className="text-xs text-[var(--gp-text-muted)]">
+                                    —
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-5 py-3">
                                 <SectionLimitBadge limit={sec.max_records_limit} />
                               </td>
@@ -338,6 +352,17 @@ export function ModuleSectionsPanel({
                                 className={gp.input}
                               />
                             </label>
+                            <label className={gp.label}>
+                              Key
+                              <input
+                                name="key"
+                                placeholder="Ej: /productos, /pedidos…"
+                                className={gp.input}
+                              />
+                              <span className="mt-1 block text-xs text-[var(--gp-text-muted)]">
+                                Identificador remoto de la sección (ruta o slug).
+                              </span>
+                            </label>
                             <SectionMaxRecordsLimitField key="create-section-limit" />
                           </Modal.Body>
                           <Modal.Footer>
@@ -387,6 +412,18 @@ export function ModuleSectionsPanel({
                         defaultValue={editingSection.name}
                         className={gp.input}
                       />
+                    </label>
+                    <label className={gp.label}>
+                      Key
+                      <input
+                        name="key"
+                        defaultValue={editingSection.key ?? ""}
+                        placeholder="Ej: /productos, /pedidos…"
+                        className={gp.input}
+                      />
+                      <span className="mt-1 block text-xs text-[var(--gp-text-muted)]">
+                        Identificador remoto de la sección (ruta o slug).
+                      </span>
                     </label>
                     <SectionMaxRecordsLimitField
                       key={editingSection.id}
