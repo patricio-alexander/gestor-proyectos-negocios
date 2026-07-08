@@ -17,7 +17,13 @@ export async function GET() {
       where: { deleted_at: null },
       include: {
         apps: { select: { name: true } },
-        sections: { where: { deleted_at: null }, orderBy: { created_at: "asc" } },
+        sections: {
+          where: { deleted_at: null },
+          orderBy: { created_at: "asc" },
+          include: {
+            capabilities: { orderBy: { created_at: "asc" } },
+          },
+        },
       },
       orderBy: { created_at: "desc" },
     });
@@ -61,7 +67,13 @@ export async function POST(request: Request) {
       },
       include: {
         apps: { select: { name: true } },
-        sections: { where: { deleted_at: null }, orderBy: { created_at: "asc" } },
+        sections: {
+          where: { deleted_at: null },
+          orderBy: { created_at: "asc" },
+          include: {
+            capabilities: { orderBy: { created_at: "asc" } },
+          },
+        },
       },
     });
 

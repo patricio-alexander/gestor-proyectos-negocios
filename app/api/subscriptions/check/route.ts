@@ -39,6 +39,14 @@ export async function GET(request: NextRequest) {
                             key: true,
                             name: true,
                             max_records_limit: true,
+                            capabilities: {
+                              select: {
+                                id: true,
+                                code: true,
+                                name: true,
+                                is_active: true,
+                              },
+                            },
                           },
                         },
                       },
@@ -92,8 +100,34 @@ export async function GET(request: NextRequest) {
         key: s.key,
         name: s.name,
         max_records_limit: s.max_records_limit,
+        capabilities: s.capabilities.map((c) => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          is_active: c.is_active,
+        })),
       })),
     }));
+
+    const capabilities = plan.plan_modules.flatMap((pm) =>
+      pm.module.sections.flatMap((s) =>
+        s.capabilities.map((c) => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          is_active: c.is_active,
+          section: {
+            id: s.id,
+            key: s.key,
+            name: s.name,
+          },
+          module: {
+            id: pm.module.id,
+            name: pm.module.name,
+          },
+        })),
+      ),
+    );
 
     const offers = (plan.planOffers ?? []).map((po) => ({
       name: po.offer.name,
@@ -116,6 +150,7 @@ export async function GET(request: NextRequest) {
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,
         modules,
+        capabilities,
         offers,
       },
     });

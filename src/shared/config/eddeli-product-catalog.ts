@@ -1,9 +1,21 @@
 /** Catálogo maestro EdDeli — fuente para seed y documentación del control plane. */
+export type CatalogCapabilityDef = {
+  /** Identificador estable para el cliente (ej. export_pdf, export_excel). */
+  code: string;
+  name: string;
+};
+
 export type CatalogSectionDef = {
   /** Ruta de la sección en EdDeli (link del menú). */
   key: string;
   name: string;
+  capabilities?: CatalogCapabilityDef[];
 };
+
+export const DEFAULT_EXPORT_CAPABILITIES: CatalogCapabilityDef[] = [
+  { code: "export_pdf", name: "Exportar PDF" },
+  { code: "export_excel", name: "Exportar Excel" },
+];
 
 export type CatalogModuleDef = {
   key: string;
@@ -47,8 +59,8 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     name: "Ventas",
     description: "Pedidos y clientes.",
     sections: [
-      { key: "/inventory/orders", name: "Pedidos" },
-      { key: "/inventory/customers", name: "Clientes" },
+      { key: "/inventory/orders", name: "Pedidos", capabilities: DEFAULT_EXPORT_CAPABILITIES },
+      { key: "/inventory/customers", name: "Clientes", capabilities: DEFAULT_EXPORT_CAPABILITIES },
     ],
   },
   {
@@ -56,10 +68,10 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     name: "Finanzas",
     description: "Finanzas, cobranzas, deudas y gastos recurrentes.",
     sections: [
-      { key: "/inventory/finance", name: "Finanzas" },
-      { key: "/inventory/collections", name: "Cobranzas" },
-      { key: "/inventory/prestamos-deudas", name: "Préstamos y deudas" },
-      { key: "/inventory/gastos-recurrentes", name: "Gastos recurrentes" },
+      { key: "/inventory/finance", name: "Finanzas", capabilities: DEFAULT_EXPORT_CAPABILITIES },
+      { key: "/inventory/collections", name: "Cobranzas", capabilities: DEFAULT_EXPORT_CAPABILITIES },
+      { key: "/inventory/prestamos-deudas", name: "Préstamos y deudas", capabilities: DEFAULT_EXPORT_CAPABILITIES },
+      { key: "/inventory/gastos-recurrentes", name: "Gastos recurrentes", capabilities: DEFAULT_EXPORT_CAPABILITIES },
     ],
   },
   {

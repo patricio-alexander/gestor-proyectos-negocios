@@ -148,7 +148,7 @@ export function ModulesManager() {
     <div className={gp.page}>
       <ManagerHeader
         title="Módulos"
-        description="Catálogo de módulos, secciones y límites remotos de registros"
+        description="Catálogo de módulos, secciones, límites y capacidades remotas"
         Icon={Cubes3Overlap}
         action={
           <Modal state={moduleCreateState}>

@@ -5,6 +5,7 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "./generated/prisma/client";
 import {
   DEFAULT_ROLES,
+  DEFAULT_EXPORT_CAPABILITIES,
   EDDELI_PRODUCT_CATALOG,
   type CatalogModuleDef,
 } from "../src/shared/config/eddeli-product-catalog";
@@ -153,6 +154,13 @@ const EDDELI_APP_HASH = crypto
   .digest("hex")
   .slice(0, 32);
 
+const EDDELI_API_KEY = "gc_4a177c0295a4cb88d52cea1035b9e9a5";
+const EDDELI_API_KEY_PREFIX = EDDELI_API_KEY.slice(0, 11);
+const EDDELI_API_KEY_HASH = crypto
+  .createHash("sha256")
+  .update(EDDELI_API_KEY)
+  .digest("hex");
+
 async function seedEdDeliApp() {
   return prisma.apps.upsert({
     where: { hash: EDDELI_APP_HASH },
@@ -164,6 +172,44 @@ async function seedEdDeliApp() {
       email: "soporte@eddeli.com",
     },
   });
+}
+
+async function seedEdDeliApiKey(appId: number) {
+  await prisma.apiKey.upsert({
+    where: { prefix: EDDELI_API_KEY_PREFIX },
+    update: {
+      name: "EdDeli — seed",
+      app_id: appId,
+      hash: EDDELI_API_KEY_HASH,
+      active: true,
+    },
+    create: {
+      name: "EdDeli — seed",
+      app_id: appId,
+      prefix: EDDELI_API_KEY_PREFIX,
+      hash: EDDELI_API_KEY_HASH,
+      active: true,
+    },
+  });
+}
+
+async function seedSectionCapabilities(
+  sectionId: number,
+  capabilities: { code: string; name: string }[],
+) {
+  for (const cap of capabilities) {
+    await prisma.capability.upsert({
+      where: {
+        section_id_code: { section_id: sectionId, code: cap.code },
+      },
+      update: { name: cap.name },
+      create: {
+        section_id: sectionId,
+        code: cap.code,
+        name: cap.name,
+      },
+    });
+  }
 }
 
 async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
@@ -194,19 +240,27 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
         where: { module_id: mod.id, key: secDef.key, deleted_at: null },
       });
 
+      let sectionId: number;
+
       if (existing) {
         await prisma.section.update({
           where: { id: existing.id },
           data: { name: secDef.name },
         });
+        sectionId = existing.id;
       } else {
-        await prisma.section.create({
+        const created = await prisma.section.create({
           data: {
             module_id: mod.id,
             key: secDef.key,
             name: secDef.name,
           },
         });
+        sectionId = created.id;
+      }
+
+      if (secDef.capabilities?.length) {
+        await seedSectionCapabilities(sectionId, secDef.capabilities);
       }
 
       sectionCount += 1;
@@ -220,13 +274,14 @@ async function main() {
   await seedRoles();
   await seedGestorAccounts();
   const eddeliApp = await seedEdDeliApp();
+  await seedEdDeliApiKey(eddeliApp.id);
   const sectionCount = await seedEdDeliCatalog(
     eddeliApp.id,
     EDDELI_PRODUCT_CATALOG,
   );
 
   console.log(
-    "Seed OK: roles, EdDeli (%d módulos, %d secciones), cuentas (administrador/Edgar Torres + demo)",
+    "Seed OK: roles, EdDeli (%d módulos, %d secciones), API key seed, cuentas (administrador/Edgar Torres + demo)",
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
   );

@@ -8,15 +8,17 @@ import {
   useOverlayState,
 } from "@heroui/react";
 import CirclePlus from "@gravity-ui/icons/CirclePlus";
+import Key from "@gravity-ui/icons/Key";
 import Layers from "@gravity-ui/icons/Layers";
 import Pencil from "@gravity-ui/icons/Pencil";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import { useState } from "react";
-import type { Module, Section } from "../types";
+import type { Capability, Module, Section } from "../types";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { SectionLimitBadge, SectionLimitSummary } from "./SectionLimitBadge";
 import { SectionMaxRecordsLimitField } from "./SectionMaxRecordsLimitField";
+import { SectionCapabilitiesPanel } from "./SectionCapabilitiesPanel";
 
 function parseMaxRecordsLimitInput(value: FormDataEntryValue | null) {
   if (value == null || String(value).trim() === "") return null;
@@ -46,6 +48,8 @@ export function ModuleSectionsPanel({
   const [sectionSubmitting, setSectionSubmitting] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [deletingSection, setDeletingSection] = useState<Section | null>(null);
+  const [managingCapabilitiesSection, setManagingCapabilitiesSection] =
+    useState<Section | null>(null);
 
   const sectionsState = useOverlayState({
     isOpen: open,
@@ -62,6 +66,20 @@ export function ModuleSectionsPanel({
       ...module,
       sections: updater(module.sections),
     });
+  }
+
+  function updateSectionCapabilities(
+    sectionId: number,
+    capabilities: Capability[],
+  ) {
+    updateSections((sections) =>
+      sections.map((s) =>
+        s.id === sectionId ? { ...s, capabilities } : s,
+      ),
+    );
+    setManagingCapabilitiesSection((current) =>
+      current?.id === sectionId ? { ...current, capabilities } : current,
+    );
   }
 
   async function handleCreateSection(e: React.FormEvent<HTMLFormElement>) {
@@ -85,7 +103,10 @@ export function ModuleSectionsPanel({
         const data = await res.json();
         throw new Error(data.error || "Error al crear sección");
       }
-      const section: Section = await res.json();
+      const section: Section = {
+        ...(await res.json()),
+        capabilities: [],
+      };
       updateSections((sections) => [...sections, section]);
       sectionCreateState.close();
     } catch (err) {
@@ -118,7 +139,11 @@ export function ModuleSectionsPanel({
       }
       const section: Section = await res.json();
       updateSections((sections) =>
-        sections.map((s) => (s.id === section.id ? section : s)),
+        sections.map((s) =>
+          s.id === section.id
+            ? { ...section, capabilities: s.capabilities ?? [] }
+            : s,
+        ),
       );
       sectionEditState.close();
       setEditingSection(null);
@@ -177,13 +202,13 @@ export function ModuleSectionsPanel({
                       Sin secciones todavía
                     </p>
                     <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-                      Creá la primera sección para definir límites de registros
-                      remotos.
+                      Creá la primera sección para definir límites y capacidades
+                      remotas.
                     </p>
                   </div>
                 ) : (
                   <div className="max-h-[min(50vh,420px)] overflow-auto rounded-xl border">
-                    <table className="w-full min-w-[480px] text-left text-sm">
+                    <table className="w-full min-w-[560px] text-left text-sm">
                       <thead className="sticky top-0 z-10">
                         <tr
                           className="border-b text-xs uppercase tracking-wide"
@@ -197,53 +222,79 @@ export function ModuleSectionsPanel({
                           <th className="px-5 py-2.5 font-medium">
                             Límite remoto
                           </th>
-                          <th className="w-28 px-5 py-2.5 font-medium text-right">
+                          <th className="px-5 py-2.5 font-medium">
+                            Capacidades
+                          </th>
+                          <th className="w-36 px-5 py-2.5 font-medium text-right">
                             Acciones
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {module.sections.map((sec) => (
-                          <tr
-                            key={sec.id}
-                            className="border-b last:border-none"
-                            style={{ borderColor: "var(--gp-border)" }}
-                          >
-                            <td className="px-5 py-3 font-medium">{sec.name}</td>
-                            <td className="px-5 py-3">
-                              <SectionLimitBadge limit={sec.max_records_limit} />
-                            </td>
-                            <td className="px-5 py-3">
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  aria-label={`Editar ${sec.name}`}
-                                  onPress={() => {
-                                    setEditingSection(sec);
-                                    setSectionError("");
-                                    sectionEditState.open();
-                                  }}
-                                >
-                                  <Pencil width={12} height={12} />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-red-500"
-                                  aria-label={`Eliminar ${sec.name}`}
-                                  onPress={() => {
-                                    setDeletingSection(sec);
-                                    setSectionError("");
-                                    sectionDeleteState.open();
-                                  }}
-                                >
-                                  <TrashBin width={12} height={12} />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {module.sections.map((sec) => {
+                          const caps = sec.capabilities ?? [];
+                          const activeCaps = caps.filter((c) => c.is_active).length;
+
+                          return (
+                            <tr
+                              key={sec.id}
+                              className="border-b last:border-none"
+                              style={{ borderColor: "var(--gp-border)" }}
+                            >
+                              <td className="px-5 py-3 font-medium">{sec.name}</td>
+                              <td className="px-5 py-3">
+                                <SectionLimitBadge limit={sec.max_records_limit} />
+                              </td>
+                              <td className="px-5 py-3">
+                                <span className="text-xs text-[var(--gp-text-muted)]">
+                                  {caps.length === 0
+                                    ? "Sin capacidades"
+                                    : `${activeCaps}/${caps.length} activas`}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    aria-label={`Capacidades de ${sec.name}`}
+                                    onPress={() => {
+                                      setManagingCapabilitiesSection(sec);
+                                      setSectionError("");
+                                    }}
+                                  >
+                                    <Key width={12} height={12} />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    aria-label={`Editar ${sec.name}`}
+                                    onPress={() => {
+                                      setEditingSection(sec);
+                                      setSectionError("");
+                                      sectionEditState.open();
+                                    }}
+                                  >
+                                    <Pencil width={12} height={12} />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-red-500"
+                                    aria-label={`Eliminar ${sec.name}`}
+                                    onPress={() => {
+                                      setDeletingSection(sec);
+                                      setSectionError("");
+                                      sectionDeleteState.open();
+                                    }}
+                                  >
+                                    <TrashBin width={12} height={12} />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -356,6 +407,20 @@ export function ModuleSectionsPanel({
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      {managingCapabilitiesSection && (
+        <SectionCapabilitiesPanel
+          section={managingCapabilitiesSection}
+          open
+          onClose={() => setManagingCapabilitiesSection(null)}
+          onCapabilitiesChange={(capabilities) =>
+            updateSectionCapabilities(
+              managingCapabilitiesSection.id,
+              capabilities,
+            )
+          }
+        />
+      )}
 
       <Modal state={sectionDeleteState}>
         <Modal.Backdrop>

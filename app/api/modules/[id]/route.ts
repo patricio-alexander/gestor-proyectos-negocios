@@ -13,7 +13,13 @@ export async function GET(_request: Request, { params }: Params) {
       where: { id: Number(id), deleted_at: null },
       include: {
         apps: { select: { name: true } },
-        sections: { where: { deleted_at: null }, orderBy: { created_at: "asc" } },
+        sections: {
+          where: { deleted_at: null },
+          orderBy: { created_at: "asc" },
+          include: {
+            capabilities: { orderBy: { created_at: "asc" } },
+          },
+        },
       },
     });
 
@@ -62,7 +68,13 @@ export async function PATCH(request: Request, { params }: Params) {
       },
       include: {
         apps: { select: { name: true } },
-        sections: { where: { deleted_at: null }, orderBy: { created_at: "asc" } },
+        sections: {
+          where: { deleted_at: null },
+          orderBy: { created_at: "asc" },
+          include: {
+            capabilities: { orderBy: { created_at: "asc" } },
+          },
+        },
       },
     });
 
