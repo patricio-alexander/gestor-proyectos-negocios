@@ -100,33 +100,17 @@ export async function GET(request: NextRequest) {
         key: s.key,
         name: s.name,
         max_records_limit: s.max_records_limit,
-        capabilities: s.capabilities.map((c) => ({
-          id: c.id,
-          code: c.code,
-          name: c.name,
-          is_active: c.is_active,
-        })),
       })),
     }));
 
     const capabilities = plan.plan_modules.flatMap((pm) =>
-      pm.module.sections.flatMap((s) =>
-        s.capabilities.map((c) => ({
-          id: c.id,
-          code: c.code,
-          name: c.name,
-          is_active: c.is_active,
-          section: {
-            id: s.id,
-            key: s.key,
-            name: s.name,
-          },
-          module: {
-            id: pm.module.id,
-            name: pm.module.name,
-          },
-        })),
-      ),
+      pm.module.sections.flatMap((s) => {
+        const availableCapabilities = s.capabilities.map((c) => [
+          c.code,
+          c.is_active,
+        ]);
+        return Object.fromEntries(availableCapabilities);
+      }),
     );
 
     const offers = (plan.planOffers ?? []).map((po) => ({
