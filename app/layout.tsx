@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ToastProvider } from "@heroui/react";
 import { ThemeProvider } from "@/src/shared/providers/ThemeProvider";
 import "./globals.css";
 
@@ -35,7 +36,10 @@ export default function RootLayout({
             __html: `(function(){try{var m=localStorage.getItem("gestor-theme-mode");var r=document.documentElement;if(m==="light"){}else if(m==="dark")r.classList.add("dark");else{r.classList.add("neon","dark");}}catch(e){}})();`,
           }}
         />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider placement="top end" />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

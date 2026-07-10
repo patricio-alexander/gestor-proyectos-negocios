@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import Bell from "@gravity-ui/icons/Bell";
 import Briefcase from "@gravity-ui/icons/Briefcase";
+import ClockArrowRotateLeft from "@gravity-ui/icons/ClockArrowRotateLeft";
 import CreditCard from "@gravity-ui/icons/CreditCard";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import FileText from "@gravity-ui/icons/FileText";
@@ -28,6 +29,7 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/api-keys": Key,
   "/dashboard/access/users": Persons,
   "/dashboard/access/roles": ShieldKeyhole,
+  "/dashboard/events": ClockArrowRotateLeft,
 };
 
 export function NavIcon({ href, ...props }: { href: string } & IconProps) {

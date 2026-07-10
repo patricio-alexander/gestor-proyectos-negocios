@@ -151,6 +151,7 @@ model Apps {
   subscriptions Subscription[]
   api_keys      ApiKey[]
   offers        Offer[]
+  events        Event[]
 }
 
 model ApiKey {
@@ -243,4 +244,31 @@ enum Period {
 enum MethodPay {
   CASH
   TRANSFER
+}
+
+// ─── Event tracking ─────────────────────────────────────────────────────────
+
+model EventType {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  name        String   @unique
+  description String?  @db.VarChar(500)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  events      Event[]
+}
+
+model Event {
+  id         Int        @id @default(autoincrement())
+  app_id     Int
+  type_id    Int
+  name       String
+  metadata   Json?
+  created_at DateTime   @default(now())
+  app        Apps       @relation(fields: [app_id], references: [id])
+  type       EventType  @relation(fields: [type_id], references: [id])
+
+  @@index([app_id])
+  @@index([type_id])
+  @@index([created_at])
 }

@@ -270,6 +270,147 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
   return sectionCount;
 }
 
+const EVENT_TYPES_SEED = [
+  { key: "user.registered", name: "Registro de usuario" },
+  { key: "user.login", name: "Inicio de sesión" },
+  { key: "order.created", name: "Pedido creado" },
+  { key: "order.confirmed", name: "Pedido confirmado" },
+  { key: "order.prepared", name: "Pedido en preparación" },
+  { key: "order.delivered", name: "Pedido entregado" },
+  { key: "order.cancelled", name: "Pedido cancelado" },
+  { key: "payment.processed", name: "Pago procesado" },
+  { key: "payment.failed", name: "Pago fallido" },
+  { key: "payment.refunded", name: "Pago reembolsado" },
+  { key: "restaurant.opened", name: "Restaurante abierto" },
+  { key: "restaurant.closed", name: "Restaurante cerrado" },
+  { key: "review.created", name: "Reseña creada" },
+  { key: "promotion.used", name: "Promoción usada" },
+];
+
+async function seedEventTypes() {
+  const types: { id: number; key: string }[] = [];
+  for (const et of EVENT_TYPES_SEED) {
+    const row = await prisma.eventType.upsert({
+      where: { key: et.key },
+      update: { name: et.name },
+      create: { key: et.key, name: et.name },
+    });
+    types.push({ id: row.id, key: row.key });
+  }
+  return types;
+}
+
+function randomBetween(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomDate(daysAgo: number): Date {
+  const now = Date.now();
+  const past = now - daysAgo * 24 * 60 * 60 * 1000;
+  return new Date(past + Math.random() * (now - past));
+}
+
+const EVENT_DISTRIBUTION: Record<string, { weight: number; names: string[] }> =
+  {
+    "user.registered": { weight: 15, names: ["user:signup", "user:register"] },
+    "user.login": { weight: 60, names: ["user:login"] },
+    "order.created": { weight: 45, names: ["order:create", "order:place"] },
+    "order.confirmed": { weight: 40, names: ["order:confirm"] },
+    "order.prepared": {
+      weight: 35,
+      names: ["order:cooking", "order:preparing"],
+    },
+    "order.delivered": {
+      weight: 38,
+      names: ["order:deliver", "order:complete"],
+    },
+    "order.cancelled": { weight: 8, names: ["order:cancel"] },
+    "payment.processed": {
+      weight: 42,
+      names: ["payment:success", "payment:approve"],
+    },
+    "payment.failed": {
+      weight: 6,
+      names: ["payment:decline", "payment:error"],
+    },
+    "payment.refunded": { weight: 4, names: ["payment:refund"] },
+    "restaurant.opened": { weight: 20, names: ["restaurant:open"] },
+    "restaurant.closed": { weight: 20, names: ["restaurant:close"] },
+    "review.created": { weight: 18, names: ["review:write", "review:rate"] },
+    "promotion.used": {
+      weight: 10,
+      names: ["promotion:apply", "promotion:redeem"],
+    },
+  };
+
+async function seedEvents(typeMap: Map<string, number>, appIds: number[]) {
+  const entries: {
+    app_id: number;
+    type_id: number;
+    name: string;
+    created_at: Date;
+    metadata: any;
+  }[] = [];
+
+  for (const appId of appIds) {
+    for (const [key, dist] of Object.entries(EVENT_DISTRIBUTION)) {
+      const typeId = typeMap.get(key);
+      if (!typeId) continue;
+      const count = randomBetween(dist.weight - 5, dist.weight + 10);
+
+      for (let i = 0; i < count; i++) {
+        const name = dist.names[Math.floor(Math.random() * dist.names.length)];
+        const created_at = randomDate(30);
+
+        let metadata: any = null;
+        if (key.startsWith("order.")) {
+          metadata = {
+            order_id: randomBetween(1000, 9999),
+            amount: randomBetween(15, 200) * 1000,
+            items: randomBetween(1, 8),
+          };
+        } else if (key.startsWith("payment.")) {
+          metadata = {
+            transaction_id: `txn_${crypto.randomBytes(8).toString("hex")}`,
+            amount: randomBetween(10, 250) * 1000,
+            method: ["credit_card", "debit_card", "cash", "transfer"][
+              randomBetween(0, 3)
+            ],
+          };
+        } else if (key.startsWith("user.")) {
+          metadata = { user_id: randomBetween(1, 500) };
+        } else if (key.startsWith("restaurant.")) {
+          metadata = { restaurant_id: randomBetween(1, 50) };
+        } else if (key === "review.created") {
+          metadata = {
+            order_id: randomBetween(1000, 9999),
+            rating: randomBetween(1, 5),
+          };
+        } else if (key === "promotion.used") {
+          metadata = {
+            code: `PROMO${randomBetween(100, 999)}`,
+            discount: randomBetween(5, 50) * 1000,
+          };
+        }
+
+        entries.push({
+          app_id: appId,
+          type_id: typeId,
+          name,
+          created_at,
+          metadata,
+        });
+      }
+    }
+  }
+
+  for (const entry of entries) {
+    await prisma.event.create({ data: entry });
+  }
+
+  return entries.length;
+}
+
 async function main() {
   await seedRoles();
   await seedGestorAccounts();
@@ -280,11 +421,31 @@ async function main() {
     EDDELI_PRODUCT_CATALOG,
   );
 
+  // const types = await seedEventTypes();
+  // const typeMap = new Map(types.map((t) => [t.key, t.id]));
+  //
+  // const secondApp = await prisma.apps.upsert({
+  //   where: { hash: "demo-app-02" },
+  //   update: { name: "DemoApp Secundaria", deleted_at: null },
+  //   create: {
+  //     hash: "demo-app-02",
+  //     name: "DemoApp Secundaria",
+  //     owner_name: "Demo Owner",
+  //   },
+  // });
+  //
+  // const totalEvents = await seedEvents(typeMap, [eddeliApp.id, secondApp.id]);
+  //
   console.log(
     "Seed OK: roles, EdDeli (%d módulos, %d secciones), API key seed, cuentas (administrador/Edgar Torres + demo)",
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
   );
+  // console.log(
+  //   "  Eventos: %d tipos, %d eventos generados",
+  //   types.length,
+  //   totalEvents,
+  // );
 }
 
 main()

@@ -43,4 +43,8 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     title: "APIS",
     items: [{ label: "API Keys", href: "/dashboard/api-keys" }],
   },
+  {
+    title: "Monitoreo",
+    items: [{ label: "Eventos", href: "/dashboard/events" }],
+  },
 ];
