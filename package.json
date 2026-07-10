@@ -13,6 +13,7 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "worker:usage": "tsx workers/usage-reset-worker.ts",
+    "worker:listener-folders": "tsx workers/listener-folder-worker.ts",
     "postinstall": "prisma generate",
     "setup": "prisma generate && prisma db push --accept-data-loss && npm run seed"
   },
@@ -31,7 +32,8 @@
     "node-cron": "^4.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.9.2"
+    "recharts": "^3.9.2",
+    "watcher": "^2.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

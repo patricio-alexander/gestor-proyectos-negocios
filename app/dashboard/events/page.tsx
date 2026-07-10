@@ -11,6 +11,7 @@ import ClockArrowRotateLeft from "@gravity-ui/icons/ClockArrowRotateLeft";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import Eye from "@gravity-ui/icons/Eye";
+import ArrowDownFromLine from "@gravity-ui/icons/ArrowDownFromLine";
 import { useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -51,13 +52,15 @@ function matchesEvent(event: EventRecord, query: string) {
 export default function EventsPage() {
   const [range, setRange] = useState("TODO");
   const { events, apps, loading, refetch } = useEvents(range);
-  const { types: eventTypes, loading: typesLoading, create: createType, remove: deleteType } = useEventTypes();
+  const { types: eventTypes, loading: typesLoading, create: createType, remove: deleteType, refetch: refetchTypes } = useEventTypes();
   const [submitting, setSubmitting] = useState(false);
   const [detailEvent, setDetailEvent] = useState<EventRecord | null>(null);
 
   const [typeKey, setTypeKey] = useState("");
   const [typeName, setTypeName] = useState("");
   const [typeDesc, setTypeDesc] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: number; errors: number } | null>(null);
 
   const detailState = useOverlayState();
 
@@ -92,6 +95,44 @@ export default function EventsPage() {
       toast.success("Tipo de evento eliminado");
     } catch (err) {
       toast.danger(err instanceof Error ? err.message : "Error al eliminar tipo");
+    }
+  }
+
+  async function handleImportCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error("El CSV debe tener un encabezado y al menos una fila");
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const keyIdx = headers.indexOf("key");
+      const nameIdx = headers.indexOf("name");
+      if (keyIdx === -1 || nameIdx === -1) throw new Error("El CSV debe tener columnas 'key' y 'name'");
+      let ok = 0;
+      let errors = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map((c) => c.trim());
+        const key = cols[keyIdx];
+        const name = cols[nameIdx];
+        const description = cols[headers.indexOf("description")] ?? "";
+        if (!key || !name) { errors++; continue; }
+        try {
+          await createType({ key, name, description: description || undefined });
+          ok++;
+        } catch { errors++; }
+      }
+      setImportResult({ ok, errors });
+      if (errors === 0) toast.success(`${ok} tipos importados`);
+      else toast.danger(`${ok} importados, ${errors} con errores`);
+      refetchTypes();
+    } catch (err) {
+      toast.danger(err instanceof Error ? err.message : "Error al importar CSV");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
     }
   }
 
@@ -194,6 +235,19 @@ export default function EventsPage() {
               {submitting ? <Spinner size="sm" /> : <><Plus width={14} height={14} /> Agregar tipo</>}
             </Button>
           </form>
+          <hr className="my-4 border-[var(--gp-border)]" />
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--gp-text-faint)]">Importar desde CSV</h4>
+          <p className="mb-2 text-xs text-[var(--gp-text-faint)]">Columnas: key, name, description (opcional)</p>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[var(--gp-elevated)] px-3 py-2 text-sm hover:opacity-80">
+            <ArrowDownFromLine width={16} height={16} />
+            {importing ? "Importando…" : "Seleccionar archivo"}
+            <input type="file" accept=".csv" className="sr-only" onChange={handleImportCsv} disabled={importing} />
+          </label>
+          {importResult && (
+            <p className="mt-2 text-xs text-[var(--gp-text-faint)]">
+              {importResult.ok} importados{importResult.errors > 0 ? `, ${importResult.errors} con errores` : ""}
+            </p>
+          )}
         </div>
 
         <div className={gp.cardPadded}>

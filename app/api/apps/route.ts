@@ -23,6 +23,9 @@ export async function GET() {
         ruc: a.ruc,
         address: a.address,
         email: a.email,
+        path: a.path,
+        images_size: a.images_size,
+        database_size: a.database_size,
         maintenance: a.maintenance,
         created_at: a.created_at.toISOString(),
         updated_at: a.updated_at.toISOString(),
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, owner_name, phone, ruc, address, email, maintenance } = body;
+    const { name, owner_name, phone, ruc, address, email, path, images_size, database_size, maintenance } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
         ruc: ruc?.trim() ?? null,
         address: address?.trim() ?? null,
         email: email?.trim() ?? null,
+        path: path?.trim() ?? null,
+        images_size: images_size ?? null,
+        database_size: database_size ?? null,
         maintenance: maintenance ?? false,
       },
     });
@@ -76,6 +82,9 @@ export async function POST(request: Request) {
         ruc: app.ruc,
         address: app.address,
         email: app.email,
+        path: app.path,
+        images_size: app.images_size,
+        database_size: app.database_size,
         maintenance: app.maintenance,
         created_at: app.created_at.toISOString(),
         updated_at: app.updated_at.toISOString(),

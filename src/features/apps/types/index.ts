@@ -7,6 +7,9 @@ export type App = {
   ruc: string | null;
   address: string | null;
   email: string | null;
+  path: string | null;
+  images_size: number | null;
+  database_size: number | null;
   maintenance: boolean;
   created_at: string;
   updated_at: string;
@@ -20,6 +23,9 @@ export type CreateAppInput = {
   ruc?: string | null;
   address?: string | null;
   email?: string | null;
+  path?: string | null;
+  images_size?: number | null;
+  database_size?: number | null;
   maintenance?: boolean;
 };
 
@@ -30,5 +36,8 @@ export type UpdateAppInput = {
   ruc?: string | null;
   address?: string | null;
   email?: string | null;
+  path?: string | null;
+  images_size?: number | null;
+  database_size?: number | null;
   maintenance?: boolean;
 };

@@ -142,7 +142,10 @@ model Apps {
   ruc           String?
   address       String?
   email         String?
-  maintenance  Boolean        @default(false)
+  path              String?
+  images_size       Int?
+  database_size     Int?
+  maintenance       Boolean        @default(false)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?

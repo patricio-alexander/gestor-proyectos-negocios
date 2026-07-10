@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@/prisma/generated/prisma/client";
 
+// Resetear contador de limite de uso por seccion
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USER,
@@ -30,3 +31,4 @@ cron.schedule("0 0 * * *", async () => {
 });
 
 console.log("Usage reset worker started. Waiting for midnight...");
+
