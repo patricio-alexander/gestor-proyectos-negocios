@@ -86,6 +86,14 @@ async function main() {
     onChangeFolder(filePath);
   });
 
+  watcher.on("unlink", (filePath) => {
+    onChangeFolder(filePath);
+  });
+
+  watcher.on("unlinkDir", (filePath) => {
+    onChangeFolder(filePath);
+  });
+
   // Cuando el watcher está listo (ya escaneó todo)
   watcher.on("ready", () => {
     console.log("Watcher listo, vigilando cambios...");
