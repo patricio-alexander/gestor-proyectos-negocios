@@ -46,6 +46,7 @@ async function main() {
   });
 
   if (!apps.length) {
+    console.log("no hay apps - asegurate de tener apps con el path registrado");
     return;
   }
 
