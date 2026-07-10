@@ -17,12 +17,16 @@ const adapter = new PrismaMariaDb({
 
 const basePath = "/var/www/html";
 
-const getSizeFolder = async (pathDir: string) => {
+const getSizeFolder = async (pathDir: string): Promise<number> => {
   const entries = await fs.readdir(pathDir, { withFileTypes: true });
 
   const sizes = await Promise.all(
     entries.map(async (entrie) => {
       const fullpath = path.join(pathDir, entrie.name);
+
+      if (entrie.isDirectory()) {
+        return getSizeFolder(fullpath);
+      }
 
       if (entrie.isFile()) {
         const stats = await fs.stat(fullpath);
@@ -32,7 +36,7 @@ const getSizeFolder = async (pathDir: string) => {
     }),
   );
 
-  return Math.round(sizes.reduce((acc, s) => acc + s, 0) / (1024 * 1024));
+  return sizes.reduce((acc, s) => acc + s, 0);
 };
 
 async function main() {
@@ -55,23 +59,25 @@ async function main() {
     fullpath: `${basePath}${app.path}`,
   }));
 
-  const watcher = new Watcher(fullpaths.map((f) => f.fullpath));
+  const watcher = new Watcher(
+    fullpaths.map((f) => f.fullpath),
+    { recursive: true },
+  );
 
   const onChangeFolder = async (filePath: any) => {
-    const folder = fullpaths.find(
-      (f) => f.fullpath === path.dirname(path.resolve(filePath)),
-    );
-    if (folder) {
-      const size = await getSizeFolder(folder.fullpath);
-      await prisma.apps.update({
-        where: { id: folder.id },
-        data: {
-          images_size: size,
-        },
-      });
-    }
+    const folder = fullpaths.find((f) => f.fullpath === path.dirname(filePath));
+    if (!folder) return;
+
+    const size = await getSizeFolder(folder.fullpath);
+    await prisma.apps.update({
+      where: { id: folder.id },
+      data: {
+        images_size: Math.round(size / (1024 * 1024)),
+      },
+    });
   };
 
+  // si uso registro el watcher con rutas absolutas, el filePath es una ruta absoluta
   watcher.on("add", async (filePath) => {
     onChangeFolder(filePath);
   });
