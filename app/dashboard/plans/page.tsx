@@ -9,6 +9,7 @@ import {
 } from "@heroui/react";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
 import { PlanCard } from "@/src/features/plans/components/PlanCard";
+import { ExportPlansModal } from "@/src/features/plans/components/ExportPlansModal";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
@@ -149,6 +150,11 @@ function PlanForm({
                         className="size-4 rounded border-zinc-300"
                       />
                       {mod.name}
+                      {mod.is_trial && (
+                        <span className="rounded bg-amber-200 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-amber-800">
+                          Trial
+                        </span>
+                      )}
                     </label>
                   ))
               )}
@@ -389,38 +395,41 @@ export default function PlansPage() {
         description="Planes comerciales, precios y licencias por aplicación"
         Icon={FileText}
         action={
-          <Modal state={createState}>
-            <Button
-              style={{
-                backgroundColor: "var(--gp-primary)",
-                color: "var(--gp-primary-text)",
-              }}
-            >
-              <Plus width={16} height={16} />
-              Nuevo plan
-            </Button>
-            <Modal.Backdrop>
-              <Modal.Container>
-                <Modal.Dialog className="sm:max-w-200">
-                  <Modal.CloseTrigger />
-                  <Modal.Header>
-                    <Modal.Heading>Nuevo plan</Modal.Heading>
-                  </Modal.Header>
-                  <PlanForm
-                    key="create"
-                    onSubmit={handleCreate}
-                    error={error}
-                    submitting={submitting}
-                    businesses={businesses}
-                    allModules={catalogModules}
-                    allOffers={offers}
-                  >
-                    Crear
-                  </PlanForm>
-                </Modal.Dialog>
-              </Modal.Container>
-            </Modal.Backdrop>
-          </Modal>
+          <div className="flex items-center gap-2">
+            <ExportPlansModal plans={plans} apps={businesses} />
+            <Modal state={createState}>
+              <Button
+                style={{
+                  backgroundColor: "var(--gp-primary)",
+                  color: "var(--gp-primary-text)",
+                }}
+              >
+                <Plus width={16} height={16} />
+                Nuevo plan
+              </Button>
+              <Modal.Backdrop>
+                <Modal.Container>
+                  <Modal.Dialog className="sm:max-w-200">
+                    <Modal.CloseTrigger />
+                    <Modal.Header>
+                      <Modal.Heading>Nuevo plan</Modal.Heading>
+                    </Modal.Header>
+                    <PlanForm
+                      key="create"
+                      onSubmit={handleCreate}
+                      error={error}
+                      submitting={submitting}
+                      businesses={businesses}
+                      allModules={catalogModules}
+                      allOffers={offers}
+                    >
+                      Crear
+                    </PlanForm>
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
+          </div>
         }
       />
 

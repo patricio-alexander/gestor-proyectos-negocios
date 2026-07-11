@@ -7,7 +7,7 @@ export const planInclude = {
     select: {
       id: true,
       module_id: true,
-      module: { select: { name: true } },
+      module: { select: { name: true, is_trial: true } },
     },
   },
   planOffers: {
@@ -30,7 +30,7 @@ export function mapPlan(plan: {
   plan_modules: {
     id: number;
     module_id: number;
-    module: { name: string };
+    module: { name: string; is_trial: boolean };
   }[];
   planOffers: {
     offer_id: number;
@@ -50,6 +50,7 @@ export function mapPlan(plan: {
       id: pm.id,
       module_id: pm.module_id,
       module_name: pm.module.name,
+      is_trial: pm.module.is_trial,
     })),
     plan_offers: plan.planOffers.map((po) => ({
       offer_id: po.offer_id,

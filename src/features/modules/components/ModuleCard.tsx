@@ -11,6 +11,8 @@ import type { Module } from "../types";
 import { countLimitedSections } from "../lib/module-stats";
 import { gp } from "@/src/shared/ui/theme";
 import { SectionLimitBadge } from "./SectionLimitBadge";
+import { apiUrl } from "@/src/utils/apiUrl";
+import { formatDate } from "@/src/shared/utils/format-display";
 
 const MAX_VISIBLE_SECTIONS = 3;
 
@@ -33,56 +35,70 @@ export function ModuleCard({
 
   return (
     <Card className="gp-card gp-card-interactive flex h-full flex-col overflow-hidden p-0">
-      <div
-        className="h-1 shrink-0"
-        style={{
-          background: mod.is_active
-            ? "linear-gradient(90deg, var(--gp-primary), var(--gp-input-focus))"
-            : "var(--gp-border)",
-        }}
-      />
-
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className={gp.iconBoxSm}>
-              <Cubes3Overlap width={18} height={18} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-semibold text-[var(--gp-text)]">
-                {mod.name}
-              </h3>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                {mod.app_name && (
-                  <span className={gp.badge}>{mod.app_name}</span>
-                )}
-                <ModuleStatusBadge active={mod.is_active} />
-              </div>
+      <div className="relative">
+        {mod.image_url ? (
+          <img
+            src={apiUrl(mod.image_url)}
+            alt={mod.name}
+            className="h-72 w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-72 w-full items-center justify-center bg-zinc-100">
+            <div className="flex flex-col items-center gap-1.5">
+              <Cubes3Overlap
+                width={32}
+                height={32}
+                className="text-zinc-300"
+              />
+              <span className="text-[11px] font-medium text-zinc-300">
+                Sin imagen
+              </span>
             </div>
           </div>
+        )}
+        <div className="absolute right-2 top-2 flex gap-0.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Editar ${mod.name}`}
+            onPress={() => onEdit(mod)}
+            className="bg-white/80 backdrop-blur-xs hover:bg-white/95"
+          >
+            <Pencil width={14} height={14} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="bg-white/80 text-red-500 backdrop-blur-xs hover:bg-white/95"
+            aria-label={`Eliminar ${mod.name}`}
+            onPress={() => onDelete(mod)}
+          >
+            <TrashBin width={14} height={14} />
+          </Button>
+        </div>
+      </div>
 
-          <div className="flex shrink-0 gap-0.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              aria-label={`Editar ${mod.name}`}
-              onPress={() => onEdit(mod)}
-            >
-              <Pencil width={14} height={14} />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-500"
-              aria-label={`Eliminar ${mod.name}`}
-              onPress={() => onDelete(mod)}
-            >
-              <TrashBin width={14} height={14} />
-            </Button>
+      <div className="flex flex-1 flex-col p-5 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-[var(--gp-text)]">
+              {mod.name}
+            </h3>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {mod.app_name && (
+                <span className={gp.badge}>{mod.app_name}</span>
+              )}
+              <ModuleStatusBadge active={mod.is_active} />
+            </div>
+            {mod.description && (
+              <p className="mt-1.5 line-clamp-2 text-xs text-[var(--gp-text-muted)]">
+                {mod.description}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <ModuleStatBlock
             icon={Layers}
             label="Secciones"
@@ -96,8 +112,38 @@ export function ModuleCard({
           />
         </div>
 
+        {mod.is_trial && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-amber-800">
+              <span>Periodo de prueba</span>
+              {mod.start_trial && mod.end_trial ? (
+                <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                  Activo
+                </span>
+              ) : (
+                <span className="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+                  Sin iniciar
+                </span>
+              )}
+            </div>
+            {mod.start_trial && mod.end_trial ? (
+              <div className="mt-1 flex items-center gap-3 text-xs text-amber-700">
+                <span>Inicio: {formatDate(mod.start_trial)}</span>
+                <span className="text-amber-300">|</span>
+                <span>Fin: {formatDate(mod.end_trial)}</span>
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-amber-700">
+                {mod.limit_days_trial
+                  ? `${mod.limit_days_trial} días configurados — iniciar vía endpoint`
+                  : "Sin límite de días configurado"}
+              </p>
+            )}
+          </div>
+        )}
+
         {mod.sections.length > 0 ? (
-          <div className="mt-5 flex-1 space-y-2">
+          <div className="mt-4 flex-1 space-y-2">
             <p className="text-xs font-medium text-[var(--gp-text-muted)]">
               Vista previa
             </p>
@@ -119,13 +165,14 @@ export function ModuleCard({
               ))}
               {hiddenSections > 0 && (
                 <p className="text-xs text-[var(--gp-text-muted)]">
-                  +{hiddenSections} sección{hiddenSections === 1 ? "" : "es"} más
+                  +{hiddenSections} sección{hiddenSections === 1 ? "" : "es"}{" "}
+                  más
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <p className="mt-5 flex-1 text-xs text-[var(--gp-text-muted)]">
+          <p className="mt-4 flex-1 text-xs text-[var(--gp-text-muted)]">
             Sin secciones. Agregá una para configurar límites remotos.
           </p>
         )}
@@ -183,7 +230,9 @@ function ModuleStatBlock({
     <div
       className="rounded-xl border px-3 py-3"
       style={{
-        borderColor: featured ? "var(--gp-input-focus)" : "var(--gp-card-border)",
+        borderColor: featured
+          ? "var(--gp-input-focus)"
+          : "var(--gp-card-border)",
         backgroundColor: featured
           ? "var(--gp-badge-bg)"
           : "var(--gp-surface-muted)",

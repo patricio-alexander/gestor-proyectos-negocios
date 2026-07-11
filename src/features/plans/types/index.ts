@@ -8,6 +8,7 @@ export type PlanModule = {
   id: number;
   module_id: number;
   module_name: string;
+  is_trial: boolean;
 };
 
 export type PlanOffer = {

@@ -87,8 +87,13 @@ model Module {
   app_id        Int
   key           String
   name          String
-  description   String?       @db.Text
-  is_active     Boolean       @default(true)
+  description      String?       @db.Text
+  image_url        String?
+  is_active        Boolean       @default(true)
+  is_trial         Boolean       @default(false)
+  limit_days_trial Int?
+  start_trial      DateTime?
+  end_trial        DateTime?
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   deleted_at    DateTime?

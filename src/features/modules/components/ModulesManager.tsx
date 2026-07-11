@@ -5,6 +5,7 @@ import {
   Button,
   Modal,
   Spinner,
+  Switch,
   useOverlayState,
 } from "@heroui/react";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
@@ -17,6 +18,7 @@ import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSear
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { apiUrl } from "@/src/utils/apiUrl";
 import { ModulesDashboard } from "./ModulesDashboard";
 import { ModuleCard } from "./ModuleCard";
 import { ModuleSectionsPanel } from "./ModuleSectionsPanel";
@@ -41,6 +43,8 @@ export function ModulesManager() {
 
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [deletingModule, setDeletingModule] = useState<Module | null>(null);
+  const [editIsTrial, setEditIsTrial] = useState(false);
+  const [editLimitDays, setEditLimitDays] = useState("");
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
 
@@ -79,9 +83,24 @@ export function ModulesManager() {
         setError("Debe seleccionar una aplicación");
         return;
       }
+      const file = form.get("image") as File | null;
+      let imageUrl: string | null = null;
+      if (file && file.size > 0) {
+        const imgForm = new FormData();
+        imgForm.set("file", file);
+        const uploadRes = await fetch(apiUrl("/api/upload"), { method: "POST", body: imgForm });
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => null);
+          throw new Error(errData?.error || "Error al subir la imagen");
+        }
+        const { url } = await uploadRes.json();
+        imageUrl = url;
+      }
       await create({
         name: form.get("name") as string,
         app_id: appId,
+        description: (form.get("description") as string) || null,
+        image_url: imageUrl,
       });
       moduleCreateState.close();
     } catch (err) {
@@ -98,8 +117,25 @@ export function ModulesManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
+      const file = form.get("image") as File | null;
+      let imageUrl: string | null | undefined = undefined;
+      if (file && file.size > 0) {
+        const imgForm = new FormData();
+        imgForm.set("file", file);
+        const uploadRes = await fetch(apiUrl("/api/upload"), { method: "POST", body: imgForm });
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => null);
+          throw new Error(errData?.error || "Error al subir la imagen");
+        }
+        const { url } = await uploadRes.json();
+        imageUrl = url;
+      }
       const mod = await update(editingModule.id, {
         name: form.get("name") as string,
+        description: (form.get("description") as string) || null,
+        ...(imageUrl !== undefined && { image_url: imageUrl }),
+        is_trial: editIsTrial,
+        limit_days_trial: editIsTrial && editLimitDays ? Number(editLimitDays) : null,
       });
       if (selectedModule?.id === mod.id) {
         setSelectedModule(mod);
@@ -195,6 +231,24 @@ export function ModulesManager() {
                           className={gp.input}
                         />
                       </label>
+                      <label className={gp.label}>
+                        Descripción
+                        <textarea
+                          name="description"
+                          rows={3}
+                          placeholder="Descripción del módulo"
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        Imagen
+                        <input
+                          name="image"
+                          type="file"
+                          accept="image/*"
+                          className={gp.input}
+                        />
+                      </label>
                     </Modal.Body>
                     <Modal.Footer>
                       <Button variant="secondary" slot="close">
@@ -248,6 +302,8 @@ export function ModulesManager() {
                 onManageSections={handleManageSections}
                 onEdit={(m) => {
                   setEditingModule(m);
+                  setEditIsTrial(m.is_trial);
+                  setEditLimitDays(m.limit_days_trial?.toString() ?? "");
                   setError("");
                   moduleEditState.open();
                 }}
@@ -301,6 +357,65 @@ export function ModulesManager() {
                         required
                         defaultValue={editingModule.name}
                         className={gp.input}
+                      />
+                    </label>
+                    <label className={gp.label}>
+                      Descripción
+                      <textarea
+                        name="description"
+                        rows={3}
+                        placeholder="Descripción del módulo"
+                        defaultValue={editingModule.description ?? ""}
+                        className={gp.input}
+                      />
+                    </label>
+                    {editingModule.image_url && (
+                      <div className="flex items-center gap-3 rounded-lg border p-2">
+                        <img
+                          src={editingModule.image_url}
+                          alt={editingModule.name}
+                          className="size-12 rounded-lg object-cover"
+                        />
+                        <span className="text-xs text-zinc-500">Imagen actual</span>
+                      </div>
+                    )}
+                    <label className={gp.label}>
+                      {editingModule.image_url ? "Cambiar imagen" : "Imagen"}
+                      <input
+                        name="image"
+                        type="file"
+                        accept="image/*"
+                        className={gp.input}
+                      />
+                    </label>
+
+                    <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                      <span className="text-sm font-medium text-zinc-700">
+                        Periodo de prueba (trial)
+                      </span>
+                      <Switch
+                        isSelected={editIsTrial}
+                        onChange={setEditIsTrial}
+                      >
+                        <Switch.Content>
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                          {editIsTrial ? "Activado" : "Desactivado"}
+                        </Switch.Content>
+                      </Switch>
+                    </div>
+
+                    <label className={gp.label}>
+                      Días de prueba
+                      <input
+                        type="number"
+                        min="1"
+                        value={editLimitDays}
+                        onChange={(e) => setEditLimitDays(e.target.value)}
+                        placeholder="Ej: 30"
+                        className={gp.input}
+                        disabled={!editIsTrial}
                       />
                     </label>
                   </Modal.Body>

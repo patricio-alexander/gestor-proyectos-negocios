@@ -27,7 +27,12 @@ export type Module = {
   key: string;
   app_id: number;
   description: string | null;
+  image_url: string | null;
   is_active: boolean;
+  is_trial: boolean;
+  limit_days_trial: number | null;
+  start_trial: string | null;
+  end_trial: string | null;
   app_name?: string | null;
   sections: Section[];
   created_at: string;
@@ -38,12 +43,19 @@ export type Module = {
 export type CreateModuleInput = {
   name: string;
   app_id: number;
+  description?: string | null;
+  image_url?: string | null;
 };
 
 export type UpdateModuleInput = {
   name?: string;
   description?: string | null;
+  image_url?: string | null;
   is_active?: boolean;
+  is_trial?: boolean;
+  limit_days_trial?: number | null;
+  start_trial?: string | null;
+  end_trial?: string | null;
 };
 
 export type CreateSectionInput = {

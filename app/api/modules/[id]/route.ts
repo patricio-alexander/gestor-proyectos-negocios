@@ -62,8 +62,23 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(updates.description !== undefined && {
           description: updates.description ? String(updates.description).trim() : null,
         }),
+        ...(updates.image_url !== undefined && {
+          image_url: updates.image_url ? String(updates.image_url).trim() : null,
+        }),
         ...(updates.is_active !== undefined && {
           is_active: Boolean(updates.is_active),
+        }),
+        ...(updates.is_trial !== undefined && {
+          is_trial: Boolean(updates.is_trial),
+        }),
+        ...(updates.limit_days_trial !== undefined && {
+          limit_days_trial: updates.limit_days_trial != null ? Number(updates.limit_days_trial) : null,
+        }),
+        ...(updates.start_trial !== undefined && {
+          start_trial: updates.start_trial ? new Date(String(updates.start_trial)) : null,
+        }),
+        ...(updates.end_trial !== undefined && {
+          end_trial: updates.end_trial ? new Date(String(updates.end_trial)) : null,
         }),
       },
       include: {

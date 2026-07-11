@@ -49,6 +49,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name = body.name as string | undefined;
     const app_id = body.app_id as number | undefined;
+    const description = body.description as string | null | undefined;
+    const image_url = body.image_url as string | null | undefined;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "El nombre del módulo es obligatorio" }, { status: 400 });
@@ -64,6 +66,8 @@ export async function POST(request: Request) {
         name: name.trim(),
         key,
         app_id: Number(app_id),
+        ...(description !== undefined && { description: description || null }),
+        ...(image_url !== undefined && { image_url: image_url || null }),
       },
       include: {
         apps: { select: { name: true } },

@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
                       select: {
                         id: true,
                         name: true,
+                        is_trial: true,
+                        limit_days_trial: true,
+                        start_trial: true,
+                        end_trial: true,
                         sections: {
                           where: { deleted_at: null },
                           select: {
@@ -101,6 +105,10 @@ export async function GET(request: NextRequest) {
     const modules = plan.plan_modules.map((pm) => ({
       id: pm.module.id,
       name: pm.module.name,
+      is_trial: pm.module.is_trial,
+      start_trial: pm.module.start_trial,
+      limit_days_trial: pm.module.limit_days_trial,
+      end_trial: pm.module.end_trial,
       sections: pm.module.sections.map((s) => ({
         id: s.id,
         key: s.key,
