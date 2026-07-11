@@ -22,16 +22,9 @@ import { DashboardFinancialKpis } from "./DashboardFinancialKpis";
 import Picture from "@gravity-ui/icons/Picture";
 import Database from "@gravity-ui/icons/Database";
 
-function formatBytes(bytes: number | null): string {
-  if (bytes == null) return "—";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+function formatMB(mb: number | null): string {
+  if (mb == null) return "—";
+  return `${mb.toFixed(1)} MB`;
 }
 
 const QUICK_LINKS = [
@@ -100,9 +93,9 @@ export function DashboardOverview() {
 
       <DashboardFinancialKpis financial={data.financial} />
 
-      <Card className={`${gp.card} px-5 py-4`}>
+      <div>
         <div className="mb-3 flex items-center gap-2">
-          <Database width={16} height={16} className="text-[--gp-text-muted]" />
+          <Database width={18} height={18} className="text-[--gp-text-muted]" />
           <h2 className="text-sm font-semibold text-[--gp-text]">
             Almacenamiento por aplicación
           </h2>
@@ -110,54 +103,57 @@ export function DashboardOverview() {
         {data.appList.filter(
           (a) => a.images_size != null || a.database_size != null,
         ).length === 0 ? (
-          <p className={`${gp.subtitle} py-4 text-center text-sm`}>
-            No hay datos de almacenamiento disponibles.
-          </p>
+          <Card className={`${gp.card} px-5 py-4`}>
+            <p className={`${gp.subtitle} py-4 text-center text-sm`}>
+              No hay datos de almacenamiento disponibles.
+            </p>
+          </Card>
         ) : (
-          <div className="space-y-2">
-            {data.appList
-              .filter((a) => a.images_size != null || a.database_size != null)
-              .map((app) => (
-                <div
-                  key={app.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
-                  style={{
-                    borderColor: "var(--gp-card-border)",
-                    backgroundColor: "var(--gp-surface-muted)",
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--gp-text)]">
-                      {app.name || "—"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <Picture
-                        width={14}
-                        height={14}
-                        className="text-[var(--gp-text-muted)]"
-                      />
-                      <span className="text-xs tabular-nums text-[var(--gp-text)]">
-                        {formatBytes(app.images_size)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Database
-                        width={14}
-                        height={14}
-                        className="text-[var(--gp-text-muted)]"
-                      />
-                      <span className="text-xs tabular-nums text-[var(--gp-text)]">
-                        {formatBytes(app.database_size)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <div className={gp.card}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs uppercase tracking-wider text-[--gp-text-muted]"
+                  style={{ borderColor: "var(--gp-card-border)" }}>
+                  <th className="px-4 py-3 font-medium">Aplicación</th>
+                  <th className="px-4 py-3 font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Picture width={13} height={13} />
+                      Imágenes
+                    </span>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Database width={13} height={13} />
+                      Base de datos
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.appList
+                  .filter((a) => a.images_size != null || a.database_size != null)
+                  .map((app) => (
+                    <tr
+                      key={app.id}
+                      className="border-b last:border-0"
+                      style={{ borderColor: "var(--gp-card-border)" }}
+                    >
+                      <td className="px-4 py-3 font-medium text-[--gp-text]">
+                        {app.name || "—"}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-[--gp-text]">
+                        {formatMB(app.images_size)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-[--gp-text]">
+                        {formatMB(app.database_size)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </Card>
+      </div>
 
       <DashboardCharts data={data} />
 
