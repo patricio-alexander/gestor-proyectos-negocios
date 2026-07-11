@@ -24,6 +24,7 @@ export async function GET() {
         address: a.address,
         email: a.email,
         path: a.path,
+        database_name: a.database_name,
         images_size: a.images_size,
         database_size: a.database_size,
         maintenance: a.maintenance,
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, owner_name, phone, ruc, address, email, path, images_size, database_size, maintenance } = body;
+    const { name, owner_name, phone, ruc, address, email, path, database_name, images_size, database_size, maintenance } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
         address: address?.trim() ?? null,
         email: email?.trim() ?? null,
         path: path?.trim() ?? null,
+        database_name: database_name?.trim() ?? null,
         images_size: images_size ?? null,
         database_size: database_size ?? null,
         maintenance: maintenance ?? false,
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
         address: app.address,
         email: app.email,
         path: app.path,
+        database_name: app.database_name,
         images_size: app.images_size,
         database_size: app.database_size,
         maintenance: app.maintenance,

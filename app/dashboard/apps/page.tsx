@@ -71,8 +71,6 @@ export default function AppsPage() {
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
         path: (form.get("path") as string) || null,
-        images_size: Number(form.get("images_size")) || null,
-        database_size: Number(form.get("database_size")) || null,
         maintenance: form.get("maintenance") === "on",
       });
       createState.close();
@@ -98,8 +96,6 @@ export default function AppsPage() {
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
         path: (form.get("path") as string) || null,
-        images_size: Number(form.get("images_size")) || null,
-        database_size: Number(form.get("database_size")) || null,
         maintenance: form.get("maintenance") === "on",
       });
       editState.close();
@@ -240,20 +236,10 @@ export default function AppsPage() {
                         />
                       </label>
                       <label className={gp.label}>
-                        Images size (bytes)
+                        Nombre de base de datos
                         <input
-                          name="images_size"
-                          type="number"
-                          placeholder="0"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Database size (bytes)
-                        <input
-                          name="database_size"
-                          type="number"
-                          placeholder="0"
+                          name="database_name"
+                          placeholder="ej: gestor_ed_deli"
                           className={gp.input}
                         />
                       </label>
@@ -455,22 +441,11 @@ export default function AppsPage() {
                         />
                       </label>
                       <label className={gp.label}>
-                        Images size (bytes)
+                        Nombre de base de datos
                         <input
-                          name="images_size"
-                          type="number"
-                          defaultValue={editingApp.images_size ?? ""}
-                          placeholder="0"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Database size (bytes)
-                        <input
-                          name="database_size"
-                          type="number"
-                          defaultValue={editingApp.database_size ?? ""}
-                          placeholder="0"
+                          name="database_name"
+                          defaultValue={editingApp.database_name ?? ""}
+                          placeholder="ej: gestor_ed_deli"
                           className={gp.input}
                         />
                       </label>

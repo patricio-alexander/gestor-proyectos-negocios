@@ -1,25 +1,38 @@
 "use client";
 
-import type { ComponentType } from "react";
 import Link from "next/link";
 import { Card, Spinner } from "@heroui/react";
 import Briefcase from "@gravity-ui/icons/Briefcase";
 import CreditCard from "@gravity-ui/icons/CreditCard";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
 import Key from "@gravity-ui/icons/Key";
-import Gift from "@gravity-ui/icons/Gift";
-import FileText from "@gravity-ui/icons/FileText";
-import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import ChartLine from "@gravity-ui/icons/ChartLine";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { useDashboardOverview } from "../hooks/useDashboardOverview";
 import { StatCard } from "@/src/shared/components/StatCard";
-import { StatusBadge, subscriptionStatusTone } from "@/src/shared/components/StatusBadge";
+import {
+  StatusBadge,
+  subscriptionStatusTone,
+} from "@/src/shared/components/StatusBadge";
 import { gp } from "@/src/shared/ui/theme";
 import { formatDate, daysUntil } from "@/src/shared/utils/format-display";
 import { NavIcon } from "@/src/shared/config/dashboard-nav-icons";
 import { DashboardCharts } from "./DashboardCharts";
 import { DashboardFinancialKpis } from "./DashboardFinancialKpis";
+import Picture from "@gravity-ui/icons/Picture";
+import Database from "@gravity-ui/icons/Database";
+
+function formatBytes(bytes: number | null): string {
+  if (bytes == null) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
 
 const QUICK_LINKS = [
   { href: "/dashboard/apps", label: "Aplicaciones" },
@@ -86,6 +99,65 @@ export function DashboardOverview() {
       </div>
 
       <DashboardFinancialKpis financial={data.financial} />
+
+      <Card className={`${gp.card} px-5 py-4`}>
+        <div className="mb-3 flex items-center gap-2">
+          <Database width={16} height={16} className="text-[--gp-text-muted]" />
+          <h2 className="text-sm font-semibold text-[--gp-text]">
+            Almacenamiento por aplicación
+          </h2>
+        </div>
+        {data.appList.filter(
+          (a) => a.images_size != null || a.database_size != null,
+        ).length === 0 ? (
+          <p className={`${gp.subtitle} py-4 text-center text-sm`}>
+            No hay datos de almacenamiento disponibles.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {data.appList
+              .filter((a) => a.images_size != null || a.database_size != null)
+              .map((app) => (
+                <div
+                  key={app.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
+                  style={{
+                    borderColor: "var(--gp-card-border)",
+                    backgroundColor: "var(--gp-surface-muted)",
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[var(--gp-text)]">
+                      {app.name || "—"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <Picture
+                        width={14}
+                        height={14}
+                        className="text-[var(--gp-text-muted)]"
+                      />
+                      <span className="text-xs tabular-nums text-[var(--gp-text)]">
+                        {formatBytes(app.images_size)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Database
+                        width={14}
+                        height={14}
+                        className="text-[var(--gp-text-muted)]"
+                      />
+                      <span className="text-xs tabular-nums text-[var(--gp-text)]">
+                        {formatBytes(app.database_size)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </Card>
 
       <DashboardCharts data={data} />
 
@@ -185,17 +257,6 @@ export function DashboardOverview() {
           href="/dashboard/offers"
         />
       </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <MiniStat icon={Gift} label="Ofertas vigentes" value={data.offers.active} />
-        <MiniStat icon={FileText} label="Planes" value={data.plans} />
-        <MiniStat icon={Cubes3Overlap} label="Módulos" value={data.modules} />
-        <MiniStat
-          icon={ShieldKeyhole}
-          label="Licencias revocadas"
-          value={data.licenses.revoked}
-        />
-      </div>
     </div>
   );
 }
@@ -245,28 +306,6 @@ function AlertPanel({
           ))}
         </ul>
       )}
-    </Card>
-  );
-}
-
-function MiniStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ width?: number; height?: number }>;
-  label: string;
-  value: number;
-}) {
-  return (
-    <Card className={`${gp.card} px-4 py-3`}>
-      <div className="flex items-center gap-2 text-xs text-[var(--gp-text-muted)]">
-        <Icon width={14} height={14} />
-        {label}
-      </div>
-      <p className="mt-1 text-xl font-semibold text-[var(--gp-text)]">
-        {value.toLocaleString("es-PE")}
-      </p>
     </Card>
   );
 }

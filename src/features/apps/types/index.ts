@@ -8,6 +8,7 @@ export type App = {
   address: string | null;
   email: string | null;
   path: string | null;
+  database_name: string | null;
   images_size: number | null;
   database_size: number | null;
   maintenance: boolean;
@@ -24,6 +25,7 @@ export type CreateAppInput = {
   address?: string | null;
   email?: string | null;
   path?: string | null;
+  database_name?: string | null;
   images_size?: number | null;
   database_size?: number | null;
   maintenance?: boolean;
@@ -37,6 +39,7 @@ export type UpdateAppInput = {
   address?: string | null;
   email?: string | null;
   path?: string | null;
+  database_name?: string | null;
   images_size?: number | null;
   database_size?: number | null;
   maintenance?: boolean;

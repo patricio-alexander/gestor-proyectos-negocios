@@ -12,9 +12,11 @@ import {
   type FinancialKpis,
 } from "../lib/financial-kpis";
 import type { Plan } from "@/src/features/plans/types";
+import type { App } from "@/src/features/apps/types";
 
 export type DashboardOverview = {
   apps: number;
+  appList: App[];
   plans: number;
   modules: number;
   subscriptions: {
@@ -49,6 +51,7 @@ export type DashboardOverview = {
 
 const EMPTY: DashboardOverview = {
   apps: 0,
+  appList: [],
   plans: 0,
   modules: 0,
   subscriptions: { total: 0, active: 0, expired: 0, canceled: 0 },
@@ -115,6 +118,7 @@ export function useDashboardOverview() {
 
       setData({
         apps: apps.length,
+        appList: apps,
         plans: plans.length,
         modules: modules.filter((m: { deleted_at: string | null }) => !m.deleted_at)
           .length,

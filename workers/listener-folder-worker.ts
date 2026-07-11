@@ -5,7 +5,7 @@ import { PrismaClient } from "@/prisma/generated/prisma/client";
 import path from "path";
 import fs from "fs/promises";
 
-// Resetear contador de limite de uso por seccion
+//  Escucha si un directorio cambia, para actualizar el peso de las imagenes/videos de cada app en la db
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USER,
@@ -14,6 +14,8 @@ const adapter = new PrismaMariaDb({
   connectionLimit: 5,
   allowPublicKeyRetrieval: true,
 });
+
+const prisma = new PrismaClient({ adapter });
 
 const basePath = "/var/www/html";
 
@@ -40,7 +42,6 @@ const getSizeFolder = async (pathDir: string): Promise<number> => {
 };
 
 async function main() {
-  const prisma = new PrismaClient({ adapter });
   const apps = await prisma.apps.findMany({
     select: { path: true, id: true },
     where: {
