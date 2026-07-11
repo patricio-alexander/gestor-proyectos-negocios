@@ -45,8 +45,7 @@ export default function AppsPage() {
   const editState = useOverlayState();
   const deleteState = useOverlayState();
 
-  const filterApps = (app: App, query: string) =>
-    matchesAppSearch(app, query);
+  const filterApps = (app: App, query: string) => matchesAppSearch(app, query);
 
   const {
     search,
@@ -71,6 +70,7 @@ export default function AppsPage() {
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
         path: (form.get("path") as string) || null,
+        database_name: (form.get("database_name") as string) || null,
         maintenance: form.get("maintenance") === "on",
       });
       createState.close();
@@ -96,6 +96,7 @@ export default function AppsPage() {
         address: (form.get("address") as string) || null,
         email: (form.get("email") as string) || null,
         path: (form.get("path") as string) || null,
+        database_name: (form.get("database_name") as string) || null,
         maintenance: form.get("maintenance") === "on",
       });
       editState.close();
@@ -165,94 +166,99 @@ export default function AppsPage() {
             </Button>
             <Modal.Backdrop>
               <Modal.Container>
-                <Modal.Dialog className="sm:max-w-lg">
+                <Modal.Dialog className="sm:max-w-xl">
                   <Modal.CloseTrigger />
                   <Modal.Header>
                     <Modal.Heading>Nueva aplicación</Modal.Heading>
                   </Modal.Header>
-                  <form onSubmit={handleCreate}>
-                    <Modal.Body className="space-y-4">
+                  <form
+                    onSubmit={handleCreate}
+                    className="flex flex-1 flex-col"
+                  >
+                    <Modal.Body>
                       {error && (
                         <Alert status="danger">
                           <Alert.Description>{error}</Alert.Description>
                         </Alert>
                       )}
-                      <label className={gp.label}>
-                        Nombre
-                        <input
-                          name="name"
-                          required
-                          placeholder="Nombre de la aplicación"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Propietario
-                        <input
-                          name="owner_name"
-                          placeholder="Nombre del propietario"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        RUC
-                        <input
-                          name="ruc"
-                          placeholder="RUC"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Teléfono
-                        <input
-                          name="phone"
-                          placeholder="Teléfono"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Email
-                        <input
-                          name="email"
-                          type="email"
-                          placeholder="Email"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Dirección
-                        <input
-                          name="address"
-                          placeholder="Dirección"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Path de imágenes y videos
-                        <input
-                          name="path"
-                          placeholder="ej: /apps/mi-app/media"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        Nombre de base de datos
-                        <input
-                          name="database_name"
-                          placeholder="ej: gestor_ed_deli"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={gp.label}>
-                        <Switch name="maintenance" size="sm">
-                          <Switch.Content>
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                            Maintenance mode
-                          </Switch.Content>
-                        </Switch>
-                      </label>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <label className={`${gp.label} col-span-2`}>
+                          Nombre
+                          <input
+                            name="name"
+                            required
+                            placeholder="Nombre de la aplicación"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Propietario
+                          <input
+                            name="owner_name"
+                            placeholder="Nombre del propietario"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          RUC
+                          <input
+                            name="ruc"
+                            placeholder="RUC"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Teléfono
+                          <input
+                            name="phone"
+                            placeholder="Teléfono"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Email
+                          <input
+                            name="email"
+                            type="email"
+                            placeholder="Email"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Dirección
+                          <input
+                            name="address"
+                            placeholder="Dirección"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Path de imágenes y videos
+                          <input
+                            name="path"
+                            placeholder="ej: /apps/mi-app/media"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={gp.label}>
+                          Nombre de base de datos
+                          <input
+                            name="database_name"
+                            placeholder="ej: gestor_ed_deli"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={`${gp.label} col-span-2`}>
+                          <Switch name="maintenance" size="sm">
+                            <Switch.Content>
+                              <Switch.Control>
+                                <Switch.Thumb />
+                              </Switch.Control>
+                              Maintenance mode
+                            </Switch.Content>
+                          </Switch>
+                        </label>
+                      </div>
                     </Modal.Body>
                     <Modal.Footer>
                       <Button variant="secondary" slot="close">
@@ -367,62 +373,63 @@ export default function AppsPage() {
 
       <Modal state={editState}>
         <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-lg">
+          <Modal.Container size="lg">
+            <Modal.Dialog className="sm:max-w-xl">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>Editar aplicación</Modal.Heading>
               </Modal.Header>
               {editingApp && (
-                <form onSubmit={handleEdit}>
-                  <Modal.Body className="space-y-4">
+                <form onSubmit={handleEdit} className="flex flex-1 flex-col">
+                  <Modal.Body>
                     {error && (
                       <Alert status="danger">
                         <Alert.Description>{error}</Alert.Description>
                       </Alert>
                     )}
-                    <label className={gp.label}>
-                      Nombre
-                      <input
-                        name="name"
-                        required
-                        defaultValue={editingApp.name ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
-                    <label className={gp.label}>
-                      Propietario
-                      <input
-                        name="owner_name"
-                        defaultValue={editingApp.owner_name ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
-                    <label className={gp.label}>
-                      RUC
-                      <input
-                        name="ruc"
-                        defaultValue={editingApp.ruc ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
-                    <label className={gp.label}>
-                      Teléfono
-                      <input
-                        name="phone"
-                        defaultValue={editingApp.phone ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
-                    <label className={gp.label}>
-                      Email
-                      <input
-                        name="email"
-                        type="email"
-                        defaultValue={editingApp.email ?? ""}
-                        className={gp.input}
-                      />
-                    </label>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <label className={`${gp.label} col-span-2`}>
+                        Nombre
+                        <input
+                          name="name"
+                          required
+                          defaultValue={editingApp.name ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        Propietario
+                        <input
+                          name="owner_name"
+                          defaultValue={editingApp.owner_name ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        RUC
+                        <input
+                          name="ruc"
+                          defaultValue={editingApp.ruc ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        Teléfono
+                        <input
+                          name="phone"
+                          defaultValue={editingApp.phone ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={gp.label}>
+                        Email
+                        <input
+                          name="email"
+                          type="email"
+                          defaultValue={editingApp.email ?? ""}
+                          className={gp.input}
+                        />
+                      </label>
                       <label className={gp.label}>
                         Dirección
                         <input
@@ -449,7 +456,7 @@ export default function AppsPage() {
                           className={gp.input}
                         />
                       </label>
-                      <label className={gp.label}>
+                      <label className={`${gp.label} col-span-2`}>
                         <Switch
                           name="maintenance"
                           size="sm"
@@ -463,7 +470,8 @@ export default function AppsPage() {
                           </Switch.Content>
                         </Switch>
                       </label>
-                    </Modal.Body>
+                    </div>
+                  </Modal.Body>
                   <Modal.Footer>
                     <Button variant="secondary" slot="close">
                       Cancelar
