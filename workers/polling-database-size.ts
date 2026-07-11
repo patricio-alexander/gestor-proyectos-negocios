@@ -6,6 +6,8 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import cron from "node-cron";
 import { PrismaClient } from "@/prisma/generated/prisma/client";
 
+// Actualiza el peso de cada una de las base de datos por aplicacion/proyecto
+
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USER,
@@ -21,7 +23,6 @@ const connection = await mysql.createConnection({
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
-  // no pongas "database" aquí, para poder ver todas
 });
 
 async function main() {
