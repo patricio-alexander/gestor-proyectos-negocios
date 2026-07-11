@@ -14,6 +14,7 @@
     "seed": "tsx prisma/seed.ts",
     "worker:usage": "tsx workers/usage-reset-worker.ts",
     "worker:listener-folders": "tsx workers/listener-folder-worker.ts",
+    "worker:polling-db-size": "tsx workers/polling-database-size.ts",
     "postinstall": "prisma generate",
     "setup": "prisma generate && prisma db push --accept-data-loss && npm run seed"
   },
