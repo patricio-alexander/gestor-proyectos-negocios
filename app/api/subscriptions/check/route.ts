@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
                             usage_count: true,
                             capabilities: {
                               select: {
-                                id: true,
                                 code: true,
                                 name: true,
                                 is_active: true,
