@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const publicPaths = ["/login"];
 const allowedOrigins = [
-  "http://localhost:5173", // dev
+  "http://localhost:5173/", // dev
   "https://aplicaciones.marianosamaniego.edu.ec", // producción
   "http://localhost:3000", // NO BORRAR ES EL ORIGEN DE ESTE PROYECTO
 ];
