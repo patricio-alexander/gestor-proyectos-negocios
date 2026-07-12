@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
         name: s.name,
         max_records_limit: s.max_records_limit,
         usage_count: s.usage_count,
+        capabilities: s.capabilities,
       })),
     }));
 
