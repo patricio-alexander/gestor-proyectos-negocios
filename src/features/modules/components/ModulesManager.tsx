@@ -36,7 +36,7 @@ function matchesModuleSearch(mod: Module, query: string) {
 
 export function ModulesManager() {
   const { apps: businesses } = useApps();
-  const { modules, loading, create, update, remove, patchModule } = useModules();
+  const { modules, loading, create, update, remove, patchModule, refetch } = useModules();
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -170,6 +170,16 @@ export function ModulesManager() {
   function handleModuleUpdate(updated: Module) {
     patchModule(updated.id, () => updated);
     setSelectedModule(updated);
+  }
+
+  async function handleToggleMaintainer(mod: Module, is_maintainer: boolean) {
+    patchModule(mod.id, (m) => ({ ...m, is_maintainer }));
+    try {
+      const updated = await update(mod.id, { is_maintainer });
+      setSelectedModule((prev) => (prev?.id === mod.id ? updated : prev));
+    } catch {
+      await refetch();
+    }
   }
 
   if (loading) {
@@ -312,6 +322,7 @@ export function ModulesManager() {
                   setError("");
                   moduleDeleteState.open();
                 }}
+                onToggleMaintainer={handleToggleMaintainer}
               />
             ))}
           </div>

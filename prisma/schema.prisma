@@ -89,7 +89,7 @@ model Module {
   name          String
   description      String?       @db.Text
   image_url        String?
-  is_active        Boolean       @default(true)
+  is_maintainer    Boolean       @default(false)
   is_trial         Boolean       @default(false)
   limit_days_trial Int?
   start_trial      DateTime?

@@ -28,7 +28,7 @@ export type Module = {
   app_id: number;
   description: string | null;
   image_url: string | null;
-  is_active: boolean;
+  is_maintainer: boolean;
   is_trial: boolean;
   limit_days_trial: number | null;
   start_trial: string | null;
@@ -51,7 +51,7 @@ export type UpdateModuleInput = {
   name?: string;
   description?: string | null;
   image_url?: string | null;
-  is_active?: boolean;
+  is_maintainer?: boolean;
   is_trial?: boolean;
   limit_days_trial?: number | null;
   start_trial?: string | null;

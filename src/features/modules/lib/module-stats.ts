@@ -20,7 +20,7 @@ export function getModuleStats(modules: Module[]): ModuleStats {
   let activeModules = 0;
 
   for (const mod of modules) {
-    if (mod.is_active) activeModules += 1;
+    if (!mod.is_maintainer) activeModules += 1;
 
     const appName = mod.app_name || "Sin aplicación";
     const current = appMap.get(appName) ?? {

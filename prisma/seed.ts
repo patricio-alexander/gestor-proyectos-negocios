@@ -223,7 +223,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
       update: {
         name: modDef.name,
         description: modDef.description,
-        is_active: true,
+        is_maintainer: false,
         deleted_at: null,
       },
       create: {
@@ -231,7 +231,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
         key: modDef.key,
         name: modDef.name,
         description: modDef.description,
-        is_active: true,
+        is_maintainer: false,
       },
     });
 

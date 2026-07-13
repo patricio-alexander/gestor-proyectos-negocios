@@ -65,8 +65,8 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(updates.image_url !== undefined && {
           image_url: updates.image_url ? String(updates.image_url).trim() : null,
         }),
-        ...(updates.is_active !== undefined && {
-          is_active: Boolean(updates.is_active),
+        ...(updates.is_maintainer !== undefined && {
+          is_maintainer: Boolean(updates.is_maintainer),
         }),
         ...(updates.is_trial !== undefined && {
           is_trial: Boolean(updates.is_trial),

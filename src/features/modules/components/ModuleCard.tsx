@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Switch } from "@heroui/react";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Pencil from "@gravity-ui/icons/Pencil";
 import TrashBin from "@gravity-ui/icons/TrashBin";
@@ -21,6 +21,7 @@ type ModuleCardProps = {
   onManageSections: (module: Module) => void;
   onEdit: (module: Module) => void;
   onDelete: (module: Module) => void;
+  onToggleMaintainer: (module: Module, is_maintainer: boolean) => void;
 };
 
 export function ModuleCard({
@@ -28,6 +29,7 @@ export function ModuleCard({
   onManageSections,
   onEdit,
   onDelete,
+  onToggleMaintainer,
 }: ModuleCardProps) {
   const limitedSections = countLimitedSections(mod);
   const visibleSections = mod.sections.slice(0, MAX_VISIBLE_SECTIONS);
@@ -88,7 +90,28 @@ export function ModuleCard({
               {mod.app_name && (
                 <span className={gp.badge}>{mod.app_name}</span>
               )}
-              <ModuleStatusBadge active={mod.is_active} />
+            </div>
+            <div
+              className="mt-2 flex items-center justify-between rounded-lg border px-3 py-2"
+              style={{
+                borderColor: "var(--gp-card-border)",
+                backgroundColor: "var(--gp-surface-muted)",
+              }}
+            >
+              <span className="text-xs font-medium text-[var(--gp-text-muted)]">
+                Mantenimiento
+              </span>
+              <Switch
+                isSelected={mod.is_maintainer}
+                onChange={(selected) => onToggleMaintainer(mod, selected)}
+                size="sm"
+              >
+                <Switch.Content>
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch.Content>
+              </Switch>
             </div>
             {mod.description && (
               <p className="mt-1.5 line-clamp-2 text-xs text-[var(--gp-text-muted)]">
@@ -196,22 +219,6 @@ export function ModuleCard({
         </div>
       </div>
     </Card>
-  );
-}
-
-function ModuleStatusBadge({ active }: { active: boolean }) {
-  return (
-    <span
-      className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-      style={{
-        backgroundColor: active
-          ? "rgba(34, 197, 94, 0.15)"
-          : "var(--gp-surface-muted)",
-        color: active ? "#16a34a" : "var(--gp-text-muted)",
-      }}
-    >
-      {active ? "Activo" : "Inactivo"}
-    </span>
   );
 }
 
