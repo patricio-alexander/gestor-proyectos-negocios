@@ -2,9 +2,9 @@ import { validateApiKey } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest, response: NextResponse) {
-  // const apiKey = await validateApiKey(request);
-  // if (apiKey.error) return apiKey.error;
+export async function GET(request: NextRequest) {
+  const apiKey = await validateApiKey(request);
+  if (apiKey.error) return apiKey.error;
 
   try {
     const plans = await prisma.plan.findMany({
