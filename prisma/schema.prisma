@@ -167,7 +167,7 @@ model Apps {
   maintenance       Boolean        @default(false)
   /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
   entitlement_url    String?       @db.VarChar(500)
-  /** Secreto Bearer compartido con la app (GESTOR_SYNC_SECRET). */
+  /** Secreto compartido con la app cliente (formato: gc_<hex>). */
   entitlement_secret String?       @db.VarChar(255)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
@@ -175,21 +175,8 @@ model Apps {
   plans         Plan[]
   modules       Module[]
   subscriptions Subscription[]
-  api_keys      ApiKey[]
   offers        Offer[]
   events        Event[]
-}
-
-model ApiKey {
-  id         Int      @id @default(autoincrement())
-  apps       Apps     @relation(fields: [app_id], references: [id])
-  app_id     Int
-  name       String
-  prefix     String   @unique
-  hash       String
-  active     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
 }
 
 model Plan {
@@ -224,7 +211,6 @@ model PlanPrice {
   plan_id       Int
   period        Period
   subscriptions Subscription[]
-  licenses      License[]
 }
 
 model Subscription {
@@ -236,19 +222,6 @@ model Subscription {
   start_at      DateTime?
   expires_at    DateTime?
   status        SubscriptionStatus
-  licenses      License[]
-}
-
-model License {
-  id            Int           @id @default(autoincrement())
-  subscription  Subscription? @relation(fields: [sub_id], references: [id])
-  sub_id        Int?
-  plan_price    PlanPrice     @relation(fields: [plan_price_id], references: [id])
-  plan_price_id Int
-  key           String?
-  status        LicenseStatus
-  used_at       DateTime?
-  method_pay    MethodPay?
 }
 
 enum SubscriptionStatus {
@@ -257,20 +230,9 @@ enum SubscriptionStatus {
   CANCELED
 }
 
-enum LicenseStatus {
-  AVAILABLE
-  USED
-  REVOKED
-}
-
 enum Period {
   MONTHLY
   ANNUALLY
-}
-
-enum MethodPay {
-  CASH
-  TRANSFER
 }
 
 // ─── Event tracking ─────────────────────────────────────────────────────────

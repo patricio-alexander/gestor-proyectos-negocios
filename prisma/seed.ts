@@ -155,17 +155,12 @@ const EDDELI_APP_HASH = crypto
   .slice(0, 32);
 
 const EDDELI_API_KEY = "gc_4a177c0295a4cb88d52cea1035b9e9a5";
-const EDDELI_API_KEY_PREFIX = EDDELI_API_KEY.slice(0, 11);
-const EDDELI_API_KEY_HASH = crypto
-  .createHash("sha256")
-  .update(EDDELI_API_KEY)
-  .digest("hex");
 
 const EDDELI_ENTITLEMENT_URL =
   process.env.EDDELI_ENTITLEMENT_URL ||
   "http://127.0.0.1:3001/eddeliapi/subscription/entitlement";
 const EDDELI_ENTITLEMENT_SECRET =
-  process.env.EDDELI_ENTITLEMENT_SECRET || "eddeli_gestor_sync_local_dev";
+  process.env.EDDELI_ENTITLEMENT_SECRET || EDDELI_API_KEY;
 
 async function seedEdDeliApp() {
   return prisma.apps.upsert({
@@ -183,25 +178,6 @@ async function seedEdDeliApp() {
       email: "soporte@eddeli.com",
       entitlement_url: EDDELI_ENTITLEMENT_URL,
       entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
-    },
-  });
-}
-
-async function seedEdDeliApiKey(appId: number) {
-  await prisma.apiKey.upsert({
-    where: { prefix: EDDELI_API_KEY_PREFIX },
-    update: {
-      name: "EdDeli — seed",
-      app_id: appId,
-      hash: EDDELI_API_KEY_HASH,
-      active: true,
-    },
-    create: {
-      name: "EdDeli — seed",
-      app_id: appId,
-      prefix: EDDELI_API_KEY_PREFIX,
-      hash: EDDELI_API_KEY_HASH,
-      active: true,
     },
   });
 }
@@ -726,20 +702,6 @@ async function seedEdDeliLocalSubscription(appId: number, appHash: string) {
     });
   }
 
-  const demoLicenseKey = "b6dc0994-8e86-49e9-875a-ece9de52bef3";
-  const existingLicense = await prisma.license.findFirst({
-    where: { key: demoLicenseKey },
-  });
-  if (!existingLicense) {
-    await prisma.license.create({
-      data: {
-        key: demoLicenseKey,
-        plan_price_id: planPrice.id,
-        status: "AVAILABLE",
-      },
-    });
-  }
-
   const moduleCount = await prisma.planModule.count({
     where: { plan_id: plan.id },
   });
@@ -756,7 +718,6 @@ async function main() {
   await seedRoles();
   await seedGestorAccounts();
   const eddeliApp = await seedEdDeliApp();
-  await seedEdDeliApiKey(eddeliApp.id);
   const sectionCount = await seedEdDeliCatalog(
     eddeliApp.id,
     EDDELI_PRODUCT_CATALOG,

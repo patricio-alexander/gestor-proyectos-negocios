@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
-import { getAuthUser, validateApiKey } from "@/src/shared/lib/api-auth";
-import {
-  Period,
-  SubscriptionStatus,
-  LicenseStatus,
-} from "../../../prisma/generated/prisma/enums";
+import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { Period, SubscriptionStatus } from "../../../prisma/generated/prisma/enums";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 export async function GET() {
   const auth = await getAuthUser();
@@ -46,90 +42,64 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = await validateApiKey(request);
-  if (apiKey.error) return apiKey.error;
+  const auth = await getAuthUser();
+  if (auth.error) return auth.error;
 
   try {
-    const { license_key }: { license_key: string } = await request.json();
+    const body = await request.json();
+    const { app_hash, plan_price_id, start_at, expires_at, status } = body;
 
-    if (!license_key || !license_key.trim()) {
+    if (!app_hash || !plan_price_id) {
       return NextResponse.json(
-        { error: "La clave de licencia es obligatoria" },
+        { error: "app_hash y plan_price_id son obligatorios" },
         { status: 400 },
       );
     }
 
-    const license = await prisma.license.findFirst({
-      where: { key: license_key.trim() },
-      include: {
-        plan_price: {
-          include: {
-            plan: {
-              include: { apps: { select: { hash: true } } },
-            },
-          },
-        },
-      },
+    const app = await prisma.apps.findFirst({
+      where: { hash: app_hash, deleted_at: null },
+      select: { id: true },
     });
-
-    if (!license) {
+    if (!app) {
       return NextResponse.json(
-        { error: "Licencia no encontrada" },
+        { error: "Aplicación no encontrada" },
         { status: 404 },
       );
     }
 
-    if (license.status === "USED") {
+    const planPrice = await prisma.planPrice.findFirst({
+      where: { id: Number(plan_price_id), plan: { deleted_at: null } },
+    });
+    if (!planPrice) {
       return NextResponse.json(
-        { error: "Esta licencia ya ha sido usada" },
-        { status: 400 },
-      );
-    }
-    if (license.status === "REVOKED") {
-      return NextResponse.json(
-        { error: "Esta licencia ha sido revocada" },
-        { status: 400 },
+        { error: "Precio de plan no encontrado" },
+        { status: 404 },
       );
     }
 
-    if (!license.plan_price) {
-      return NextResponse.json(
-        { error: "La licencia no tiene un precio de plan asociado" },
-        { status: 400 },
-      );
-    }
-
-    const now = new Date();
-    let expiresAt: Date;
-
-    if (license.plan_price.period === Period.MONTHLY) {
-      expiresAt = new Date(now);
-      expiresAt.setMonth(expiresAt.getMonth() + 1);
+    const now = start_at ? new Date(String(start_at)) : new Date();
+    let expiresAt: Date | null = null;
+    if (expires_at) {
+      expiresAt = new Date(String(expires_at));
     } else {
       expiresAt = new Date(now);
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      if (planPrice.period === Period.MONTHLY) {
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+      } else {
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      }
     }
 
     const subscription = await prisma.subscription.create({
       data: {
-        app_hash: license.plan_price.plan.apps.hash,
-        plan_price_id: license.plan_price_id,
+        app_hash,
+        plan_price_id: Number(plan_price_id),
         start_at: now,
         expires_at: expiresAt,
-        status: SubscriptionStatus.ACTIVE,
+        status: status || SubscriptionStatus.ACTIVE,
       },
     });
 
-    await prisma.license.update({
-      where: { id: license.id },
-      data: {
-        sub_id: subscription.id,
-        status: LicenseStatus.USED,
-        used_at: now,
-      },
-    });
-
-    // Habilita la app en su propio backend (sin pegar código en el frontend).
     await pushEntitlementToApp(subscription.app_hash);
 
     return NextResponse.json(
@@ -140,7 +110,6 @@ export async function POST(request: NextRequest) {
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,
         status: subscription.status,
-        license_key: license.key,
       },
       { status: 201 },
     );

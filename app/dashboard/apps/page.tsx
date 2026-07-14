@@ -13,7 +13,9 @@ import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
-import { useState } from "react";
+import Copy from "@gravity-ui/icons/Copy";
+import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
+import { useState, useCallback } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
 import {
@@ -25,6 +27,11 @@ import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
 
 const PAGE_SIZE = 10;
+
+function generateApiKey(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return "gc_" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 function matchesAppSearch(app: App, query: string) {
   const q = query.trim().toLowerCase();
@@ -43,6 +50,9 @@ export default function AppsPage() {
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
   const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
+  const [createApiKey, setCreateApiKey] = useState(generateApiKey);
+  const [editApiKey, setEditApiKey] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const createState = useOverlayState();
   const editState = useOverlayState();
@@ -76,7 +86,7 @@ export default function AppsPage() {
         database_name: (form.get("database_name") as string) || null,
         maintenance: form.get("maintenance") === "on",
         entitlement_url: (form.get("entitlement_url") as string) || null,
-        entitlement_secret: (form.get("entitlement_secret") as string) || null,
+        entitlement_secret: createApiKey,
       });
       createState.close();
       setSuccess("Aplicación creada");
@@ -94,7 +104,7 @@ export default function AppsPage() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const secret = String(form.get("entitlement_secret") || "").trim();
+      const secret = editApiKey;
       const updated = await update(editingApp.id, {
         name: form.get("name") as string,
         owner_name: (form.get("owner_name") as string) || null,
@@ -110,6 +120,7 @@ export default function AppsPage() {
       });
       editState.close();
       setEditingApp(null);
+      setEditApiKey("");
       const pushNote =
         updated &&
         "push_skipped" in updated &&
@@ -207,6 +218,11 @@ export default function AppsPage() {
                 backgroundColor: "var(--gp-primary)",
                 color: "var(--gp-primary-text)",
               }}
+              onPress={() => {
+                setCreateApiKey(generateApiKey());
+                setCopiedId(null);
+                createState.open();
+              }}
             >
               <Plus width={16} height={16} />
               Nueva aplicación
@@ -303,15 +319,40 @@ export default function AppsPage() {
                             className={gp.input}
                           />
                         </label>
-                        <label className={`${gp.label} col-span-2`}>
-                          Secreto sync (GESTOR_SYNC_SECRET)
-                          <input
-                            name="entitlement_secret"
-                            type="password"
-                            placeholder="Mismo valor que en la app destino"
-                            className={gp.input}
-                          />
-                        </label>
+                        <div className="col-span-2 space-y-1.5">
+                          <label className={gp.label}>API Key</label>
+                          <div className="flex gap-2">
+                            <input
+                              value={createApiKey}
+                              readOnly
+                              className={`${gp.input} flex-1 font-mono text-xs`}
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label="Copiar API Key"
+                              onPress={() => {
+                                navigator.clipboard.writeText(createApiKey);
+                                setCopiedId("create");
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                            >
+                              {copiedId === "create" ? (
+                                <span className="text-xs text-emerald-600">Copiado</span>
+                              ) : (
+                                <Copy width={14} height={14} />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label="Regenerar API Key"
+                              onPress={() => setCreateApiKey(generateApiKey())}
+                            >
+                              <ArrowsRotateRight width={14} height={14} />
+                            </Button>
+                          </div>
+                        </div>
                         <label className={`${gp.label} col-span-2`}>
                           <Switch name="maintenance" size="sm">
                             <Switch.Content>
@@ -452,6 +493,8 @@ export default function AppsPage() {
                         aria-label={`Editar ${app.name}`}
                         onPress={() => {
                           setEditingApp(app);
+                          setEditApiKey("");
+                          setCopiedId(null);
                           setError("");
                           setSuccess("");
                           editState.open();
@@ -572,34 +615,56 @@ export default function AppsPage() {
                           placeholder="ej: gestor_ed_deli"
                           className={gp.input}
                         />
-                      </label>
-                      <label className={`${gp.label} col-span-2`}>
-                        URL entitlement (sync)
-                        <input
-                          name="entitlement_url"
-                          defaultValue={editingApp.entitlement_url ?? ""}
-                          placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
-                          className={gp.input}
-                        />
-                      </label>
-                      <label className={`${gp.label} col-span-2`}>
-                        Secreto sync
-                        <input
-                          name="entitlement_secret"
-                          type="password"
-                          placeholder={
-                            editingApp.has_entitlement_secret
-                              ? "Dejá vacío para no cambiar el actual"
-                              : "Mismo valor que GESTOR_SYNC_SECRET en la app"
-                          }
-                          className={gp.input}
-                        />
-                        {editingApp.has_entitlement_secret ? (
-                          <span className="text-[11px] text-[var(--gp-text-muted)]">
-                            Ya hay un secreto guardado.
-                          </span>
-                        ) : null}
-                      </label>
+                        </label>
+                        <label className={`${gp.label} col-span-2`}>
+                          URL entitlement (sync)
+                          <input
+                            name="entitlement_url"
+                            defaultValue={editingApp.entitlement_url ?? ""}
+                            placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
+                            className={gp.input}
+                          />
+                        </label>
+                        <div className="col-span-2 space-y-1.5">
+                          <label className={gp.label}>API Key</label>
+                          <div className="flex gap-2">
+                            <input
+                              value={editApiKey || editingApp.entitlement_secret || ""}
+                              readOnly
+                              className={`${gp.input} flex-1 font-mono text-xs`}
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label="Copiar API Key"
+                              onPress={() => {
+                                const val = editApiKey || editingApp.entitlement_secret || "";
+                                navigator.clipboard.writeText(val);
+                                setCopiedId("edit");
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                            >
+                              {copiedId === "edit" ? (
+                                <span className="text-xs text-emerald-600">Copiado</span>
+                              ) : (
+                                <Copy width={14} height={14} />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label="Regenerar API Key"
+                              onPress={() => setEditApiKey(generateApiKey())}
+                            >
+                              <ArrowsRotateRight width={14} height={14} />
+                            </Button>
+                          </div>
+                          {editApiKey && (
+                            <p className="text-[11px] text-amber-600">
+                              Se va a regenerar la API Key al guardar.
+                            </p>
+                          )}
+                        </div>
                       <label className={`${gp.label} col-span-2`}>
                         <Switch
                           name="maintenance"
@@ -617,7 +682,7 @@ export default function AppsPage() {
                     </div>
                   </Modal.Body>
                   <Modal.Footer>
-                    <Button variant="secondary" slot="close">
+                    <Button variant="secondary" slot="close" onPress={() => setEditingApp(null)}>
                       Cancelar
                     </Button>
                     <Button type="submit" isDisabled={submitting}>

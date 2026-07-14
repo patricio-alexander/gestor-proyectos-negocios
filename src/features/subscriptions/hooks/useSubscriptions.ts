@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { Subscription } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 
+export type CreateSubscriptionInput = {
+  app_hash: string;
+  plan_price_id: number;
+  start_at?: string | null;
+  expires_at?: string | null;
+  status?: string;
+};
+
 export function useSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +33,23 @@ export function useSubscriptions() {
   useEffect(() => {
     fetchSubscriptions();
   }, [fetchSubscriptions]);
+
+  async function create(input: CreateSubscriptionInput) {
+    const res = await fetch(apiUrl("/api/subscriptions"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Error al crear suscripción");
+    }
+
+    const sub: Subscription = await res.json();
+    setSubscriptions((prev) => [sub, ...prev]);
+    return sub;
+  }
 
   async function cancel(id: number) {
     const res = await fetch(apiUrl(`/api/subscriptions/${id}/cancel`), {
@@ -63,5 +88,5 @@ export function useSubscriptions() {
     );
   }
 
-  return { subscriptions, loading, cancel, update, refetch: fetchSubscriptions };
+  return { subscriptions, loading, create, cancel, update, refetch: fetchSubscriptions };
 }

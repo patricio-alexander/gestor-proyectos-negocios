@@ -19,7 +19,6 @@ export const BACKUP_TABLE_ENTRIES: { key: string; get: () => Delegate }[] = [
   { key: "User", get: () => prisma.user },
   { key: "UserRole", get: () => prisma.userRole },
   { key: "Apps", get: () => prisma.apps },
-  { key: "ApiKey", get: () => prisma.apiKey },
   { key: "Module", get: () => prisma.module },
   { key: "Section", get: () => prisma.section },
   { key: "Capability", get: () => prisma.capability },
@@ -30,7 +29,6 @@ export const BACKUP_TABLE_ENTRIES: { key: string; get: () => Delegate }[] = [
   { key: "PlanPrice", get: () => prisma.planPrice },
   { key: "PlanOffer", get: () => prisma.planOffer },
   { key: "Subscription", get: () => prisma.subscription },
-  { key: "License", get: () => prisma.license },
   { key: "EventType", get: () => prisma.eventType },
   { key: "Event", get: () => prisma.event },
 ];

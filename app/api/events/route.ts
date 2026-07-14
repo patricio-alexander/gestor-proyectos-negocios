@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthUser, validateApiKey } from "@/src/shared/lib/api-auth";
+import { getAuthUser, validateKey } from "@/src/shared/lib/api-auth";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
 import {
   createEvent,
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = await validateApiKey(request);
+  const apiKey = await validateKey(request);
   if (apiKey.error) return apiKey.error;
 
   try {

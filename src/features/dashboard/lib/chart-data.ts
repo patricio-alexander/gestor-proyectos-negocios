@@ -27,16 +27,6 @@ export function buildSubscriptionStatusData(
   ].filter((item) => item.value > 0);
 }
 
-export function buildLicenseStatusData(
-  licenses: DashboardOverview["licenses"],
-): ChartSegment[] {
-  return [
-    { name: "Disponibles", value: licenses.available, fill: CHART_COLORS.success },
-    { name: "Usadas", value: licenses.used, fill: CHART_COLORS.primary },
-    { name: "Revocadas", value: licenses.revoked, fill: CHART_COLORS.danger },
-  ].filter((item) => item.value > 0);
-}
-
 export function buildOfferStatusData(
   offers: DashboardOverview["offers"],
 ): ChartSegment[] {
@@ -45,15 +35,6 @@ export function buildOfferStatusData(
     { name: "Próximas", value: offers.upcoming, fill: CHART_COLORS.bright },
     { name: "Finalizadas", value: offers.expired, fill: CHART_COLORS.soft },
   ];
-}
-
-export function buildApiKeyStatusData(
-  apiKeys: DashboardOverview["apiKeys"],
-): ChartSegment[] {
-  return [
-    { name: "Activas", value: apiKeys.active, fill: CHART_COLORS.success },
-    { name: "Revocadas", value: apiKeys.revoked, fill: CHART_COLORS.danger },
-  ].filter((item) => item.value > 0);
 }
 
 export function buildEcosystemData(data: DashboardOverview) {

@@ -4,18 +4,14 @@ import { getAuthUser } from "@/src/shared/lib/api-auth";
 import {
   Period,
   SubscriptionStatus,
-  LicenseStatus,
-  MethodPay,
 } from "../../../../prisma/generated/prisma/enums";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
-import { randomUUID } from "crypto";
 
 /**
  * Habilita una suscripción desde el gestor para una app concreta.
  * Body: {
  *   plan_id, app_id,
  *   period: MONTHLY|ANNUALLY,
- *   method_pay?: CASH|TRANSFER,
  *   replace?: boolean  // si la app ya tiene sub ACTIVE, reemplazar
  * }
  */
@@ -30,12 +26,6 @@ export async function POST(request: NextRequest) {
     const replace = Boolean(body.replace);
     const period =
       body.period === Period.ANNUALLY ? Period.ANNUALLY : Period.MONTHLY;
-    const methodPay =
-      body.method_pay === MethodPay.TRANSFER
-        ? MethodPay.TRANSFER
-        : body.method_pay === MethodPay.CASH
-          ? MethodPay.CASH
-          : null;
 
     if (!planId) {
       return NextResponse.json(
@@ -141,17 +131,6 @@ export async function POST(request: NextRequest) {
         start_at: now,
         expires_at: expiresAt,
         status: SubscriptionStatus.ACTIVE,
-      },
-    });
-
-    await prisma.license.create({
-      data: {
-        key: randomUUID(),
-        plan_price_id: planPrice.id,
-        status: LicenseStatus.USED,
-        used_at: now,
-        sub_id: subscription.id,
-        ...(methodPay ? { method_pay: methodPay } : {}),
       },
     });
 

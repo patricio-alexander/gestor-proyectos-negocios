@@ -49,16 +49,10 @@ export function DashboardFinancialKpis({ financial }: DashboardFinancialKpisProp
         />
         <FinancialStatCard
           icon={Wallet}
-          label="Ingresos cobrados"
+          label="Ingresos por suscripciones"
           value={formatCurrency(financial.collectedRevenue)}
-          hint={`${formatCurrency(financial.cashCollected)} efectivo · ${formatCurrency(financial.transferCollected)} transfer.`}
+          hint="Suscripciones activas"
           featured={financial.collectedRevenue > 0}
-        />
-        <FinancialStatCard
-          icon={ShoppingBag}
-          label="Pipeline"
-          value={formatCurrency(financial.pipelineRevenue)}
-          hint="Licencias disponibles por cobrar"
         />
         <FinancialStatCard
           icon={CreditCard}

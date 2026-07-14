@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
-import { validateApiKey } from "@/src/shared/lib/api-auth";
+import { validateKey } from "@/src/shared/lib/api-auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, { params }: Params) {
-  const apiKey = await validateApiKey(request);
+  const apiKey = await validateKey(request);
 
   if (apiKey.error) return apiKey.error;
 

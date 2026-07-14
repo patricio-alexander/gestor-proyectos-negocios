@@ -34,14 +34,6 @@ export function subscriptionStatusTone(
   return "danger";
 }
 
-export function licenseStatusTone(
-  status: string,
-): NonNullable<StatusBadgeProps["tone"]> {
-  if (status === "AVAILABLE") return "success";
-  if (status === "USED") return "info";
-  return "danger";
-}
-
 export function offerRangeTone(
   status: "active" | "upcoming" | "expired",
 ): NonNullable<StatusBadgeProps["tone"]> {

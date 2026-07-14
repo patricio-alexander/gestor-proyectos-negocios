@@ -25,22 +25,11 @@ export type DashboardOverview = {
     expired: number;
     canceled: number;
   };
-  licenses: {
-    total: number;
-    available: number;
-    used: number;
-    revoked: number;
-  };
   offers: {
     total: number;
     active: number;
     upcoming: number;
     expired: number;
-  };
-  apiKeys: {
-    total: number;
-    active: number;
-    revoked: number;
   };
   recentSubscriptions: Subscription[];
   expiringSubscriptions: Subscription[];
@@ -55,9 +44,7 @@ const EMPTY: DashboardOverview = {
   plans: 0,
   modules: 0,
   subscriptions: { total: 0, active: 0, expired: 0, canceled: 0 },
-  licenses: { total: 0, available: 0, used: 0, revoked: 0 },
   offers: { total: 0, active: 0, upcoming: 0, expired: 0 },
-  apiKeys: { total: 0, active: 0, revoked: 0 },
   recentSubscriptions: [],
   expiringSubscriptions: [],
   expiringOffers: [],
@@ -72,26 +59,22 @@ export function useDashboardOverview() {
   const fetchOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const [appsRes, plansRes, modulesRes, subsRes, licRes, offersRes, keysRes] =
+      const [appsRes, plansRes, modulesRes, subsRes, offersRes] =
         await Promise.all([
           fetch(apiUrl("/api/apps")),
           fetch(apiUrl("/api/plans")),
           fetch(apiUrl("/api/modules")),
           fetch(apiUrl("/api/subscriptions")),
-          fetch(apiUrl("/api/licenses")),
           fetch(apiUrl("/api/offers")),
-          fetch(apiUrl("/api/api-keys")),
         ]);
 
-      const [apps, plans, modules, subscriptions, licenses, offers, apiKeys] =
+      const [apps, plans, modules, subscriptions, offers] =
         await Promise.all([
           appsRes.ok ? appsRes.json() : [],
           plansRes.ok ? plansRes.json() : [],
           modulesRes.ok ? modulesRes.json() : [],
           subsRes.ok ? subsRes.json() : [],
-          licRes.ok ? licRes.json() : [],
           offersRes.ok ? offersRes.json() : [],
-          keysRes.ok ? keysRes.json() : [],
         ]);
 
       const subs: Subscription[] = subscriptions;
@@ -128,14 +111,6 @@ export function useDashboardOverview() {
           expired: subs.filter((s) => s.status === "EXPIRED").length,
           canceled: subs.filter((s) => s.status === "CANCELED").length,
         },
-        licenses: {
-          total: licenses.length,
-          available: licenses.filter((l: { status: string }) => l.status === "AVAILABLE")
-            .length,
-          used: licenses.filter((l: { status: string }) => l.status === "USED").length,
-          revoked: licenses.filter((l: { status: string }) => l.status === "REVOKED")
-            .length,
-        },
         offers: {
           total: offs.length,
           active: offs.filter(
@@ -148,16 +123,11 @@ export function useDashboardOverview() {
             (o) => getDateRangeStatus(o.start_at, o.expires_at) === "expired",
           ).length,
         },
-        apiKeys: {
-          total: apiKeys.length,
-          active: apiKeys.filter((k: { active: boolean }) => k.active).length,
-          revoked: apiKeys.filter((k: { active: boolean }) => !k.active).length,
-        },
         recentSubscriptions: subs.slice(0, 5),
         expiringSubscriptions,
         expiringOffers,
         subscriptionTrend: buildSubscriptionTrend(subs),
-        financial: buildFinancialKpis(subs, licenses, plansList),
+        financial: buildFinancialKpis(subs, plansList),
       });
     } catch {
       setData(EMPTY);

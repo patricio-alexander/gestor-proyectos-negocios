@@ -8,7 +8,6 @@ import Database from "@gravity-ui/icons/Database";
 import FileText from "@gravity-ui/icons/FileText";
 import ChartLine from "@gravity-ui/icons/ChartLine";
 import Gift from "@gravity-ui/icons/Gift";
-import Key from "@gravity-ui/icons/Key";
 import Passport from "@gravity-ui/icons/Passport";
 import Person from "@gravity-ui/icons/Person";
 import Persons from "@gravity-ui/icons/Persons";
@@ -26,8 +25,6 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/plans": FileText,
   "/dashboard/offers": Gift,
   "/dashboard/subscriptions": CreditCard,
-  "/dashboard/licenses": ShieldKeyhole,
-  "/dashboard/api-keys": Key,
   "/dashboard/access/users": Persons,
   "/dashboard/access/roles": ShieldKeyhole,
   "/dashboard/events": ClockArrowRotateLeft,

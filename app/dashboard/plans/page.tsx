@@ -47,15 +47,7 @@ function PlanForm({
   allOffers,
   children,
 }: PlanFormProps) {
-  const defaultAppId = (() => {
-    if (editing?.app_id) return String(editing.app_id);
-    const eddeli = businesses.find((b) =>
-      /eddeli/i.test(String(b.name || "")),
-    );
-    if (eddeli) return String(eddeli.id);
-    if (businesses.length === 1) return String(businesses[0].id);
-    return "";
-  })();
+  const defaultAppId = editing?.app_id ? String(editing.app_id) : "";
 
   const [selectedBusinessId, setSelectedBusinessId] = useState(defaultAppId);
 
@@ -64,13 +56,6 @@ function PlanForm({
       setSelectedBusinessId(defaultAppId);
     }
   }, [defaultAppId, selectedBusinessId]);
-
-  const catalogApp =
-    businesses.find((b) => String(b.id) === String(selectedBusinessId)) || null;
-  const catalogLocked =
-    Boolean(selectedBusinessId) &&
-    (Boolean(catalogApp && /eddeli/i.test(String(catalogApp.name || ""))) ||
-      businesses.length === 1);
 
   const monthlyPrice =
     editing?.prices?.find((p) => p.period === "MONTHLY")?.price ?? "";
@@ -101,38 +86,23 @@ function PlanForm({
             className="gp-input"
           />
         </label>
-        {catalogLocked ? (
-          <>
-            <input type="hidden" name="app_id" value={selectedBusinessId} />
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-zinc-500">App</p>
-              <p className="text-sm font-semibold text-zinc-900">
-                {catalogApp?.name || "EdDeli"}
-              </p>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                Fija para estos planes SoftEd (no hace falta elegirla).
-              </p>
-            </div>
-          </>
-        ) : (
-          <label className="gp-label">
-            App
-            <select
-              name="app_id"
-              required
-              value={selectedBusinessId}
-              onChange={(e) => setSelectedBusinessId(e.target.value)}
-              className="gp-select"
-            >
-              <option value="">Seleccionar app</option>
-              {businesses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label className="gp-label">
+          App
+          <select
+            name="app_id"
+            required
+            value={selectedBusinessId}
+            onChange={(e) => setSelectedBusinessId(e.target.value)}
+            className="gp-select"
+          >
+            <option value="">Seleccionar app</option>
+            {businesses.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="grid grid-cols-2 gap-4">
           <label className="gp-label">
             Precio mensual ($)
@@ -278,7 +248,6 @@ export default function PlansPage() {
     currentPlanName: string | null;
     nextPlanName: string | null;
   } | null>(null);
-  const [methodPay, setMethodPay] = useState<"CASH" | "TRANSFER" | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -378,7 +347,6 @@ export default function PlansPage() {
   function openEnableSubscription(plan: Plan) {
     setEnabling(plan);
     setEnableSuccess(null);
-    setMethodPay(null);
     setEnablePeriod(null);
     setPendingReplace(null);
     const eddeli = businesses.find((b) =>
@@ -406,10 +374,6 @@ export default function PlansPage() {
       setError("Elegí a qué app habilitar este plan");
       return;
     }
-    if (!methodPay) {
-      setError("Seleccioná el método de pago");
-      return;
-    }
     if (!period) {
       setError("Seleccioná el período");
       return;
@@ -425,7 +389,6 @@ export default function PlansPage() {
           plan_id: enabling.id,
           app_id: Number(enableAppId),
           period,
-          method_pay: methodPay,
           replace: Boolean(opts?.replace),
         }),
       });
@@ -467,7 +430,6 @@ export default function PlansPage() {
     enableState.close();
     setEnabling(null);
     setEnableSuccess(null);
-    setMethodPay(null);
     setEnablePeriod(null);
     setEnableAppId("");
     setPendingReplace(null);
@@ -697,38 +659,11 @@ export default function PlansPage() {
                         </select>
                       </label>
                       <p className="text-xs font-medium text-zinc-500">
-                        Método de pago
-                      </p>
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setMethodPay("CASH")}
-                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                            methodPay === "CASH"
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
-                          }`}
-                        >
-                          Efectivo
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMethodPay("TRANSFER")}
-                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                            methodPay === "TRANSFER"
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
-                          }`}
-                        >
-                          Transferencia
-                        </button>
-                      </div>
-                      <p className="text-xs font-medium text-zinc-500">
                         Período
                       </p>
                       <div className="flex flex-col gap-3">
                         <Button
-                          isDisabled={submitting || !methodPay || !enableAppId}
+                          isDisabled={submitting || !enableAppId}
                           onPress={() =>
                             handleEnableSubscription({ period: "MONTHLY" })
                           }
@@ -740,7 +675,7 @@ export default function PlansPage() {
                           )}
                         </Button>
                         <Button
-                          isDisabled={submitting || !methodPay || !enableAppId}
+                          isDisabled={submitting || !enableAppId}
                           onPress={() =>
                             handleEnableSubscription({ period: "ANNUALLY" })
                           }

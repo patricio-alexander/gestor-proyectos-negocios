@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
-import { validateApiKey } from "@/src/shared/lib/api-auth";
+import { validateKey } from "@/src/shared/lib/api-auth";
 import { buildEntitlementForAppHash } from "@/src/shared/lib/entitlement-payload";
 
 export async function GET(request: NextRequest) {
-  const apiKey = await validateApiKey(request);
+  const apiKey = await validateKey(request);
   if (apiKey.error) return apiKey.error;
 
   try {

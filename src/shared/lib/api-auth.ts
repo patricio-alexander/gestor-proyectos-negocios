@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken, type JwtPayload } from "./jwt";
 import { prisma } from "./prisma";
-import crypto from "crypto";
 
 export async function getAuthUser(): Promise<
   { user: JwtPayload; error: null } | { user: null; error: NextResponse }
@@ -29,7 +28,7 @@ export async function getAuthUser(): Promise<
   }
 }
 
-export async function validateApiKey(
+export async function validateKey(
   request: NextRequest,
 ): Promise<
   | { app_id: number; app_hash: string; error: null }
@@ -44,25 +43,15 @@ export async function validateApiKey(
     };
   }
 
-  const apiKey = authHeader.slice(7);
-  const prefix = apiKey.slice(0, 11);
+  const rawKey = authHeader.slice(7);
 
   try {
-    const record = await prisma.apiKey.findFirst({
-      where: { prefix, active: true },
-      include: { apps: { select: { id: true, hash: true } } },
+    const app = await prisma.apps.findFirst({
+      where: { entitlement_secret: rawKey, deleted_at: null },
+      select: { id: true, hash: true },
     });
 
-    if (!record) {
-      return {
-        app_id: null,
-        app_hash: null,
-        error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-      };
-    }
-
-    const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-    if (hash !== record.hash) {
+    if (!app) {
       return {
         app_id: null,
         app_hash: null,
@@ -71,8 +60,8 @@ export async function validateApiKey(
     }
 
     return {
-      app_id: record.apps.id,
-      app_hash: record.apps.hash,
+      app_id: app.id,
+      app_hash: app.hash,
       error: null,
     };
   } catch {

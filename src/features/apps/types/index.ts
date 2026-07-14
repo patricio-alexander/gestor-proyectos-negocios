@@ -13,6 +13,7 @@ export type App = {
   database_size: number | null;
   maintenance: boolean;
   entitlement_url?: string | null;
+  entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
   created_at: string;
   updated_at: string;

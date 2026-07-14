@@ -4,8 +4,6 @@ import Link from "next/link";
 import { Card, Spinner } from "@heroui/react";
 import Briefcase from "@gravity-ui/icons/Briefcase";
 import CreditCard from "@gravity-ui/icons/CreditCard";
-import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
-import Key from "@gravity-ui/icons/Key";
 import ChartLine from "@gravity-ui/icons/ChartLine";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { useDashboardOverview } from "../hooks/useDashboardOverview";
@@ -32,9 +30,8 @@ const QUICK_LINKS = [
   { href: "/dashboard/plans", label: "Planes" },
   { href: "/dashboard/modules", label: "Módulos" },
   { href: "/dashboard/offers", label: "Ofertas" },
-  { href: "/dashboard/licenses", label: "Licencias" },
   { href: "/dashboard/subscriptions", label: "Suscripciones" },
-  { href: "/dashboard/api-keys", label: "API Keys" },
+
 ];
 
 export function DashboardOverview() {
@@ -58,7 +55,7 @@ export function DashboardOverview() {
           <h1 className={gp.titleLg}>Hola, {label}</h1>
         </div>
         <p className={gp.subtitleBlock}>
-          Resumen del control plane: licencias, suscripciones, ofertas y acceso
+          Resumen del control plane: suscripciones, ofertas y acceso
           remoto de tus aplicaciones cliente.
         </p>
       </div>
@@ -76,18 +73,6 @@ export function DashboardOverview() {
           value={data.subscriptions.active}
           hint={`${data.subscriptions.total} en total`}
           featured={data.subscriptions.active > 0}
-        />
-        <StatCard
-          icon={ShieldKeyhole}
-          label="Licencias disponibles"
-          value={data.licenses.available}
-          hint={`${data.licenses.used} usadas`}
-        />
-        <StatCard
-          icon={Key}
-          label="API Keys activas"
-          value={data.apiKeys.active}
-          hint={`${data.apiKeys.total} generadas`}
         />
       </div>
 

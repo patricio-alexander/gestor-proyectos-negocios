@@ -36,12 +36,7 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
       { label: "Planes", href: "/dashboard/plans" },
       { label: "Suscripciones", href: "/dashboard/subscriptions" },
       { label: "Módulos", href: "/dashboard/modules" },
-      { label: "Cobros (legado)", href: "/dashboard/licenses" },
     ],
-  },
-  {
-    title: "APIS",
-    items: [{ label: "API Keys", href: "/dashboard/api-keys" }],
   },
   {
     title: "Monitoreo",

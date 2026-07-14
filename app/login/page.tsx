@@ -60,24 +60,15 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 p-10">
-          <div className="flex items-center gap-3">
-            <div
-              className="gp-icon-box h-11 w-11"
-              style={{ border: "1px solid rgba(91,156,255,0.4)" }}
-            >
-              <Tachometer width={22} height={22} />
-            </div>
-            <div>
-              <p
-                className="text-lg font-semibold"
-                style={{ color: "var(--gp-platinum)" }}
-              >
-                GestorPro
-              </p>
-              <p className="text-sm" style={{ color: "var(--gp-text-faint)" }}>
-                Control de licencias EdDeli
-              </p>
-            </div>
+          <div>
+            <img
+              src="/logo-raptor.svg"
+              alt="GestorPro"
+              className="h-8 object-contain object-left"
+            />
+            <p className="mt-1 text-sm" style={{ color: "var(--gp-text-faint)" }}>
+              Control de licencias EdDeli
+            </p>
           </div>
         </div>
 
@@ -142,13 +133,16 @@ export default function LoginPage() {
       <div className="gp-login-panel flex flex-1 flex-col items-center justify-center px-6 py-12">
         <div className="mb-8 flex items-center gap-2 lg:hidden">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl"
             style={{
               backgroundColor: "var(--gp-nav-active-bg)",
-              color: "var(--gp-nav-active-text)",
             }}
           >
-            <Tachometer width={20} height={20} />
+            <img
+              src="/logo-raptor.svg"
+              alt="GestorPro"
+              className="size-full object-cover object-left"
+            />
           </div>
           <span
             className="text-lg font-semibold"

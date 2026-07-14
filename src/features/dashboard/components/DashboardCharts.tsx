@@ -19,9 +19,7 @@ import {
 } from "recharts";
 import type { DashboardOverview } from "../hooks/useDashboardOverview";
 import {
-  buildApiKeyStatusData,
   buildEcosystemData,
-  buildLicenseStatusData,
   buildOfferStatusData,
   buildSubscriptionStatusData,
   CHART_COLORS,
@@ -48,9 +46,7 @@ const GRID_STROKE = "var(--gp-border)";
 
 export function DashboardCharts({ data }: DashboardChartsProps) {
   const subscriptionStatus = buildSubscriptionStatusData(data.subscriptions);
-  const licenseStatus = buildLicenseStatusData(data.licenses);
   const offerStatus = buildOfferStatusData(data.offers);
-  const apiKeyStatus = buildApiKeyStatusData(data.apiKeys);
   const ecosystem = buildEcosystemData(data);
   const trend = data.subscriptionTrend;
   const financial = data.financial;
@@ -85,15 +81,6 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
           />
         </ChartCard>
 
-        <ChartCard title="Cobros por método de pago">
-          <StatusDonut
-            data={financial.revenueByPayment}
-            total={financial.collectedRevenue}
-            empty="Sin cobros registrados"
-            compact
-            formatValue={formatCurrency}
-          />
-        </ChartCard>
       </div>
 
       <div>
@@ -109,14 +96,6 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
             data={subscriptionStatus}
             total={data.subscriptions.total}
             empty="Sin suscripciones registradas"
-          />
-        </ChartCard>
-
-        <ChartCard title="Licencias por estado">
-          <StatusDonut
-            data={licenseStatus}
-            total={data.licenses.total}
-            empty="Sin licencias generadas"
           />
         </ChartCard>
       </div>
@@ -153,15 +132,6 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="API Keys">
-          <StatusDonut
-            data={apiKeyStatus}
-            total={data.apiKeys.total}
-            empty="Sin API keys"
-            compact
-          />
         </ChartCard>
 
         <ChartCard title="Ecosistema">

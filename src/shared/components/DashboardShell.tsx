@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Tachometer from "@gravity-ui/icons/Tachometer";
 import ChevronLeft from "@gravity-ui/icons/ChevronLeft";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { DASHBOARD_NAV } from "@/src/shared/config/dashboard-nav";
@@ -20,9 +19,14 @@ function isActive(pathname: string, href: string) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, activeRole, activeRoleId, changeRole, logout } = useAuth();
-  const { open: sidebarOpen, width: sidebarWidth, close: closeSidebar, expand: expandSidebar } =
-    useSidebar();
+  const { user, loading, activeRole, activeRoleId, changeRole, logout } =
+    useAuth();
+  const {
+    open: sidebarOpen,
+    width: sidebarWidth,
+    close: closeSidebar,
+    expand: expandSidebar,
+  } = useSidebar();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -59,11 +63,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         <div className={gp.sidebarHeader}>
           <Link href="/dashboard" className={gp.sidebarBrand} title="GestorPro">
-            <span className={`${gp.iconBoxSm} gp-sidebar-logo`}>
-              <Tachometer width={20} height={20} />
-            </span>
             {sidebarOpen && (
-              <span className="gp-sidebar-brand-text truncate">GestorPro</span>
+              <span className="gp-sidebar-brand-text truncate">Raptor </span>
             )}
           </Link>
           {sidebarOpen && (
@@ -78,7 +79,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className={`flex-1 overflow-y-auto py-3 ${sidebarOpen ? "px-3" : "px-2"}`}>
+        <nav
+          className={`flex-1 overflow-y-auto py-3 ${sidebarOpen ? "px-3" : "px-2"}`}
+        >
           {DASHBOARD_NAV.map((group) => (
             <div key={group.title} className="mb-5 last:mb-0">
               {sidebarOpen && <p className={gp.navGroup}>{group.title}</p>}
@@ -97,7 +100,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       }
                     >
                       <NavIcon href={item.href} width={18} height={18} />
-                      {sidebarOpen && <span className="truncate">{item.label}</span>}
+                      {sidebarOpen && (
+                        <span className="truncate">{item.label}</span>
+                      )}
                     </Link>
                   );
                 })}

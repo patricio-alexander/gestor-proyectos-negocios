@@ -1,9 +1,9 @@
-import { validateApiKey } from "@/src/shared/lib/api-auth";
+import { validateKey } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const apiKey = await validateApiKey(request);
+  const apiKey = await validateKey(request);
   if (apiKey.error) return apiKey.error;
 
   try {
