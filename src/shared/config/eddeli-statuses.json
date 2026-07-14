@@ -1,0 +1,564 @@
+{
+  "exportedAt": "2026-07-14T21:38:20.023Z",
+  "app": {
+    "id": 1,
+    "name": "EdDeli",
+    "hash": "77734f68c62fdb2f7bdfa804991a4ea6"
+  },
+  "modules": [
+    {
+      "key": "dashboard",
+      "name": "Dashboard",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/",
+          "name": "Dashboard",
+          "status": "active"
+        },
+        {
+          "key": "/inicio",
+          "name": "Inicio (alias)",
+          "status": "active"
+        },
+        {
+          "key": "/backery",
+          "name": "Backery (alias)",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "notificaciones",
+      "name": "Notificaciones",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/notifications",
+          "name": "Notificaciones",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "operacion",
+      "name": "Operación",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/caja",
+          "name": "Caja",
+          "status": "active"
+        },
+        {
+          "key": "/turno",
+          "name": "Turno",
+          "status": "active"
+        },
+        {
+          "key": "/tareas",
+          "name": "Tareas",
+          "status": "active"
+        },
+        {
+          "key": "/facturacion",
+          "name": "Comprobantes POS",
+          "status": "active"
+        },
+        {
+          "key": "/turno/supervision",
+          "name": "Supervisión caja",
+          "status": "active"
+        },
+        {
+          "key": "/turno/multi-caja",
+          "name": "Apertura multi-caja por local",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "ventas",
+      "name": "Ventas",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/inventory/orders",
+          "name": "Pedidos",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/customers",
+          "name": "Clientes",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/customers/cuentas",
+          "name": "Clientes con cuenta",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "finanzas",
+      "name": "Finanzas",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/inventory/finance",
+          "name": "Finanzas",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/collections",
+          "name": "Cobranzas",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/prestamos-deudas",
+          "name": "Préstamos y deudas",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/gastos-recurrentes",
+          "name": "Gastos recurrentes",
+          "status": "maintenance"
+        }
+      ]
+    },
+    {
+      "key": "inventario",
+      "name": "Inventario",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/inventory/products",
+          "name": "Productos",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/movement",
+          "name": "Movimientos",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/categories",
+          "name": "Categorías",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/tramos",
+          "name": "Tramos",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/units",
+          "name": "Unidades",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/bodegas",
+          "name": "Bodegas",
+          "status": "planned"
+        },
+        {
+          "key": "/inventory/lotes",
+          "name": "Lotes y vencimientos",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "produccion",
+      "name": "Producción",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/inventory/insumos",
+          "name": "Insumos y marcas",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/recipes",
+          "name": "Recetas",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/production",
+          "name": "Producción",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/suppliers",
+          "name": "Proveedores",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/suppliers/cuentas",
+          "name": "Proveedores con cuenta",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "canal_digital",
+      "name": "Canal digital",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/catalog_manager",
+          "name": "Catálogo config",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/puntos-venta",
+          "name": "Puntos de venta",
+          "status": "active"
+        },
+        {
+          "key": "/inventory/productos-destacados",
+          "name": "Productos destacados",
+          "status": "maintenance"
+        },
+        {
+          "key": "/compare_groups",
+          "name": "Grupos comparativos",
+          "status": "maintenance"
+        },
+        {
+          "key": "/catalogo",
+          "name": "Catálogo público",
+          "status": "active"
+        },
+        {
+          "key": "/punto_venta",
+          "name": "Puntos de venta",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "publicidad",
+      "name": "Publicidad",
+      "status": "maintenance",
+      "sections": [
+        {
+          "key": "/publicidad",
+          "name": "Campañas",
+          "status": "active"
+        },
+        {
+          "key": "/publicidad/dispositivos",
+          "name": "Dispositivos TV",
+          "status": "active"
+        },
+        {
+          "key": "/publicidad/reproductor",
+          "name": "Reproductor",
+          "status": "active"
+        },
+        {
+          "key": "/publicidad/campanas/nueva",
+          "name": "Nueva campaña",
+          "status": "maintenance"
+        },
+        {
+          "key": "/tv",
+          "name": "Reproductor TV",
+          "status": "maintenance"
+        }
+      ]
+    },
+    {
+      "key": "diseno_promocional",
+      "name": "Diseño promocional",
+      "status": "maintenance",
+      "sections": [
+        {
+          "key": "/diseno-promocional/editor",
+          "name": "Editor de diseño",
+          "status": "active"
+        },
+        {
+          "key": "/diseno-promocional/vista",
+          "name": "Vista con productos",
+          "status": "active"
+        },
+        {
+          "key": "/diseno-promocional/plantillas",
+          "name": "Plantillas",
+          "status": "active"
+        },
+        {
+          "key": "/editor",
+          "name": "Editor (atajo)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/publicity_edit",
+          "name": "Edición publicidad (atajo)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/editorDefault",
+          "name": "Editor por defecto",
+          "status": "maintenance"
+        },
+        {
+          "key": "/templates",
+          "name": "Plantillas (atajo)",
+          "status": "maintenance"
+        }
+      ]
+    },
+    {
+      "key": "administracion",
+      "name": "Administración",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/users",
+          "name": "Usuarios",
+          "status": "active"
+        },
+        {
+          "key": "/cuentas",
+          "name": "Cuentas",
+          "status": "active"
+        },
+        {
+          "key": "/roles",
+          "name": "Roles",
+          "status": "active"
+        },
+        {
+          "key": "/panel_control",
+          "name": "Panel de control",
+          "status": "active"
+        },
+        {
+          "key": "/notification-programs",
+          "name": "Programas de notificación",
+          "status": "active"
+        },
+        {
+          "key": "/app-settings",
+          "name": "Ajustes de app",
+          "status": "active"
+        },
+        {
+          "key": "/admin/asistencia",
+          "name": "Asistencia / horarios del personal",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "sistema",
+      "name": "Sistema",
+      "status": "active",
+      "sections": [
+        {
+          "key": "/sistema/configuracion",
+          "name": "Configuración",
+          "status": "active"
+        },
+        {
+          "key": "/sistema/planes",
+          "name": "Planes",
+          "status": "active"
+        },
+        {
+          "key": "/sistema/modulos",
+          "name": "Módulos",
+          "status": "active"
+        },
+        {
+          "key": "/perfil",
+          "name": "Perfil",
+          "status": "active"
+        },
+        {
+          "key": "/donaciones",
+          "name": "Donaciones",
+          "status": "active"
+        },
+        {
+          "key": "/info",
+          "name": "Información",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "desarrollador",
+      "name": "Desarrollador",
+      "status": "developer",
+      "sections": [
+        {
+          "key": "/img",
+          "name": "Imágenes",
+          "status": "active"
+        },
+        {
+          "key": "/file",
+          "name": "Archivos",
+          "status": "active"
+        },
+        {
+          "key": "/logs",
+          "name": "Logs",
+          "status": "active"
+        },
+        {
+          "key": "/backups",
+          "name": "Backups JSON",
+          "status": "active"
+        },
+        {
+          "key": "/comandos",
+          "name": "Comandos",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "comprobantes_electronicos",
+      "name": "Comprobantes electrónicos",
+      "status": "maintenance",
+      "sections": [
+        {
+          "key": "/comprobantes-electronicos",
+          "name": "Inicio SRI",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/facturas",
+          "name": "Facturas",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/notas-venta",
+          "name": "Notas de venta",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/notas-credito",
+          "name": "Notas de crédito / débito",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/retenciones",
+          "name": "Retenciones",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/guias-remision",
+          "name": "Guías de remisión",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/liquidacion-compras",
+          "name": "Liquidación de compras",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/emitidos",
+          "name": "Documentos emitidos",
+          "status": "maintenance"
+        },
+        {
+          "key": "/sistema/facturacion-electronica",
+          "name": "Facturación electrónica (atajo)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/facturacion/sri",
+          "name": "Config SRI (atajo)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes",
+          "name": "Comprobantes (redir)",
+          "status": "maintenance"
+        }
+      ]
+    },
+    {
+      "key": "documentos",
+      "name": "Documentos",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/documentos/plantillas",
+          "name": "Plantillas",
+          "status": "planned"
+        },
+        {
+          "key": "/documentos/contratos",
+          "name": "Contratos",
+          "status": "planned"
+        },
+        {
+          "key": "/documentos/firmas",
+          "name": "Firmas",
+          "status": "planned"
+        },
+        {
+          "key": "/documentos/archivo",
+          "name": "Archivo",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "logistica",
+      "name": "Logística",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/logistica/rutas",
+          "name": "Rutas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/transportistas",
+          "name": "Transportistas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/entregas",
+          "name": "Entregas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/tracking",
+          "name": "Tracking",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "comunidad",
+      "name": "Comunidad",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/comunidad/encuestas",
+          "name": "Encuestas",
+          "status": "planned"
+        },
+        {
+          "key": "/comunidad/quejas",
+          "name": "Quejas",
+          "status": "planned"
+        },
+        {
+          "key": "/comunidad/resultados",
+          "name": "Resultados",
+          "status": "planned"
+        }
+      ]
+    }
+  ]
+}
