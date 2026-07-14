@@ -12,6 +12,7 @@ import Briefcase from "@gravity-ui/icons/Briefcase";
 import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
+import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
 import { useState } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
@@ -34,12 +35,14 @@ function matchesAppSearch(app: App, query: string) {
 }
 
 export default function AppsPage() {
-  const { apps, loading, create, update, remove } = useApps();
+  const { apps, loading, create, update, remove, pushEntitlement } = useApps();
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
+  const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
 
   const createState = useOverlayState();
   const editState = useOverlayState();
@@ -72,8 +75,11 @@ export default function AppsPage() {
         path: (form.get("path") as string) || null,
         database_name: (form.get("database_name") as string) || null,
         maintenance: form.get("maintenance") === "on",
+        entitlement_url: (form.get("entitlement_url") as string) || null,
+        entitlement_secret: (form.get("entitlement_secret") as string) || null,
       });
       createState.close();
+      setSuccess("Aplicación creada");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear");
     } finally {
@@ -88,7 +94,8 @@ export default function AppsPage() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      await update(editingApp.id, {
+      const secret = String(form.get("entitlement_secret") || "").trim();
+      const updated = await update(editingApp.id, {
         name: form.get("name") as string,
         owner_name: (form.get("owner_name") as string) || null,
         phone: (form.get("phone") as string) || null,
@@ -98,9 +105,26 @@ export default function AppsPage() {
         path: (form.get("path") as string) || null,
         database_name: (form.get("database_name") as string) || null,
         maintenance: form.get("maintenance") === "on",
+        entitlement_url: (form.get("entitlement_url") as string) || null,
+        ...(secret ? { entitlement_secret: secret } : {}),
       });
       editState.close();
       setEditingApp(null);
+      const pushNote =
+        updated &&
+        "push_skipped" in updated &&
+        (updated as { push_skipped?: boolean }).push_skipped
+          ? " (sin URL de sync)"
+          : updated &&
+              "push_ok" in updated &&
+              (updated as { push_ok?: boolean }).push_ok
+            ? " · sync enviado a la app"
+            : updated &&
+                "push_error" in updated &&
+                (updated as { push_error?: string | null }).push_error
+              ? ` · aviso sync: ${(updated as { push_error?: string }).push_error}`
+              : "";
+      setSuccess(`Aplicación actualizada${pushNote}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
@@ -111,12 +135,35 @@ export default function AppsPage() {
   async function handleToggleMantenimiento(app: App) {
     setTogglingIds((prev) => new Set(prev).add(app.id));
     setError("");
+    setSuccess("");
     try {
-      await update(app.id, { maintenance: !app.maintenance });
+      const updated = await update(app.id, { maintenance: !app.maintenance });
+      const pushErr = (updated as { push_error?: string | null })?.push_error;
+      if (pushErr) {
+        setError(`Mantenimiento guardado, pero no se pudo sync: ${pushErr}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cambiar estado");
     } finally {
       setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(app.id);
+        return next;
+      });
+    }
+  }
+
+  async function handlePush(app: App) {
+    setPushingIds((prev) => new Set(prev).add(app.id));
+    setError("");
+    setSuccess("");
+    try {
+      await pushEntitlement(app.id);
+      setSuccess(`Entitlement enviado a ${app.name || "la app"}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al empujar");
+    } finally {
+      setPushingIds((prev) => {
         const next = new Set(prev);
         next.delete(app.id);
         return next;
@@ -249,12 +296,29 @@ export default function AppsPage() {
                           />
                         </label>
                         <label className={`${gp.label} col-span-2`}>
+                          URL entitlement (sync)
+                          <input
+                            name="entitlement_url"
+                            placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={`${gp.label} col-span-2`}>
+                          Secreto sync (GESTOR_SYNC_SECRET)
+                          <input
+                            name="entitlement_secret"
+                            type="password"
+                            placeholder="Mismo valor que en la app destino"
+                            className={gp.input}
+                          />
+                        </label>
+                        <label className={`${gp.label} col-span-2`}>
                           <Switch name="maintenance" size="sm">
                             <Switch.Content>
                               <Switch.Control>
                                 <Switch.Thumb />
                               </Switch.Control>
-                              Maintenance mode
+                              Modo mantenimiento
                             </Switch.Content>
                           </Switch>
                         </label>
@@ -276,6 +340,17 @@ export default function AppsPage() {
         }
       />
 
+      {error ? (
+        <Alert status="danger">
+          <Alert.Description>{error}</Alert.Description>
+        </Alert>
+      ) : null}
+      {success ? (
+        <Alert status="success">
+          <Alert.Description>{success}</Alert.Description>
+        </Alert>
+      ) : null}
+
       <TableSearchBar
         value={search}
         onChange={setSearch}
@@ -291,7 +366,7 @@ export default function AppsPage() {
               <th>Nombre</th>
               <th>Propietario</th>
               <th>Plan activo</th>
-              <th>RUC</th>
+              <th>Sync</th>
               <th>Email</th>
               <th>Mantenimiento</th>
               <th className="text-right">Acciones</th>
@@ -330,7 +405,17 @@ export default function AppsPage() {
                       </span>
                     )}
                   </td>
-                  <td>{app.ruc || "—"}</td>
+                  <td>
+                    {app.entitlement_url ? (
+                      <span className="text-xs font-medium text-emerald-700">
+                        {app.has_entitlement_secret ? "Listo" : "Sin secreto"}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--gp-text-muted)]">
+                        Sin URL
+                      </span>
+                    )}
+                  </td>
                   <td>{app.email || "—"}</td>
                   <td>
                     <Switch
@@ -351,10 +436,24 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Empujar entitlement ${app.name}`}
+                        isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
+                        onPress={() => handlePush(app)}
+                      >
+                        {pushingIds.has(app.id) ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <ArrowUpFromSquare width={14} height={14} />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         aria-label={`Editar ${app.name}`}
                         onPress={() => {
                           setEditingApp(app);
                           setError("");
+                          setSuccess("");
                           editState.open();
                         }}
                       >
@@ -475,6 +574,33 @@ export default function AppsPage() {
                         />
                       </label>
                       <label className={`${gp.label} col-span-2`}>
+                        URL entitlement (sync)
+                        <input
+                          name="entitlement_url"
+                          defaultValue={editingApp.entitlement_url ?? ""}
+                          placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
+                          className={gp.input}
+                        />
+                      </label>
+                      <label className={`${gp.label} col-span-2`}>
+                        Secreto sync
+                        <input
+                          name="entitlement_secret"
+                          type="password"
+                          placeholder={
+                            editingApp.has_entitlement_secret
+                              ? "Dejá vacío para no cambiar el actual"
+                              : "Mismo valor que GESTOR_SYNC_SECRET en la app"
+                          }
+                          className={gp.input}
+                        />
+                        {editingApp.has_entitlement_secret ? (
+                          <span className="text-[11px] text-[var(--gp-text-muted)]">
+                            Ya hay un secreto guardado.
+                          </span>
+                        ) : null}
+                      </label>
+                      <label className={`${gp.label} col-span-2`}>
                         <Switch
                           name="maintenance"
                           size="sm"
@@ -484,7 +610,7 @@ export default function AppsPage() {
                             <Switch.Control>
                               <Switch.Thumb />
                             </Switch.Control>
-                            Maintenance mode
+                            Modo mantenimiento
                           </Switch.Content>
                         </Switch>
                       </label>

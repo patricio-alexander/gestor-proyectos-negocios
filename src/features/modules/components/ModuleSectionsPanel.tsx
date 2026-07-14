@@ -102,9 +102,22 @@ export function ModuleSectionsPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al actualizar sección");
+      const {
+        push_ok: _ok,
+        push_skipped: _skipped,
+        push_error: pushError,
+        ...sectionData
+      } = data;
       updateSections((sections) =>
-        sections.map((s) => (s.id === sec.id ? { ...s, ...data } : s)),
+        sections.map((s) =>
+          s.id === sec.id ? { ...s, ...sectionData } : s,
+        ),
       );
+      if (pushError) {
+        setSectionError(
+          `Estado guardado, pero no se pudo sync a EdDeli: ${pushError}`,
+        );
+      }
     } catch (err) {
       setSectionError(
         err instanceof Error ? err.message : "Error al actualizar sección",

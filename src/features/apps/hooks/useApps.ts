@@ -78,6 +78,24 @@ export function useApps() {
     );
   }
 
+  async function pushEntitlement(id: number) {
+    const res = await fetch(apiUrl(`/api/apps/${id}/push-entitlement`), {
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.push_error || "Error al empujar entitlement");
+    }
+    return data as {
+      push_ok?: boolean;
+      push_skipped?: boolean;
+      push_error?: string | null;
+      ok?: boolean;
+      skipped?: boolean;
+      error?: string;
+    };
+  }
+
   const activeApps = apps.filter((a) => !a.deleted_at);
 
   return {
@@ -86,6 +104,7 @@ export function useApps() {
     create,
     update,
     remove,
+    pushEntitlement,
     refetch: fetchApps,
   };
 }

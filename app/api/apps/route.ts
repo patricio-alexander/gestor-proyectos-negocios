@@ -57,6 +57,8 @@ export async function GET() {
           images_size: a.images_size,
           database_size: a.database_size,
           maintenance: a.maintenance,
+          entitlement_url: a.entitlement_url,
+          has_entitlement_secret: Boolean(a.entitlement_secret),
           created_at: a.created_at.toISOString(),
           updated_at: a.updated_at.toISOString(),
           deleted_at: a.deleted_at?.toISOString() ?? null,
@@ -98,7 +100,21 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, owner_name, phone, ruc, address, email, path, database_name, images_size, database_size, maintenance } = body;
+    const {
+      name,
+      owner_name,
+      phone,
+      ruc,
+      address,
+      email,
+      path,
+      database_name,
+      images_size,
+      database_size,
+      maintenance,
+      entitlement_url,
+      entitlement_secret,
+    } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -122,6 +138,8 @@ export async function POST(request: Request) {
         images_size: images_size ?? null,
         database_size: database_size ?? null,
         maintenance: maintenance ?? false,
+        entitlement_url: entitlement_url?.trim() || null,
+        entitlement_secret: entitlement_secret?.trim() || null,
       },
     });
 
@@ -140,6 +158,8 @@ export async function POST(request: Request) {
         images_size: app.images_size,
         database_size: app.database_size,
         maintenance: app.maintenance,
+        entitlement_url: app.entitlement_url,
+        has_entitlement_secret: Boolean(app.entitlement_secret),
         created_at: app.created_at.toISOString(),
         updated_at: app.updated_at.toISOString(),
         deleted_at: null,

@@ -101,14 +101,26 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
 
+    let pushFields = {
+      push_ok: false,
+      push_skipped: true,
+      push_error: null as string | null,
+    };
+
     if (updates.status !== undefined || updates.is_maintainer !== undefined) {
-      const { pushEntitlementToApp } = await import(
+      const { pushEntitlementToApp, toPushResponseFields } = await import(
         "@/src/shared/lib/push-entitlement"
       );
-      await pushEntitlementToApp(mod.apps.hash);
+      pushFields = toPushResponseFields(
+        await pushEntitlementToApp(mod.apps.hash),
+      );
     }
 
-    return NextResponse.json({ ...mod, app_name: mod.apps.name });
+    return NextResponse.json({
+      ...mod,
+      app_name: mod.apps.name,
+      ...pushFields,
+    });
   } catch {
     return NextResponse.json({ error: "Error al actualizar el módulo" }, { status: 500 });
   }

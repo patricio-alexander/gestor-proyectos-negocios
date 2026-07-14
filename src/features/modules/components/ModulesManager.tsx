@@ -213,11 +213,20 @@ export function ModulesManager() {
 
   async function handleChangeStatus(mod: Module, status: LifecycleStatus) {
     patchModule(mod.id, (m) => ({ ...m, status }));
+    setError("");
     try {
       const updated = await update(mod.id, { status });
       setSelectedModule((prev) => (prev?.id === mod.id ? updated : prev));
+      const pushError = (updated as Module & { push_error?: string | null })
+        ?.push_error;
+      if (pushError) {
+        setError(
+          `Estado guardado, pero no se pudo sync a EdDeli: ${pushError}`,
+        );
+      }
     } catch {
       await refetch();
+      setError("No se pudo actualizar el estado del módulo");
     }
   }
 
@@ -316,6 +325,12 @@ export function ModulesManager() {
       />
 
       <ModulesDashboard stats={stats} />
+
+      {error ? (
+        <Alert status="danger">
+          <Alert.Description>{error}</Alert.Description>
+        </Alert>
+      ) : null}
 
       <div className="space-y-3">
         <TableSearchBar

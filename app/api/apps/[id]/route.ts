@@ -97,11 +97,22 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
 
-    if (body.maintenance !== undefined) {
-      const { pushEntitlementToApp } = await import(
+    let pushFields = {
+      push_ok: false,
+      push_skipped: true,
+      push_error: null as string | null,
+    };
+
+    const shouldPush =
+      body.maintenance !== undefined ||
+      body.entitlement_url !== undefined ||
+      body.entitlement_secret !== undefined;
+
+    if (shouldPush) {
+      const { pushEntitlementToApp, toPushResponseFields } = await import(
         "@/src/shared/lib/push-entitlement"
       );
-      await pushEntitlementToApp(app.hash);
+      pushFields = toPushResponseFields(await pushEntitlementToApp(app.hash));
     }
 
     return NextResponse.json({
@@ -117,10 +128,11 @@ export async function PATCH(request: Request, { params }: Params) {
       database_name: app.database_name,
       maintenance: app.maintenance,
       entitlement_url: app.entitlement_url,
-      entitlement_secret: app.entitlement_secret ? "***" : null,
+      has_entitlement_secret: Boolean(app.entitlement_secret),
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: null,
+      ...pushFields,
     });
   } catch {
     return NextResponse.json(

@@ -1,16 +1,29 @@
 import { prisma } from "@/src/shared/lib/prisma";
 import { buildEntitlementForAppHash } from "./entitlement-payload";
 
-/**
- * Empuja el entitlement al backend de la app (si tiene entitlement_url configurada).
- * No lanza: loguea y sigue (el gestor no debe fallar si la app está offline).
- */
-export async function pushEntitlementToApp(appHash: string): Promise<{
+export type PushEntitlementOutcome = {
   ok: boolean;
   skipped?: boolean;
   error?: string;
   status?: number;
-}> {
+};
+
+/** Campos listos para incluir en JSON de respuesta de API. */
+export function toPushResponseFields(result: PushEntitlementOutcome) {
+  return {
+    push_ok: Boolean(result.ok && !result.skipped),
+    push_skipped: Boolean(result.skipped),
+    push_error: result.error ?? null,
+  };
+}
+
+/**
+ * Empuja el entitlement al backend de la app (si tiene entitlement_url configurada).
+ * No lanza: loguea y sigue (el gestor no debe fallar si la app está offline).
+ */
+export async function pushEntitlementToApp(
+  appHash: string,
+): Promise<PushEntitlementOutcome> {
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
     select: {

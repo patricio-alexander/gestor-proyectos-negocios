@@ -51,14 +51,25 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
 
+    let pushFields = {
+      push_ok: false,
+      push_skipped: true,
+      push_error: null as string | null,
+    };
+
     if (updates.status !== undefined) {
       const { pushEntitlementForSectionId } = await import(
         "@/src/shared/lib/push-entitlement-helpers"
       );
-      await pushEntitlementForSectionId(section.id);
+      const { toPushResponseFields } = await import(
+        "@/src/shared/lib/push-entitlement"
+      );
+      pushFields = toPushResponseFields(
+        await pushEntitlementForSectionId(section.id),
+      );
     }
 
-    return NextResponse.json(section);
+    return NextResponse.json({ ...section, ...pushFields });
   } catch {
     return NextResponse.json({ error: "Error al actualizar la sección" }, { status: 500 });
   }

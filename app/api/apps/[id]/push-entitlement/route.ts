@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
-import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
+import {
+  pushEntitlementToApp,
+  toPushResponseFields,
+} from "@/src/shared/lib/push-entitlement";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,14 +30,19 @@ export async function POST(_request: Request, { params }: Params) {
     }
 
     const result = await pushEntitlementToApp(app.hash);
+    const pushFields = toPushResponseFields(result);
     if (!result.ok) {
       return NextResponse.json(
-        { error: result.error || "Push falló", status: result.status },
+        {
+          error: result.error || "Push falló",
+          status: result.status,
+          ...pushFields,
+        },
         { status: 502 },
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ...pushFields });
   } catch {
     return NextResponse.json(
       { error: "Error al empujar entitlement" },
