@@ -40,8 +40,23 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(updates.max_records_limit !== undefined && {
           max_records_limit: updates.max_records_limit as number | null,
         }),
+        ...(updates.status !== undefined && {
+          status: String(updates.status) as
+            | "active"
+            | "development"
+            | "maintenance"
+            | "developer"
+            | "planned",
+        }),
       },
     });
+
+    if (updates.status !== undefined) {
+      const { pushEntitlementForSectionId } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
+      );
+      await pushEntitlementForSectionId(section.id);
+    }
 
     return NextResponse.json(section);
   } catch {

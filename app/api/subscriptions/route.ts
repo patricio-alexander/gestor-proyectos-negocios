@@ -6,7 +6,7 @@ import {
   SubscriptionStatus,
   LicenseStatus,
 } from "../../../prisma/generated/prisma/enums";
-
+import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 export async function GET() {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;
@@ -16,7 +16,7 @@ export async function GET() {
       include: {
         apps: { select: { name: true } },
         plan_price: {
-          include: { plan: { select: { name: true } } },
+          include: { plan: { select: { id: true, name: true } } },
         },
       },
       orderBy: { id: "desc" },
@@ -26,6 +26,7 @@ export async function GET() {
       id: s.id,
       app_hash: s.app_hash,
       app_name: s.apps.name,
+      plan_id: s.plan_price.plan.id,
       plan_price_id: s.plan_price_id,
       plan_name: s.plan_price.plan.name,
       period: s.plan_price.period,
@@ -127,6 +128,9 @@ export async function POST(request: NextRequest) {
         used_at: now,
       },
     });
+
+    // Habilita la app en su propio backend (sin pegar código en el frontend).
+    await pushEntitlementToApp(subscription.app_hash);
 
     return NextResponse.json(
       {

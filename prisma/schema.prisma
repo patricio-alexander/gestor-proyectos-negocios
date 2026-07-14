@@ -7,6 +7,15 @@ datasource db {
   provider = "mysql"
 }
 
+/** Ciclo de vida de módulos/secciones (alineado con EdDeli appModulesCatalog). */
+enum LifecycleStatus {
+  active
+  development
+  maintenance
+  developer
+  planned
+}
+
 // ─── Usuarios del gestor (control plane) ───────────────────────────────────
 
 model User {
@@ -89,6 +98,7 @@ model Module {
   name          String
   description      String?       @db.Text
   image_url        String?
+  status           LifecycleStatus @default(active)
   is_maintainer    Boolean       @default(false)
   is_trial         Boolean       @default(false)
   limit_days_trial Int?
@@ -104,6 +114,7 @@ model Module {
 
   @@unique([app_id, key])
   @@index([app_id])
+  @@index([status])
 }
 
 model Section {
@@ -111,6 +122,7 @@ model Section {
   module_id         Int
   name              String
   key               String?
+  status            LifecycleStatus @default(active)
   max_records_limit Int?
   usage_count       Int        @default(0)
   created_at        DateTime     @default(now())
@@ -120,6 +132,7 @@ model Section {
   capabilities      Capability[]
 
   @@index([module_id])
+  @@index([status])
 }
 
 model Capability {
@@ -152,6 +165,10 @@ model Apps {
   images_size       Float?
   database_size     Float?
   maintenance       Boolean        @default(false)
+  /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
+  entitlement_url    String?       @db.VarChar(500)
+  /** Secreto Bearer compartido con la app (GESTOR_SYNC_SECRET). */
+  entitlement_secret String?       @db.VarChar(255)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?
@@ -180,6 +197,7 @@ model Plan {
   name         String?
   apps         Apps         @relation(fields: [app_id], references: [id])
   app_id       Int
+  sort_order   Int          @default(0)
   created_at   DateTime     @default(now())
   updated_at   DateTime     @updatedAt
   deleted_at   DateTime?

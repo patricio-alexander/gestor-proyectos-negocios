@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -43,6 +44,8 @@ export async function PATCH(request: Request, { params }: Params) {
       where: { id: Number(id) },
       data,
     });
+
+    await pushEntitlementToApp(updated.app_hash);
 
     return NextResponse.json({
       id: updated.id,

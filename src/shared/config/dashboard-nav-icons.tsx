@@ -4,6 +4,7 @@ import Briefcase from "@gravity-ui/icons/Briefcase";
 import ClockArrowRotateLeft from "@gravity-ui/icons/ClockArrowRotateLeft";
 import CreditCard from "@gravity-ui/icons/CreditCard";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
+import Database from "@gravity-ui/icons/Database";
 import FileText from "@gravity-ui/icons/FileText";
 import ChartLine from "@gravity-ui/icons/ChartLine";
 import Gift from "@gravity-ui/icons/Gift";
@@ -30,6 +31,7 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/access/users": Persons,
   "/dashboard/access/roles": ShieldKeyhole,
   "/dashboard/events": ClockArrowRotateLeft,
+  "/dashboard/backups": Database,
 };
 
 export function NavIcon({ href, ...props }: { href: string } & IconProps) {

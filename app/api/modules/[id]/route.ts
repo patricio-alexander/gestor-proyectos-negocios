@@ -80,9 +80,17 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(updates.end_trial !== undefined && {
           end_trial: updates.end_trial ? new Date(String(updates.end_trial)) : null,
         }),
+        ...(updates.status !== undefined && {
+          status: String(updates.status) as
+            | "active"
+            | "development"
+            | "maintenance"
+            | "developer"
+            | "planned",
+        }),
       },
       include: {
-        apps: { select: { name: true } },
+        apps: { select: { name: true, hash: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -92,6 +100,13 @@ export async function PATCH(request: Request, { params }: Params) {
         },
       },
     });
+
+    if (updates.status !== undefined || updates.is_maintainer !== undefined) {
+      const { pushEntitlementToApp } = await import(
+        "@/src/shared/lib/push-entitlement"
+      );
+      await pushEntitlementToApp(mod.apps.hash);
+    }
 
     return NextResponse.json({ ...mod, app_name: mod.apps.name });
   } catch {

@@ -161,15 +161,28 @@ const EDDELI_API_KEY_HASH = crypto
   .update(EDDELI_API_KEY)
   .digest("hex");
 
+const EDDELI_ENTITLEMENT_URL =
+  process.env.EDDELI_ENTITLEMENT_URL ||
+  "http://127.0.0.1:3001/eddeliapi/subscription/entitlement";
+const EDDELI_ENTITLEMENT_SECRET =
+  process.env.EDDELI_ENTITLEMENT_SECRET || "eddeli_gestor_sync_local_dev";
+
 async function seedEdDeliApp() {
   return prisma.apps.upsert({
     where: { hash: EDDELI_APP_HASH },
-    update: { name: "EdDeli", deleted_at: null },
+    update: {
+      name: "EdDeli",
+      deleted_at: null,
+      entitlement_url: EDDELI_ENTITLEMENT_URL,
+      entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
+    },
     create: {
       hash: EDDELI_APP_HASH,
       name: "EdDeli",
       owner_name: "EdDeli",
       email: "soporte@eddeli.com",
+      entitlement_url: EDDELI_ENTITLEMENT_URL,
+      entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
     },
   });
 }
@@ -223,6 +236,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
       update: {
         name: modDef.name,
         description: modDef.description,
+        status: modDef.status ?? "active",
         is_maintainer: false,
         deleted_at: null,
       },
@@ -231,9 +245,12 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
         key: modDef.key,
         name: modDef.name,
         description: modDef.description,
+        status: modDef.status ?? "active",
         is_maintainer: false,
       },
     });
+
+    const allowedKeys = new Set(modDef.sections.map((s) => s.key));
 
     for (const secDef of modDef.sections) {
       const existing = await prisma.section.findFirst({
@@ -245,18 +262,38 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
       if (existing) {
         await prisma.section.update({
           where: { id: existing.id },
-          data: { name: secDef.name },
+          data: {
+            name: secDef.name,
+            status: secDef.status ?? "active",
+            deleted_at: null,
+          },
         });
         sectionId = existing.id;
       } else {
-        const created = await prisma.section.create({
-          data: {
-            module_id: mod.id,
-            key: secDef.key,
-            name: secDef.name,
-          },
+        const softDeleted = await prisma.section.findFirst({
+          where: { module_id: mod.id, key: secDef.key },
         });
-        sectionId = created.id;
+        if (softDeleted) {
+          await prisma.section.update({
+            where: { id: softDeleted.id },
+            data: {
+              name: secDef.name,
+              status: secDef.status ?? "active",
+              deleted_at: null,
+            },
+          });
+          sectionId = softDeleted.id;
+        } else {
+          const created = await prisma.section.create({
+            data: {
+              module_id: mod.id,
+              key: secDef.key,
+              name: secDef.name,
+              status: secDef.status ?? "active",
+            },
+          });
+          sectionId = created.id;
+        }
       }
 
       if (secDef.capabilities?.length) {
@@ -264,6 +301,21 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
       }
 
       sectionCount += 1;
+    }
+
+    // Secciones viejas que ya no están en el catálogo (ej. /img en sistema)
+    const obsolete = await prisma.section.findMany({
+      where: {
+        module_id: mod.id,
+        deleted_at: null,
+        OR: [{ key: null }, { key: { notIn: [...allowedKeys] } }],
+      },
+    });
+    for (const sec of obsolete) {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: new Date() },
+      });
     }
   }
 
@@ -411,6 +463,295 @@ async function seedEvents(typeMap: Map<string, number>, appIds: number[]) {
   return entries.length;
 }
 
+/** Módulos por plan comercial EdDeli (System → Planes). */
+const EDDELI_PLAN_DEFS: {
+  name: string;
+  sortOrder: number;
+  monthlyPrice: number;
+  moduleKeys: string[] | "ALL";
+}[] = [
+  {
+    name: "Plan Prueba",
+    sortOrder: 1,
+    monthlyPrice: 0,
+    moduleKeys: [
+      "dashboard",
+      "notificaciones",
+      "operacion",
+      "ventas",
+      "finanzas",
+      "inventario",
+      "produccion",
+      "administracion",
+      "sistema",
+    ],
+  },
+  {
+    name: "Plan Básico",
+    sortOrder: 2,
+    monthlyPrice: 19,
+    moduleKeys: [
+      "dashboard",
+      "notificaciones",
+      "operacion",
+      "administracion",
+      "sistema",
+    ],
+  },
+  {
+    name: "Plan Medio",
+    sortOrder: 3,
+    monthlyPrice: 39,
+    moduleKeys: [
+      "dashboard",
+      "notificaciones",
+      "operacion",
+      "ventas",
+      "finanzas",
+      "inventario",
+      "produccion",
+      "administracion",
+      "sistema",
+    ],
+  },
+  {
+    name: "Plan Pro",
+    sortOrder: 4,
+    monthlyPrice: 69,
+    moduleKeys: [
+      "dashboard",
+      "notificaciones",
+      "operacion",
+      "ventas",
+      "finanzas",
+      "inventario",
+      "produccion",
+      "canal_digital",
+      "publicidad",
+      "diseno_promocional",
+      "administracion",
+      "sistema",
+    ],
+  },
+  {
+    name: "Plan Socios",
+    sortOrder: 5,
+    monthlyPrice: 99,
+    moduleKeys: "ALL",
+  },
+  {
+    name: "Plan Empresarial",
+    sortOrder: 6,
+    monthlyPrice: 149,
+    moduleKeys: "ALL",
+  },
+];
+
+async function syncPlanModules(
+  planId: number,
+  moduleIds: number[],
+) {
+  const existing = await prisma.planModule.findMany({
+    where: { plan_id: planId },
+    select: { id: true, module_id: true },
+  });
+  const want = new Set(moduleIds);
+  for (const row of existing) {
+    if (!want.has(row.module_id)) {
+      await prisma.planModule.delete({ where: { id: row.id } });
+    }
+  }
+  const have = new Set(existing.map((e) => e.module_id));
+  for (const moduleId of moduleIds) {
+    if (!have.has(moduleId)) {
+      await prisma.planModule.create({
+        data: { plan_id: planId, module_id: moduleId },
+      });
+    }
+  }
+}
+
+/** Los 6 planes comerciales de EdDeli + precios mensuales + módulos. */
+async function seedEdDeliCommercialPlans(appId: number) {
+  const allModules = await prisma.module.findMany({
+    where: { app_id: appId, deleted_at: null },
+    select: { id: true, key: true },
+  });
+  const byKey = new Map(allModules.map((m) => [m.key, m.id]));
+
+  const created: { id: number; name: string; modules: number }[] = [];
+
+  for (const def of EDDELI_PLAN_DEFS) {
+    let plan = await prisma.plan.findFirst({
+      where: {
+        app_id: appId,
+        name: def.name,
+        deleted_at: null,
+      },
+    });
+
+    // Renombrar el plan "Socios" suelto (seed previo) a "Plan Socios"
+    if (!plan && def.name === "Plan Socios") {
+      plan = await prisma.plan.findFirst({
+        where: {
+          app_id: appId,
+          OR: [{ name: "Socios" }, { name: "Local Dev" }],
+          deleted_at: null,
+        },
+      });
+      if (plan) {
+        plan = await prisma.plan.update({
+          where: { id: plan.id },
+          data: { name: "Plan Socios", deleted_at: null },
+        });
+      }
+    }
+
+    if (!plan) {
+      plan = await prisma.plan.create({
+        data: {
+          name: def.name,
+          app_id: appId,
+          sort_order: def.sortOrder,
+        },
+      });
+    } else {
+      plan = await prisma.plan.update({
+        where: { id: plan.id },
+        data: {
+          name: def.name,
+          deleted_at: null,
+          sort_order: def.sortOrder,
+        },
+      });
+    }
+
+    const moduleIds =
+      def.moduleKeys === "ALL"
+        ? allModules.map((m) => m.id)
+        : def.moduleKeys
+            .map((k) => byKey.get(k))
+            .filter((id): id is number => typeof id === "number");
+
+    await syncPlanModules(plan.id, moduleIds);
+
+    let planPrice = await prisma.planPrice.findFirst({
+      where: { plan_id: plan.id, period: "MONTHLY" },
+    });
+    if (!planPrice) {
+      await prisma.planPrice.create({
+        data: {
+          plan_id: plan.id,
+          period: "MONTHLY",
+          price: def.monthlyPrice,
+        },
+      });
+    } else {
+      await prisma.planPrice.update({
+        where: { id: planPrice.id },
+        data: { price: def.monthlyPrice },
+      });
+    }
+
+    // Precio anual opcional (~10 meses)
+    let annual = await prisma.planPrice.findFirst({
+      where: { plan_id: plan.id, period: "ANNUALLY" },
+    });
+    const annualPrice = def.monthlyPrice * 10;
+    if (!annual) {
+      await prisma.planPrice.create({
+        data: {
+          plan_id: plan.id,
+          period: "ANNUALLY",
+          price: annualPrice,
+        },
+      });
+    } else {
+      await prisma.planPrice.update({
+        where: { id: annual.id },
+        data: { price: annualPrice },
+      });
+    }
+
+    created.push({ id: plan.id, name: def.name, modules: moduleIds.length });
+  }
+
+  return created;
+}
+
+/** Suscripción ACTIVE al Plan Socios (todos los módulos) para pruebas locales. */
+async function seedEdDeliLocalSubscription(appId: number, appHash: string) {
+  const plan = await prisma.plan.findFirst({
+    where: { app_id: appId, name: "Plan Socios", deleted_at: null },
+  });
+  if (!plan) {
+    throw new Error("Plan Socios no encontrado; corre seedEdDeliCommercialPlans antes");
+  }
+
+  let planPrice = await prisma.planPrice.findFirst({
+    where: { plan_id: plan.id, period: "MONTHLY" },
+  });
+  if (!planPrice) {
+    planPrice = await prisma.planPrice.create({
+      data: { plan_id: plan.id, period: "MONTHLY", price: 99 },
+    });
+  }
+
+  const startAt = new Date();
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+  let subscription = await prisma.subscription.findFirst({
+    where: { app_hash: appHash },
+  });
+  if (!subscription) {
+    subscription = await prisma.subscription.create({
+      data: {
+        app_hash: appHash,
+        plan_price_id: planPrice.id,
+        status: "ACTIVE",
+        start_at: startAt,
+        expires_at: expiresAt,
+      },
+    });
+  } else {
+    subscription = await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        plan_price_id: planPrice.id,
+        status: "ACTIVE",
+        start_at: startAt,
+        expires_at: expiresAt,
+      },
+    });
+  }
+
+  const demoLicenseKey = "b6dc0994-8e86-49e9-875a-ece9de52bef3";
+  const existingLicense = await prisma.license.findFirst({
+    where: { key: demoLicenseKey },
+  });
+  if (!existingLicense) {
+    await prisma.license.create({
+      data: {
+        key: demoLicenseKey,
+        plan_price_id: planPrice.id,
+        status: "AVAILABLE",
+      },
+    });
+  }
+
+  const moduleCount = await prisma.planModule.count({
+    where: { plan_id: plan.id },
+  });
+
+  return {
+    planId: plan.id,
+    planName: plan.name!,
+    subscriptionId: subscription.id,
+    modules: moduleCount,
+  };
+}
+
 async function main() {
   await seedRoles();
   await seedGestorAccounts();
@@ -420,32 +761,41 @@ async function main() {
     eddeliApp.id,
     EDDELI_PRODUCT_CATALOG,
   );
+  const commercialPlans = await seedEdDeliCommercialPlans(eddeliApp.id);
+  const localSub = await seedEdDeliLocalSubscription(
+    eddeliApp.id,
+    EDDELI_APP_HASH,
+  );
 
-  // const types = await seedEventTypes();
-  // const typeMap = new Map(types.map((t) => [t.key, t.id]));
-  //
-  // const secondApp = await prisma.apps.upsert({
-  //   where: { hash: "demo-app-02" },
-  //   update: { name: "DemoApp Secundaria", deleted_at: null },
-  //   create: {
-  //     hash: "demo-app-02",
-  //     name: "DemoApp Secundaria",
-  //     owner_name: "Demo Owner",
-  //   },
-  // });
-  //
-  // const totalEvents = await seedEvents(typeMap, [eddeliApp.id, secondApp.id]);
-  //
+  // Empuja entitlement al backend EdDeli (si está corriendo).
+  const { pushEntitlementToApp } = await import(
+    "../src/shared/lib/push-entitlement"
+  );
+  const push = await pushEntitlementToApp(EDDELI_APP_HASH);
+
   console.log(
-    "Seed OK: roles, EdDeli (%d módulos, %d secciones), API key seed, cuentas (administrador/Edgar Torres + demo)",
+    "Seed OK: roles, EdDeli (%d módulos, %d secciones), API key seed, cuentas",
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
   );
-  // console.log(
-  //   "  Eventos: %d tipos, %d eventos generados",
-  //   types.length,
-  //   totalEvents,
-  // );
+  console.log(
+    "  Planes: %s",
+    commercialPlans.map((p) => `${p.name}(${p.modules}m)`).join(", "),
+  );
+  console.log(
+    "  Suscripción local: %s (%d módulos) → sub %d",
+    localSub.planName,
+    localSub.modules,
+    localSub.subscriptionId,
+  );
+  console.log(
+    "  Entitlement push: %s",
+    push.skipped
+      ? "omitido (sin URL)"
+      : push.ok
+        ? "OK → EdDeli backend"
+        : `falló (${push.error || push.status}) — arranca EdDeli y vuelve a seed o haz pull`,
+  );
 }
 
 main()

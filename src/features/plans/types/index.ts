@@ -16,11 +16,23 @@ export type PlanOffer = {
   offer_name: string;
 };
 
+export type PlanAppUsing = {
+  id: number;
+  name: string | null;
+  hash: string;
+};
+
 export type Plan = {
   id: number;
   name: string | null;
   app_id: number;
+  /** @deprecated prefer catalog_app_name / apps_using */
   app_name?: string | null;
+  catalog_app_name?: string | null;
+  sort_order?: number;
+  /** Apps con suscripción ACTIVE en este plan */
+  apps_count: number;
+  apps_using: PlanAppUsing[];
   prices: PlanPrice[];
   plan_modules: PlanModule[];
   plan_offers: PlanOffer[];

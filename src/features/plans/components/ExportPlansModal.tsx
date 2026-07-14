@@ -20,7 +20,11 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
   const filteredPlans =
     filterAppId === "all"
       ? plans
-      : plans.filter((p) => p.app_id === filterAppId);
+      : plans.filter(
+          (p) =>
+            p.app_id === filterAppId ||
+            p.apps_using?.some((a) => a.id === filterAppId),
+        );
 
   function handleDownloadPDF() {
     const doc = new jsPDF();
@@ -58,16 +62,28 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
     doc.setTextColor(60);
 
     const targetPlans =
-      filterAppId === "all" ? plans : plans.filter((p) => p.app_id === filterAppId);
+      filterAppId === "all"
+        ? plans
+        : plans.filter(
+            (p) =>
+              p.app_id === filterAppId ||
+              p.apps_using?.some((a) => a.id === filterAppId),
+          );
     const rows = targetPlans.map((plan) => {
       const monthly = plan.prices?.find((p) => p.period === "MONTHLY")?.price;
       const annual = plan.prices?.find((p) => p.period === "ANNUALLY")?.price;
       const modules = plan.plan_modules ?? [];
       const offers = plan.plan_offers ?? [];
+      const appsLabel =
+        plan.apps_count > 0
+          ? `${plan.apps_count}: ${(plan.apps_using ?? [])
+              .map((a) => a.name || "?")
+              .join(", ")}`
+          : "0 apps";
 
       return [
         plan.name || "Sin nombre",
-        plan.app_name || "—",
+        appsLabel,
         monthly != null ? `$${monthly.toLocaleString("es-PE")}` : "—",
         annual != null ? `$${annual.toLocaleString("es-PE")}` : "—",
         modules.length > 0
@@ -82,7 +98,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
     autoTable(doc, {
       startY: 62,
       head: [
-        ["Plan", "Aplicación", "Mensual", "Anual", "Módulos", "Ofertas"],
+        ["Plan", "Apps usando", "Mensual", "Anual", "Módulos", "Ofertas"],
       ],
       body: rows,
       styles: {
@@ -193,7 +209,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                           Plan
                         </th>
                         <th className="px-4 py-3 font-semibold text-zinc-700">
-                          Aplicación
+                          Apps usando
                         </th>
                         <th className="px-4 py-3 font-semibold text-zinc-700">
                           Mensual
@@ -240,7 +256,11 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                                 {plan.name || "Sin nombre"}
                               </td>
                               <td className="px-4 py-3 text-zinc-600">
-                                {plan.app_name || "—"}
+                                {plan.apps_count > 0
+                                  ? `${plan.apps_count} · ${(plan.apps_using ?? [])
+                                      .map((a) => a.name || "?")
+                                      .join(", ")}`
+                                  : "0 apps"}
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 font-medium text-zinc-900">
                                 {formatPlanPrice(monthly?.price) ?? "—"}

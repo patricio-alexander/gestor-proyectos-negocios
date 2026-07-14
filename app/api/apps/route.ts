@@ -11,27 +11,78 @@ export async function GET() {
     const apps = await prisma.apps.findMany({
       where: { deleted_at: null },
       orderBy: { created_at: "desc" },
+      include: {
+        subscriptions: {
+          where: { status: "ACTIVE" },
+          orderBy: { id: "desc" },
+          take: 1,
+          include: {
+            plan_price: {
+              include: {
+                plan: {
+                  select: {
+                    id: true,
+                    name: true,
+                    plan_modules: {
+                      select: {
+                        module: {
+                          select: { id: true, name: true, key: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     return NextResponse.json(
-      apps.map((a) => ({
-        id: a.id,
-        hash: a.hash,
-        name: a.name,
-        owner_name: a.owner_name,
-        phone: a.phone,
-        ruc: a.ruc,
-        address: a.address,
-        email: a.email,
-        path: a.path,
-        database_name: a.database_name,
-        images_size: a.images_size,
-        database_size: a.database_size,
-        maintenance: a.maintenance,
-        created_at: a.created_at.toISOString(),
-        updated_at: a.updated_at.toISOString(),
-        deleted_at: a.deleted_at?.toISOString() ?? null,
-      })),
+      apps.map((a) => {
+        const sub = a.subscriptions[0] ?? null;
+        const plan = sub?.plan_price.plan ?? null;
+        return {
+          id: a.id,
+          hash: a.hash,
+          name: a.name,
+          owner_name: a.owner_name,
+          phone: a.phone,
+          ruc: a.ruc,
+          address: a.address,
+          email: a.email,
+          path: a.path,
+          database_name: a.database_name,
+          images_size: a.images_size,
+          database_size: a.database_size,
+          maintenance: a.maintenance,
+          created_at: a.created_at.toISOString(),
+          updated_at: a.updated_at.toISOString(),
+          deleted_at: a.deleted_at?.toISOString() ?? null,
+          subscription: sub
+            ? {
+                id: sub.id,
+                status: sub.status,
+                start_at: sub.start_at?.toISOString() ?? null,
+                expires_at: sub.expires_at?.toISOString() ?? null,
+                period: sub.plan_price.period,
+              }
+            : null,
+          plan: plan
+            ? {
+                id: plan.id,
+                name: plan.name,
+                modules_count: plan.plan_modules.length,
+                modules: plan.plan_modules.map((pm) => ({
+                  id: pm.module.id,
+                  key: pm.module.key,
+                  name: pm.module.name,
+                })),
+              }
+            : null,
+        };
+      }),
     );
   } catch {
     return NextResponse.json(

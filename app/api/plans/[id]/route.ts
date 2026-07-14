@@ -4,8 +4,7 @@ import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { Period } from "../../../../prisma/generated/prisma/enums";
 import {
   findPlanById,
-  mapPlan,
-  planInclude,
+  mapPlanById,
 } from "@/src/features/plans/lib/plan-query";
 
 type Params = { params: Promise<{ id: string }> };
@@ -16,13 +15,13 @@ export async function GET(_request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    const plan = await findPlanById(Number(id));
+    const mapped = await mapPlanById(Number(id));
 
-    if (!plan) {
+    if (!mapped) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json(mapPlan(plan));
+    return NextResponse.json(mapped);
   } catch {
     return NextResponse.json(
       { error: "Error al obtener el plan" },
@@ -124,14 +123,26 @@ export async function PATCH(request: Request, { params }: Params) {
           });
         }
       }
-
-      return tx.plan.findUnique({
-        where: { id: planId },
-        include: planInclude,
-      });
     });
 
-    return NextResponse.json(mapPlan(plan!));
+    const mapped = await mapPlanById(planId);
+    const appHash = (
+      await prisma.apps.findFirst({
+        where: {
+          id: mapped?.app_id ?? existing.app_id,
+          deleted_at: null,
+        },
+        select: { hash: true },
+      })
+    )?.hash;
+    if (appHash && module_ids !== undefined) {
+      const { pushEntitlementToApp } = await import(
+        "@/src/shared/lib/push-entitlement"
+      );
+      await pushEntitlementToApp(appHash);
+    }
+
+    return NextResponse.json(mapped);
   } catch (err) {
     console.error("Error al actualizar plan:", err);
     return NextResponse.json(

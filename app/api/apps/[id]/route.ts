@@ -35,6 +35,8 @@ export async function GET(_request: Request, { params }: Params) {
       images_size: app.images_size,
       database_size: app.database_size,
       maintenance: app.maintenance,
+      entitlement_url: app.entitlement_url,
+      has_entitlement_secret: Boolean(app.entitlement_secret),
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: app.deleted_at?.toISOString() ?? null,
@@ -80,8 +82,27 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(body.images_size !== undefined && { images_size: Number(body.images_size) }),
         ...(body.database_size !== undefined && { database_size: Number(body.database_size) }),
         ...(body.maintenance !== undefined && { maintenance: Boolean(body.maintenance) }),
+        ...(body.entitlement_url !== undefined && {
+          entitlement_url:
+            body.entitlement_url === null
+              ? null
+              : String(body.entitlement_url).trim(),
+        }),
+        ...(body.entitlement_secret !== undefined && {
+          entitlement_secret:
+            body.entitlement_secret === null
+              ? null
+              : String(body.entitlement_secret).trim(),
+        }),
       },
     });
+
+    if (body.maintenance !== undefined) {
+      const { pushEntitlementToApp } = await import(
+        "@/src/shared/lib/push-entitlement"
+      );
+      await pushEntitlementToApp(app.hash);
+    }
 
     return NextResponse.json({
       id: app.id,
@@ -95,6 +116,8 @@ export async function PATCH(request: Request, { params }: Params) {
       path: app.path,
       database_name: app.database_name,
       maintenance: app.maintenance,
+      entitlement_url: app.entitlement_url,
+      entitlement_secret: app.entitlement_secret ? "***" : null,
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: null,

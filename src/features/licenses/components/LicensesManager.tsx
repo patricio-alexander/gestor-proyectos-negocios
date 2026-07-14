@@ -73,8 +73,8 @@ export function LicensesManager() {
   return (
     <div className={gp.page}>
       <PageHeader
-        title="Licencias"
-        description="Claves de activación generadas desde los planes. Al usarse, crean una suscripción."
+        title="Cobros (legado)"
+        description="Registro interno de cobros. Para habilitar una app usá Planes → Habilitar suscripción."
         Icon={ShieldKeyhole}
       />
 
@@ -101,7 +101,7 @@ export function LicensesManager() {
         onChange={setSearch}
         placeholder="Buscar por plan, clave o estado…"
         total={total}
-        totalLabel="licencias"
+        totalLabel="cobros"
       />
 
       {paginated.length === 0 ? (
@@ -112,10 +112,10 @@ export function LicensesManager() {
             className="text-[var(--gp-text-faint)]"
           />
           <p className="text-sm font-medium text-[var(--gp-text)]">
-            {search.trim() ? "Sin resultados" : "No hay licencias generadas"}
+            {search.trim() ? "Sin resultados" : "No hay cobros registrados"}
           </p>
           <p className="text-xs text-[var(--gp-text-muted)]">
-            Creá licencias desde la sección{" "}
+            Habilitá un plan desde la sección{" "}
             <Link
               href="/dashboard/plans"
               className="font-medium text-[var(--gp-badge-text)] hover:underline"
@@ -147,12 +147,12 @@ export function LicensesManager() {
       )}
 
       <Card className={`${gp.card} px-4 py-3 text-sm ${gp.subtitle}`}>
-        Tip: generá nuevas licencias desde cualquier plan en{" "}
+        Tip: para habilitar una app usá{" "}
         <Link
           href="/dashboard/plans"
           className="font-medium text-[var(--gp-badge-text)] hover:underline"
         >
-          Planes → Crear licencia
+          Planes → Habilitar suscripción
         </Link>
         .
       </Card>

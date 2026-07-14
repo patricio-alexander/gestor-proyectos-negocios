@@ -110,7 +110,7 @@ export function SubscriptionsManager() {
     <div className={gp.page}>
       <PageHeader
         title="Suscripciones"
-        description="Se activan cuando un cliente usa una licencia. Controlá vigencia y estado desde aquí."
+        description="Historial de planes habilitados a las apps. Nuevas: desde Planes → Habilitar suscripción."
         Icon={CreditCard}
       />
 
@@ -143,7 +143,7 @@ export function SubscriptionsManager() {
               : "No hay suscripciones registradas"}
           </p>
           <p className="text-xs text-[var(--gp-text-muted)]">
-            Se crean automáticamente al activar una licencia en la app cliente.
+            Creá una desde Planes → Habilitar suscripción.
           </p>
         </div>
       ) : (

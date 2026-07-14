@@ -290,6 +290,7 @@ export default function AppsPage() {
             <tr>
               <th>Nombre</th>
               <th>Propietario</th>
+              <th>Plan activo</th>
               <th>RUC</th>
               <th>Email</th>
               <th>Mantenimiento</th>
@@ -299,7 +300,7 @@ export default function AppsPage() {
           <tbody>
             {paginatedApps.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center">
+                <td colSpan={7} className="py-10 text-center">
                   <p className={gp.subtitle}>
                     {search.trim()
                       ? "No hay aplicaciones que coincidan con la búsqueda."
@@ -312,6 +313,23 @@ export default function AppsPage() {
                 <tr key={app.id}>
                   <td className="font-medium">{app.name || "—"}</td>
                   <td>{app.owner_name || "—"}</td>
+                  <td>
+                    {app.plan ? (
+                      <div>
+                        <p className="font-medium text-[var(--gp-text)]">
+                          {app.plan.name}
+                        </p>
+                        <p className="text-xs text-[var(--gp-text-muted)]">
+                          {app.plan.modules_count}{" "}
+                          {app.plan.modules_count === 1 ? "módulo" : "módulos"}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-[var(--gp-text-muted)]">
+                        Sin plan
+                      </span>
+                    )}
+                  </td>
                   <td>{app.ruc || "—"}</td>
                   <td>{app.email || "—"}</td>
                   <td>

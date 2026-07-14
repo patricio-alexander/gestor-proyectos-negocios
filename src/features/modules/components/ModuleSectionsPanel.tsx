@@ -13,12 +13,14 @@ import Layers from "@gravity-ui/icons/Layers";
 import Pencil from "@gravity-ui/icons/Pencil";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import { useState } from "react";
-import type { Capability, Module, Section } from "../types";
+import type { Capability, LifecycleStatus, Module, Section } from "../types";
+import { normalizeLifecycleStatus } from "../types";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { SectionLimitBadge, SectionLimitSummary } from "./SectionLimitBadge";
 import { SectionMaxRecordsLimitField } from "./SectionMaxRecordsLimitField";
 import { SectionCapabilitiesPanel } from "./SectionCapabilitiesPanel";
+import { LifecycleStatusSelect } from "./LifecycleStatusSelect";
 
 function parseMaxRecordsLimitInput(value: FormDataEntryValue | null) {
   if (value == null || String(value).trim() === "") return null;
@@ -80,6 +82,39 @@ export function ModuleSectionsPanel({
     setManagingCapabilitiesSection((current) =>
       current?.id === sectionId ? { ...current, capabilities } : current,
     );
+  }
+
+  async function handleChangeSectionStatus(
+    sec: Section,
+    nextStatus: LifecycleStatus,
+  ) {
+    updateSections((sections) =>
+      sections.map((s) =>
+        s.id === sec.id ? { ...s, status: nextStatus } : s,
+      ),
+    );
+    setSectionError("");
+    try {
+      const res = await fetch(apiUrl(`/api/sections/${sec.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al actualizar sección");
+      updateSections((sections) =>
+        sections.map((s) => (s.id === sec.id ? { ...s, ...data } : s)),
+      );
+    } catch (err) {
+      setSectionError(
+        err instanceof Error ? err.message : "Error al actualizar sección",
+      );
+      updateSections((sections) =>
+        sections.map((s) =>
+          s.id === sec.id ? { ...s, status: sec.status } : s,
+        ),
+      );
+    }
   }
 
   async function handleCreateSection(e: React.FormEvent<HTMLFormElement>) {
@@ -222,6 +257,7 @@ export function ModuleSectionsPanel({
                         >
                           <th className="px-5 py-2.5 font-medium">Sección</th>
                           <th className="px-5 py-2.5 font-medium">Key</th>
+                          <th className="px-5 py-2.5 font-medium">Estado</th>
                           <th className="px-5 py-2.5 font-medium">
                             Límite remoto
                           </th>
@@ -255,6 +291,17 @@ export function ModuleSectionsPanel({
                                     —
                                   </span>
                                 )}
+                              </td>
+                              <td className="px-5 py-3">
+                                <div className="min-w-[10.5rem]">
+                                  <LifecycleStatusSelect
+                                    value={normalizeLifecycleStatus(sec.status)}
+                                    onChange={(next) =>
+                                      handleChangeSectionStatus(sec, next)
+                                    }
+                                    aria-label={`Estado de ${sec.name}`}
+                                  />
+                                </div>
                               </td>
                               <td className="px-5 py-3">
                                 <SectionLimitBadge limit={sec.max_records_limit} />

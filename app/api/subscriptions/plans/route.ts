@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      where: { app_id: 1 },
+      where: { app_id: apiKey.app_id, deleted_at: null },
+      orderBy: [{ sort_order: "asc" }, { id: "asc" }],
     });
 
     if (!plans) {

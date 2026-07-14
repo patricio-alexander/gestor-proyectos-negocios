@@ -34,9 +34,9 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     items: [
       { label: "Ofertas", href: "/dashboard/offers" },
       { label: "Planes", href: "/dashboard/plans" },
-      { label: "Licencias", href: "/dashboard/licenses" },
-      { label: "Módulos", href: "/dashboard/modules" },
       { label: "Suscripciones", href: "/dashboard/subscriptions" },
+      { label: "Módulos", href: "/dashboard/modules" },
+      { label: "Cobros (legado)", href: "/dashboard/licenses" },
     ],
   },
   {
@@ -46,5 +46,9 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
   {
     title: "Monitoreo",
     items: [{ label: "Eventos", href: "/dashboard/events" }],
+  },
+  {
+    title: "Sistema",
+    items: [{ label: "Backups JSON", href: "/dashboard/backups" }],
   },
 ];

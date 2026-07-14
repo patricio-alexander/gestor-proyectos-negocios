@@ -1,14 +1,16 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Modal, useOverlayState } from "@heroui/react";
 import FileText from "@gravity-ui/icons/FileText";
 import Pencil from "@gravity-ui/icons/Pencil";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
-import Key from "@gravity-ui/icons/Key";
+import ListCheck from "@gravity-ui/icons/ListCheck";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Gift from "@gravity-ui/icons/Gift";
+import Briefcase from "@gravity-ui/icons/Briefcase";
+import Persons from "@gravity-ui/icons/Persons";
 import type { Plan } from "../types";
 import { gp } from "@/src/shared/ui/theme";
 import {
@@ -22,16 +24,16 @@ type PlanCardProps = {
   plan: Plan;
   onEdit: (plan: Plan) => void;
   onDelete: (plan: Plan) => void;
-  onCreateLicense: (plan: Plan) => void;
-  onViewLicenses: (plan: Plan) => void;
+  onEnableSubscription: (plan: Plan) => void;
+  onViewSubscriptions: (plan: Plan) => void;
 };
 
 export function PlanCard({
   plan,
   onEdit,
   onDelete,
-  onCreateLicense,
-  onViewLicenses,
+  onEnableSubscription,
+  onViewSubscriptions,
 }: PlanCardProps) {
   const monthly = plan.prices?.find((p) => p.period === "MONTHLY");
   const annual = plan.prices?.find((p) => p.period === "ANNUALLY");
@@ -42,6 +44,8 @@ export function PlanCard({
   const hiddenModules = modules.length - visibleModules.length;
   const visibleOffers = offers.slice(0, MAX_VISIBLE_CHIPS);
   const hiddenOffers = offers.length - visibleOffers.length;
+  const appsModal = useOverlayState();
+  const appsUsing = plan.apps_using ?? [];
 
   return (
     <Card className="gp-card gp-card-interactive flex h-full flex-col overflow-hidden p-0">
@@ -63,15 +67,31 @@ export function PlanCard({
               <h3 className="truncate text-base font-semibold text-[var(--gp-text)]">
                 {plan.name || "Sin nombre"}
               </h3>
-              {plan.app_name && (
-                <span className={`${gp.badge} mt-1.5 inline-block`}>
-                  {plan.app_name}
-                </span>
-              )}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 min-h-0 gap-1 px-2 text-xs"
+                  onPress={appsModal.open}
+                  aria-label={`Ver apps de ${plan.name ?? "plan"}`}
+                >
+                  <Persons width={12} height={12} />
+                  {plan.apps_count}{" "}
+                  {plan.apps_count === 1 ? "app" : "apps"}
+                </Button>
+              </div>
             </div>
           </div>
 
           <div className="flex shrink-0 gap-0.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Apps vinculadas a ${plan.name ?? "plan"}`}
+              onPress={appsModal.open}
+            >
+              <Briefcase width={14} height={14} />
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -160,22 +180,74 @@ export function PlanCard({
             size="sm"
             variant="secondary"
             className="flex-1 sm:flex-none"
-            onPress={() => onCreateLicense(plan)}
+            onPress={() => onEnableSubscription(plan)}
           >
             <ShieldKeyhole width={14} height={14} />
-            Crear licencia
+            Habilitar suscripción
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="flex-1 sm:flex-none"
-            onPress={() => onViewLicenses(plan)}
+            onPress={() => onViewSubscriptions(plan)}
           >
-            <Key width={14} height={14} />
-            Ver licencias
+            <ListCheck width={14} height={14} />
+            Ver suscripciones
           </Button>
         </div>
       </div>
+
+      <Modal state={appsModal}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-md">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>
+                  Apps vinculadas · {plan.name || "Plan"}
+                </Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <p className="mb-3 text-sm text-[var(--gp-text-muted)]">
+                  Apps con suscripción activa en este plan SoftEd.
+                </p>
+                {appsUsing.length === 0 ? (
+                  <p className="text-sm text-[var(--gp-text-muted)]">
+                    Todavía ninguna app usa este plan.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {appsUsing.map((app) => (
+                      <li
+                        key={app.hash}
+                        className="flex items-center gap-3 rounded-xl border px-3 py-3"
+                        style={{ borderColor: "var(--gp-border)" }}
+                      >
+                        <div className={gp.iconBoxSm}>
+                          <Briefcase width={16} height={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-[var(--gp-text)]">
+                            {app.name || "Sin nombre"}
+                          </p>
+                          <p className="truncate font-mono text-[10px] text-[var(--gp-text-muted)]">
+                            {app.hash}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" slot="close">
+                  Cerrar
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </Card>
   );
 }
@@ -244,37 +316,27 @@ function PlanChipGroup({
   hiddenCount: number;
   variant?: "module" | "offer";
 }) {
+  const chipClass =
+    variant === "offer"
+      ? "rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+      : "rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700";
+
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--gp-text-muted)]">
         <Icon width={12} height={12} />
         {label}
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {items.map((name) => (
-          <span
-            key={name}
-            className="rounded-md px-2 py-0.5 text-xs font-medium"
-            style={{
-              backgroundColor:
-                variant === "offer"
-                  ? "var(--gp-surface-muted)"
-                  : "var(--gp-badge-bg)",
-              color:
-                variant === "offer"
-                  ? "var(--gp-text-muted)"
-                  : "var(--gp-badge-text)",
-              border:
-                variant === "offer"
-                  ? "1px solid var(--gp-card-border)"
-                  : "none",
-            }}
-          >
-            {name}
+      <div className="flex flex-wrap gap-1">
+        {items.map((item) => (
+          <span key={item} className={chipClass}>
+            {item}
           </span>
         ))}
         {hiddenCount > 0 && (
-          <span className={`${gp.badge} opacity-80`}>+{hiddenCount} más</span>
+          <span className="text-xs text-[var(--gp-text-muted)]">
+            +{hiddenCount}
+          </span>
         )}
       </div>
     </div>

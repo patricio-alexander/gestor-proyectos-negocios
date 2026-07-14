@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { SubscriptionStatus } from "../../../../../prisma/generated/prisma/enums";
+import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,14 +20,14 @@ export async function PATCH(_request: Request, { params }: Params) {
     if (!sub) {
       return NextResponse.json(
         { error: "Suscripción no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (sub.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "Solo se pueden cancelar suscripciones activas" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -35,6 +36,8 @@ export async function PATCH(_request: Request, { params }: Params) {
       data: { status: SubscriptionStatus.CANCELED },
     });
 
+    await pushEntitlementToApp(updated.app_hash);
+
     return NextResponse.json({
       id: updated.id,
       status: updated.status,
@@ -42,7 +45,7 @@ export async function PATCH(_request: Request, { params }: Params) {
   } catch {
     return NextResponse.json(
       { error: "Error al cancelar suscripción" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

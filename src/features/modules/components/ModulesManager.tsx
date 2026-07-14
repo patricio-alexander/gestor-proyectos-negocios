@@ -10,10 +10,14 @@ import {
 } from "@heroui/react";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Plus from "@gravity-ui/icons/Plus";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useModules } from "../hooks/useModules";
 import { useApps } from "@/src/features/apps/hooks/useApps";
-import type { Module } from "../types";
+import type { LifecycleStatus, Module } from "../types";
+import {
+  matchesLifecycleFilter,
+  normalizeLifecycleStatus,
+} from "../types";
 import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSearchBar";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
@@ -23,13 +27,21 @@ import { ModulesDashboard } from "./ModulesDashboard";
 import { ModuleCard } from "./ModuleCard";
 import { ModuleSectionsPanel } from "./ModuleSectionsPanel";
 import { getModuleStats } from "../lib/module-stats";
+import {
+  ModuleStatusFilter,
+  type ModuleStatusFilterValue,
+} from "./ModuleStatusFilter";
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 
 function matchesModuleSearch(mod: Module, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [mod.name, mod.app_name]
+  const appNames = (mod.apps_using ?? [])
+    .map((a) => a.name)
+    .filter(Boolean)
+    .join(" ");
+  return [mod.name, mod.app_name, mod.catalog_app_name, appNames, "softed"]
     .filter(Boolean)
     .some((v) => String(v).toLowerCase().includes(q));
 }
@@ -47,12 +59,35 @@ export function ModulesManager() {
   const [editLimitDays, setEditLimitDays] = useState("");
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [statusFilter, setStatusFilter] =
+    useState<ModuleStatusFilterValue>("all");
 
   const moduleCreateState = useOverlayState();
   const moduleEditState = useOverlayState();
   const moduleDeleteState = useOverlayState();
 
   const stats = useMemo(() => getModuleStats(modules), [modules]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<ModuleStatusFilterValue, number> = {
+      all: modules.length,
+      active: 0,
+      maintenance: 0,
+      planned: 0,
+      developer: 0,
+    };
+    for (const mod of modules) {
+      const status = normalizeLifecycleStatus(mod.status);
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+    return counts;
+  }, [modules]);
+
+  const modulesForList = useMemo(() => {
+    return modules.filter((mod) =>
+      matchesLifecycleFilter(mod.status, statusFilter),
+    );
+  }, [modules, statusFilter]);
 
   const filterModules = useCallback(
     (mod: Module, query: string) => matchesModuleSearch(mod, query),
@@ -66,7 +101,11 @@ export function ModulesManager() {
     setPage,
     paginated: paginatedModules,
     total: filteredTotal,
-  } = usePaginatedSearch(modules, filterModules, PAGE_SIZE);
+  } = usePaginatedSearch(modulesForList, filterModules, PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, setPage]);
 
   function handleManageSections(mod: Module) {
     setSelectedModule(mod);
@@ -80,7 +119,7 @@ export function ModulesManager() {
     try {
       const appId = Number(form.get("app_id"));
       if (!appId) {
-        setError("Debe seleccionar una aplicación");
+        setError("Debe vincular el módulo a una aplicación del catálogo");
         return;
       }
       const file = form.get("image") as File | null;
@@ -172,10 +211,10 @@ export function ModulesManager() {
     setSelectedModule(updated);
   }
 
-  async function handleToggleMaintainer(mod: Module, is_maintainer: boolean) {
-    patchModule(mod.id, (m) => ({ ...m, is_maintainer }));
+  async function handleChangeStatus(mod: Module, status: LifecycleStatus) {
+    patchModule(mod.id, (m) => ({ ...m, status }));
     try {
-      const updated = await update(mod.id, { is_maintainer });
+      const updated = await update(mod.id, { status });
       setSelectedModule((prev) => (prev?.id === mod.id ? updated : prev));
     } catch {
       await refetch();
@@ -194,7 +233,7 @@ export function ModulesManager() {
     <div className={gp.page}>
       <ManagerHeader
         title="Módulos"
-        description="Catálogo de módulos, secciones, límites y capacidades remotas"
+        description="Catálogo SoftEd general. Cada módulo se vincula a apps (hoy EdDeli); mismas secciones, distinta activación por plan."
         Icon={Cubes3Overlap}
         action={
           <Modal state={moduleCreateState}>
@@ -222,7 +261,7 @@ export function ModulesManager() {
                         </Alert>
                       )}
                       <label className={gp.label}>
-                        Aplicación
+                        App vinculada (catálogo)
                         <select name="app_id" required className={gp.input}>
                           <option value="">Seleccionar aplicación</option>
                           {businesses.map((b) => (
@@ -278,33 +317,40 @@ export function ModulesManager() {
 
       <ModulesDashboard stats={stats} />
 
-      <TableSearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Buscar por nombre o aplicación…"
-        total={filteredTotal}
-        totalLabel="módulos"
-      />
+      <div className="space-y-3">
+        <TableSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por nombre o aplicación…"
+          total={filteredTotal}
+          totalLabel="módulos"
+        />
+        <ModuleStatusFilter
+          value={statusFilter}
+          onChange={setStatusFilter}
+          counts={statusCounts}
+        />
+      </div>
 
       {paginatedModules.length === 0 ? (
         <div className={`${gp.empty} flex flex-col items-center gap-3 py-16`}>
           <Cubes3Overlap width={40} height={40} className="text-[var(--gp-text-faint)]" />
           <div className="text-center">
             <p className="text-sm font-medium text-[var(--gp-text)]">
-              {search.trim()
+              {search.trim() || statusFilter !== "all"
                 ? "No hay módulos que coincidan"
                 : "No hay módulos registrados"}
             </p>
             <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-              {search.trim()
-                ? "Probá con otro término de búsqueda."
+              {search.trim() || statusFilter !== "all"
+                ? "Probá con otro término o cambia el filtro de estado."
                 : "Creá el primer módulo para organizar secciones y límites."}
             </p>
           </div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {paginatedModules.map((mod) => (
               <ModuleCard
                 key={mod.id}
@@ -322,7 +368,7 @@ export function ModulesManager() {
                   setError("");
                   moduleDeleteState.open();
                 }}
-                onToggleMaintainer={handleToggleMaintainer}
+                onChangeStatus={handleChangeStatus}
               />
             ))}
           </div>

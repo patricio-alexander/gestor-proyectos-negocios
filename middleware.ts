@@ -3,9 +3,12 @@ import type { NextRequest } from "next/server";
 
 const publicPaths = ["/login"];
 const allowedOrigins = [
-  "http://localhost:5173", // dev
+  "http://localhost:5173", // EdDeli Vite
+  "http://127.0.0.1:5173",
+  "http://192.168.3.40:5173", // EdDeli en LAN
   "https://aplicaciones.marianosamaniego.edu.ec", // producción
   "http://localhost:3000", // NO BORRAR ES EL ORIGEN DE ESTE PROYECTO
+  "http://127.0.0.1:3000",
 ];
 
 export function middleware(request: NextRequest) {

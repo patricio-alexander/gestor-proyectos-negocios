@@ -15,8 +15,8 @@ type ModulesDashboardProps = {
 
 export function ModulesDashboard({ stats }: ModulesDashboardProps) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatCard
           icon={Cubes3Overlap}
           label="Módulos"
@@ -49,15 +49,15 @@ export function ModulesDashboard({ stats }: ModulesDashboardProps) {
       </div>
 
       {stats.byApp.length > 0 && (
-        <Card className={`${gp.card} px-4 py-4`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--gp-text-muted)]">
-            Por aplicación
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+        <Card className={`${gp.card} px-3 py-2.5`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gp-text-muted)]">
+              Por app
+            </p>
             {stats.byApp.map((app) => (
               <span
                 key={app.appName}
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
                 style={{
                   borderColor: "var(--gp-card-border)",
                   backgroundColor: "var(--gp-surface-muted)",
@@ -66,7 +66,7 @@ export function ModulesDashboard({ stats }: ModulesDashboardProps) {
                 <span className="font-medium text-[var(--gp-text)]">
                   {app.appName}
                 </span>
-                <span className="text-xs text-[var(--gp-text-muted)]">
+                <span className="text-[10px] text-[var(--gp-text-muted)]">
                   {app.moduleCount} mod · {app.sectionCount} sec
                 </span>
               </span>
@@ -103,18 +103,18 @@ function StatCard({
           : undefined
       }
     >
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
         <div className={gp.iconBoxSm}>
-          <Icon width={16} height={16} />
+          <Icon width={14} height={14} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-medium text-[var(--gp-text-muted)]">
+          <p className="text-[10px] font-medium text-[var(--gp-text-muted)]">
             {label}
           </p>
-          <p className="mt-0.5 text-2xl font-semibold text-[var(--gp-text)]">
+          <p className="text-lg font-semibold leading-tight text-[var(--gp-text)]">
             {value.toLocaleString("es-PE")}
           </p>
-          <p className="mt-1 truncate text-xs text-[var(--gp-text-muted)]">
+          <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
             {hint}
           </p>
         </div>

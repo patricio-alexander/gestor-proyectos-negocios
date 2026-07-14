@@ -12,16 +12,19 @@ import { PlanCard } from "@/src/features/plans/components/PlanCard";
 import { ExportPlansModal } from "@/src/features/plans/components/ExportPlansModal";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
-import { useLicenses } from "@/src/features/licenses/hooks/useLicenses";
 import { useOffers } from "@/src/features/offers/hooks/useOffers";
+import { useSubscriptions } from "@/src/features/subscriptions/hooks/useSubscriptions";
 import type { Plan } from "@/src/features/plans/types";
 import type { ModuleRecord } from "@/src/features/catalog/types";
 import type { Offer } from "@/src/features/offers/types";
-import { useState } from "react";
+import type { Subscription } from "@/src/features/subscriptions/types";
+import { useEffect, useMemo, useState } from "react";
 import { gp } from "@/src/shared/ui/theme";
 import { ManagerHeader } from "@/src/shared/components/TableSearchBar";
 import FileText from "@gravity-ui/icons/FileText";
 import Plus from "@gravity-ui/icons/Plus";
+import { apiUrl } from "@/src/utils/apiUrl";
+import { formatDate } from "@/src/shared/utils/format-display";
 
 type PlanFormProps = {
   onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
@@ -44,9 +47,30 @@ function PlanForm({
   allOffers,
   children,
 }: PlanFormProps) {
-  const [selectedBusinessId, setSelectedBusinessId] = useState(
-    editing?.app_id ?? "",
-  );
+  const defaultAppId = (() => {
+    if (editing?.app_id) return String(editing.app_id);
+    const eddeli = businesses.find((b) =>
+      /eddeli/i.test(String(b.name || "")),
+    );
+    if (eddeli) return String(eddeli.id);
+    if (businesses.length === 1) return String(businesses[0].id);
+    return "";
+  })();
+
+  const [selectedBusinessId, setSelectedBusinessId] = useState(defaultAppId);
+
+  useEffect(() => {
+    if (!selectedBusinessId && defaultAppId) {
+      setSelectedBusinessId(defaultAppId);
+    }
+  }, [defaultAppId, selectedBusinessId]);
+
+  const catalogApp =
+    businesses.find((b) => String(b.id) === String(selectedBusinessId)) || null;
+  const catalogLocked =
+    Boolean(selectedBusinessId) &&
+    (Boolean(catalogApp && /eddeli/i.test(String(catalogApp.name || ""))) ||
+      businesses.length === 1);
 
   const monthlyPrice =
     editing?.prices?.find((p) => p.period === "MONTHLY")?.price ?? "";
@@ -77,23 +101,38 @@ function PlanForm({
             className="gp-input"
           />
         </label>
-        <label className="gp-label">
-          Aplicación
-          <select
-            name="app_id"
-            required
-            value={selectedBusinessId}
-            onChange={(e) => setSelectedBusinessId(e.target.value)}
-            className="gp-select"
-          >
-            <option value="">Seleccionar aplicación</option>
-            {businesses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {catalogLocked ? (
+          <>
+            <input type="hidden" name="app_id" value={selectedBusinessId} />
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-zinc-500">App</p>
+              <p className="text-sm font-semibold text-zinc-900">
+                {catalogApp?.name || "EdDeli"}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Fija para estos planes SoftEd (no hace falta elegirla).
+              </p>
+            </div>
+          </>
+        ) : (
+          <label className="gp-label">
+            App
+            <select
+              name="app_id"
+              required
+              value={selectedBusinessId}
+              onChange={(e) => setSelectedBusinessId(e.target.value)}
+              className="gp-select"
+            >
+              <option value="">Seleccionar app</option>
+              {businesses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <label className="gp-label">
             Precio mensual ($)
@@ -125,7 +164,7 @@ function PlanForm({
             Módulos
           </legend>
           {!selectedBusinessId ? (
-            <p className="gp-subtitle">Seleccioná una aplicación primero</p>
+            <p className="gp-subtitle">No hay app de catálogo disponible</p>
           ) : (
             <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
               {allModules.filter(
@@ -224,18 +263,21 @@ export default function PlansPage() {
   const { apps: businesses } = useApps();
   const { modules: catalogModules } = useCatalog();
   const { offers } = useOffers();
-  const {
-    licenses,
-    fetchByPlan,
-    create: createLicense,
-    revoke: revokeLicense,
-  } = useLicenses();
+  const { subscriptions, refetch: refetchSubscriptions } = useSubscriptions();
   const [editing, setEditing] = useState<Plan | null>(null);
   const [deleting, setDeleting] = useState<Plan | null>(null);
-  const [licensing, setLicensing] = useState<Plan | null>(null);
-  const [viewingLicenses, setViewingLicenses] = useState<Plan | null>(null);
-  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [enabling, setEnabling] = useState<Plan | null>(null);
+  const [viewingSubs, setViewingSubs] = useState<Plan | null>(null);
+  const [enableSuccess, setEnableSuccess] = useState<string | null>(null);
+  const [enableAppId, setEnableAppId] = useState("");
+  const [enablePeriod, setEnablePeriod] = useState<"MONTHLY" | "ANNUALLY" | null>(
+    null,
+  );
+  const [pendingReplace, setPendingReplace] = useState<{
+    message: string;
+    currentPlanName: string | null;
+    nextPlanName: string | null;
+  } | null>(null);
   const [methodPay, setMethodPay] = useState<"CASH" | "TRANSFER" | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -243,8 +285,13 @@ export default function PlansPage() {
   const createState = useOverlayState();
   const editState = useOverlayState();
   const deleteState = useOverlayState();
-  const licenseCreateState = useOverlayState();
-  const licenseListState = useOverlayState();
+  const enableState = useOverlayState();
+  const subListState = useOverlayState();
+
+  const planSubscriptions = useMemo(() => {
+    if (!viewingSubs) return [] as Subscription[];
+    return subscriptions.filter((s) => s.plan_id === viewingSubs.id);
+  }, [subscriptions, viewingSubs]);
 
   async function handleCreate(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -328,55 +375,102 @@ export default function PlansPage() {
     deleteState.open();
   }
 
-  function openLicenseCreate(plan: Plan) {
-    setLicensing(plan);
+  function openEnableSubscription(plan: Plan) {
+    setEnabling(plan);
+    setEnableSuccess(null);
+    setMethodPay(null);
+    setEnablePeriod(null);
+    setPendingReplace(null);
+    const eddeli = businesses.find((b) =>
+      /eddeli/i.test(String(b.name || "")),
+    );
+    setEnableAppId(eddeli ? String(eddeli.id) : "");
     setError("");
-    licenseCreateState.open();
+    enableState.open();
   }
 
-  function openLicenseList(plan: Plan) {
-    setViewingLicenses(plan);
+  function openSubscriptionList(plan: Plan) {
+    setViewingSubs(plan);
     setError("");
-    licenseListState.open();
-    fetchByPlan(plan.id);
+    subListState.open();
+    void refetchSubscriptions();
   }
 
-  async function handleCreateLicense(period: "MONTHLY" | "ANNUALLY") {
-    if (!licensing) return;
+  async function handleEnableSubscription(opts?: {
+    replace?: boolean;
+    period?: "MONTHLY" | "ANNUALLY";
+  }) {
+    if (!enabling) return;
+    const period = opts?.period ?? enablePeriod;
+    if (!enableAppId) {
+      setError("Elegí a qué app habilitar este plan");
+      return;
+    }
     if (!methodPay) {
       setError("Seleccioná el método de pago");
       return;
     }
+    if (!period) {
+      setError("Seleccioná el período");
+      return;
+    }
+    setEnablePeriod(period);
     setError("");
     setSubmitting(true);
     try {
-      const lic = await createLicense({
-        plan_id: licensing.id,
-        period,
-        method_pay: methodPay,
+      const res = await fetch(apiUrl("/api/subscriptions/enable"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_id: enabling.id,
+          app_id: Number(enableAppId),
+          period,
+          method_pay: methodPay,
+          replace: Boolean(opts?.replace),
+        }),
       });
-      setGeneratedKey(lic.key);
-      setError("");
+      const data = await res.json();
+      if (res.status === 409 && data.error === "conflict_active_subscription") {
+        setPendingReplace({
+          message: data.message || "La app ya tiene un plan activo.",
+          currentPlanName: data.current?.plan_name ?? null,
+          nextPlanName: data.next?.plan_name ?? enabling.name,
+        });
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Error al habilitar suscripción");
+      }
+      setPendingReplace(null);
+      const pushNote = data.push_skipped
+        ? " (la app no tiene URL de entitlement; configurala en Aplicaciones)"
+        : data.push_ok
+          ? " y se envió a la app"
+          : ` (aviso: no se pudo empujar a la app${data.push_error ? `: ${data.push_error}` : ""})`;
+      const replaced = data.replaced_subscription_id
+        ? " (reemplazó el plan anterior)"
+        : "";
+      setEnableSuccess(
+        `Suscripción activa en ${data.app_name || "la app"}${replaced}${pushNote}.`,
+      );
+      await refetchSubscriptions();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear licencia");
+      setError(
+        err instanceof Error ? err.message : "Error al habilitar suscripción",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
-  function handleCopyKey() {
-    if (!generatedKey) return;
-    navigator.clipboard.writeText(generatedKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function handleCloseLicenseCreate() {
-    licenseCreateState.close();
-    setLicensing(null);
-    setGeneratedKey(null);
-    setCopied(false);
+  function handleCloseEnable() {
+    enableState.close();
+    setEnabling(null);
+    setEnableSuccess(null);
     setMethodPay(null);
+    setEnablePeriod(null);
+    setEnableAppId("");
+    setPendingReplace(null);
     setError("");
   }
 
@@ -392,7 +486,7 @@ export default function PlansPage() {
     <div className={gp.page}>
       <ManagerHeader
         title="Planes"
-        description="Planes comerciales, precios y licencias por aplicación"
+        description="Planes SoftEd. Al habilitar, elegís a qué app aplicarlo; si ya tiene plan, te pide confirmar el cambio."
         Icon={FileText}
         action={
           <div className="flex items-center gap-2">
@@ -441,7 +535,7 @@ export default function PlansPage() {
               No hay planes registrados
             </p>
             <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-              Creá el primer plan para definir precios, módulos y licencias.
+              Creá el primer plan para definir precios, módulos y suscripciones.
             </p>
           </div>
         </div>
@@ -453,8 +547,8 @@ export default function PlansPage() {
               plan={plan}
               onEdit={openEdit}
               onDelete={openDelete}
-              onCreateLicense={openLicenseCreate}
-              onViewLicenses={openLicenseList}
+              onEnableSubscription={openEnableSubscription}
+              onViewSubscriptions={openSubscriptionList}
             />
           ))}
         </div>
@@ -521,14 +615,18 @@ export default function PlansPage() {
         </Modal.Backdrop>
       </Modal>
 
-      <Modal state={licenseCreateState}>
+      <Modal state={enableState}>
         <Modal.Backdrop>
           <Modal.Container>
             <Modal.Dialog className="sm:max-w-[420px]">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
-                  {generatedKey ? "Licencia generada" : "Crear licencia"}
+                  {enableSuccess
+                    ? "Suscripción habilitada"
+                    : pendingReplace
+                      ? "La app ya tiene un plan"
+                      : "Habilitar suscripción"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
@@ -537,8 +635,8 @@ export default function PlansPage() {
                     <Alert.Description>{error}</Alert.Description>
                   </Alert>
                 )}
-                {generatedKey ? (
-                  <div className="flex flex-col items-center gap-4 py-2 text-center">
+                {enableSuccess ? (
+                  <div className="flex flex-col items-center gap-3 py-2 text-center">
                     <div className="flex size-12 items-center justify-center rounded-full bg-green-100">
                       <svg
                         width="24"
@@ -555,28 +653,49 @@ export default function PlansPage() {
                       </svg>
                     </div>
                     <p className="text-sm font-medium text-green-700">
-                      Licencia generada con éxito
+                      {enableSuccess}
                     </p>
-                    <div className="flex w-full items-center gap-2 rounded-lg border bg-zinc-50 px-3 py-2.5">
-                      <span className="flex-1 select-all font-mono text-xs text-zinc-900">
-                        {generatedKey}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyKey}
-                        className="shrink-0 cursor-pointer rounded-md border bg-white px-2 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
-                      >
-                        {copied ? "Copiado" : "Copiar"}
-                      </button>
-                    </div>
+                  </div>
+                ) : pendingReplace ? (
+                  <div className="space-y-3">
+                    <Alert status="warning">
+                      <Alert.Description>{pendingReplace.message}</Alert.Description>
+                    </Alert>
+                    <p className="text-sm text-zinc-700">
+                      Plan actual:{" "}
+                      <strong>{pendingReplace.currentPlanName || "—"}</strong>
+                    </p>
+                    <p className="text-sm text-zinc-700">
+                      Nuevo plan:{" "}
+                      <strong>{pendingReplace.nextPlanName || enabling?.name}</strong>
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Si confirmás, se cancela el plan activo y se habilita este
+                      (mejora / cambio de plan).
+                    </p>
                   </div>
                 ) : (
                   <>
                     <p className="gp-subtitle">
-                      Seleccioná el período para la licencia del plan{" "}
-                      <strong>{licensing?.name}</strong>
+                      Elegí a qué app habilitar el plan{" "}
+                      <strong>{enabling?.name}</strong>.
                     </p>
                     <div className="mt-4 space-y-3">
+                      <label className="gp-label">
+                        App
+                        <select
+                          value={enableAppId}
+                          onChange={(e) => setEnableAppId(e.target.value)}
+                          className="gp-select"
+                        >
+                          <option value="">Seleccionar app</option>
+                          {businesses.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <p className="text-xs font-medium text-zinc-500">
                         Método de pago
                       </p>
@@ -609,20 +728,24 @@ export default function PlansPage() {
                       </p>
                       <div className="flex flex-col gap-3">
                         <Button
-                          isDisabled={submitting || !methodPay}
-                          onPress={() => handleCreateLicense("MONTHLY")}
+                          isDisabled={submitting || !methodPay || !enableAppId}
+                          onPress={() =>
+                            handleEnableSubscription({ period: "MONTHLY" })
+                          }
                         >
-                          {submitting ? (
+                          {submitting && enablePeriod === "MONTHLY" ? (
                             <Spinner size="sm" />
                           ) : (
                             "Mensual (1 mes)"
                           )}
                         </Button>
                         <Button
-                          isDisabled={submitting || !methodPay}
-                          onPress={() => handleCreateLicense("ANNUALLY")}
+                          isDisabled={submitting || !methodPay || !enableAppId}
+                          onPress={() =>
+                            handleEnableSubscription({ period: "ANNUALLY" })
+                          }
                         >
-                          {submitting ? (
+                          {submitting && enablePeriod === "ANNUALLY" ? (
                             <Spinner size="sm" />
                           ) : (
                             "Anual (12 meses)"
@@ -634,86 +757,91 @@ export default function PlansPage() {
                 )}
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onPress={handleCloseLicenseCreate}>
-                  {generatedKey ? "Cerrar" : "Cancelar"}
-                </Button>
+                {pendingReplace ? (
+                  <>
+                    <Button
+                      variant="secondary"
+                      isDisabled={submitting}
+                      onPress={() => setPendingReplace(null)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      isDisabled={submitting}
+                      onPress={() =>
+                        handleEnableSubscription({ replace: true })
+                      }
+                    >
+                      {submitting ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        "Sí, cambiar / mejorar plan"
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="secondary" onPress={handleCloseEnable}>
+                    {enableSuccess ? "Cerrar" : "Cancelar"}
+                  </Button>
+                )}
               </Modal.Footer>
             </Modal.Dialog>
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
 
-      <Modal state={licenseListState}>
+      <Modal state={subListState}>
         <Modal.Backdrop>
           <Modal.Container>
-            <Modal.Dialog className="sm:max-w-[500px]">
+            <Modal.Dialog className="sm:max-w-[520px]">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
-                  Licencias de {viewingLicenses?.name}
+                  Suscripciones · {viewingSubs?.name}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {licenses.length === 0 ? (
+                {planSubscriptions.length === 0 ? (
                   <p className="gp-subtitle">
-                    No hay licencias generadas para este plan
+                    Todavía no hay suscripciones con este plan. Usá «Habilitar
+                    suscripción».
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {licenses.map((lic) => (
+                    {planSubscriptions.map((sub) => (
                       <div
-                        key={lic.id}
+                        key={sub.id}
                         className="flex items-center justify-between rounded-lg border p-3"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-mono text-xs text-zinc-900">
-                            {lic.key}
+                          <p className="truncate text-sm font-medium text-zinc-900">
+                            {sub.app_name || sub.app_hash}
                           </p>
                           <p className="mt-0.5 text-xs text-zinc-500">
-                            {lic.period === "MONTHLY" ? "Mensual" : "Anual"}{" "}
-                            &middot;{" "}
-                            {lic.status === "AVAILABLE"
-                              ? "Disponible"
-                              : lic.status === "USED"
-                                ? "Usada"
-                                : "Revocada"}
-                            {lic.method_pay && (
-                              <>
-                                {" "}
-                                &middot;{" "}
-                                {lic.method_pay === "CASH"
-                                  ? "Efectivo"
-                                  : "Transferencia"}
-                              </>
-                            )}
+                            {sub.period === "MONTHLY" ? "Mensual" : "Anual"}
+                            {sub.start_at
+                              ? ` · desde ${formatDate(sub.start_at)}`
+                              : ""}
+                            {sub.expires_at
+                              ? ` · hasta ${formatDate(sub.expires_at)}`
+                              : ""}
                           </p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              lic.status === "AVAILABLE"
-                                ? "bg-green-100 text-green-700"
-                                : lic.status === "USED"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {lic.status === "AVAILABLE"
-                              ? "Disponible"
-                              : lic.status === "USED"
-                                ? "Usada"
-                                : "Revocada"}
-                          </span>
-                          {lic.status === "AVAILABLE" && (
-                            <button
-                              type="button"
-                              onClick={() => revokeLicense(lic.id)}
-                              className="cursor-pointer rounded-lg border border-red-300 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                            >
-                              Revocar
-                            </button>
-                          )}
-                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                            sub.status === "ACTIVE"
+                              ? "bg-green-100 text-green-700"
+                              : sub.status === "EXPIRED"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-zinc-100 text-zinc-600"
+                          }`}
+                        >
+                          {sub.status === "ACTIVE"
+                            ? "Activa"
+                            : sub.status === "EXPIRED"
+                              ? "Expirada"
+                              : "Cancelada"}
+                        </span>
                       </div>
                     ))}
                   </div>

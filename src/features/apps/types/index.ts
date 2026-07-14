@@ -15,6 +15,19 @@ export type App = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  subscription?: {
+    id: number;
+    status: string;
+    start_at: string | null;
+    expires_at: string | null;
+    period: string;
+  } | null;
+  plan?: {
+    id: number;
+    name: string | null;
+    modules_count: number;
+    modules: { id: number; key: string; name: string }[];
+  } | null;
 };
 
 export type CreateAppInput = {

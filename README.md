@@ -58,11 +58,20 @@ npm install
 
 # 2. Configurar .env (copiar .env.example → .env)
 
-# 3. Crear BD en MySQL y sincronizar esquema + usuario admin
+# 3. Crear BD en MySQL y sincronizar esquema + seed
 npm run setup
+# alias de: npm run db:reset
 
 # 4. Iniciar en desarrollo
 npm run dev
+```
+
+Comandos de base de datos:
+
+```bash
+npm run db:sync    # genera cliente + empuja schema + seed (sin borrar DB)
+npm run db:reset   # borra y recrea la DB, empuja schema + seed
+npm run seed       # solo seed
 ```
 
 > **Importante:** tras clonar, `npm install` ejecuta `prisma generate`. Si ves errores

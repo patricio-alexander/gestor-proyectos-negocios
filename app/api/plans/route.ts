@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { Period } from "../../../prisma/generated/prisma/enums";
-import { mapPlan, planInclude } from "@/src/features/plans/lib/plan-query";
+import {
+  mapPlan,
+  mapPlansWithUsage,
+  planInclude,
+} from "@/src/features/plans/lib/plan-query";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -12,10 +16,10 @@ export async function GET() {
     const plans = await prisma.plan.findMany({
       where: { deleted_at: null },
       include: planInclude,
-      orderBy: { created_at: "desc" },
+      orderBy: [{ sort_order: "asc" }, { id: "asc" }],
     });
 
-    return NextResponse.json(plans.map(mapPlan));
+    return NextResponse.json(await mapPlansWithUsage(plans));
   } catch {
     return NextResponse.json(
       { error: "Error al obtener planes" },
