@@ -225,10 +225,20 @@ async function seedSectionCapabilities(
   }
 }
 
+/** UI SoftEd: development legado → maintenance. */
+function catalogStatus(
+  status: CatalogModuleDef["status"] | undefined,
+): "active" | "maintenance" | "developer" | "planned" {
+  if (status === "development" || status === "maintenance") return "maintenance";
+  if (status === "developer" || status === "planned") return status;
+  return "active";
+}
+
 async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
   let sectionCount = 0;
 
   for (const modDef of catalog) {
+    const modStatus = catalogStatus(modDef.status);
     const mod = await prisma.module.upsert({
       where: {
         app_id_key: { app_id: appId, key: modDef.key },
@@ -236,7 +246,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
       update: {
         name: modDef.name,
         description: modDef.description,
-        status: modDef.status ?? "active",
+        status: modStatus,
         is_maintainer: false,
         deleted_at: null,
       },
@@ -245,7 +255,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
         key: modDef.key,
         name: modDef.name,
         description: modDef.description,
-        status: modDef.status ?? "active",
+        status: modStatus,
         is_maintainer: false,
       },
     });
@@ -259,12 +269,14 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
 
       let sectionId: number;
 
+      const secStatus = catalogStatus(secDef.status);
+
       if (existing) {
         await prisma.section.update({
           where: { id: existing.id },
           data: {
             name: secDef.name,
-            status: secDef.status ?? "active",
+            status: secStatus,
             deleted_at: null,
           },
         });
@@ -278,7 +290,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
             where: { id: softDeleted.id },
             data: {
               name: secDef.name,
-              status: secDef.status ?? "active",
+              status: secStatus,
               deleted_at: null,
             },
           });
@@ -289,7 +301,7 @@ async function seedEdDeliCatalog(appId: number, catalog: CatalogModuleDef[]) {
               module_id: mod.id,
               key: secDef.key,
               name: secDef.name,
-              status: secDef.status ?? "active",
+              status: secStatus,
             },
           });
           sectionId = created.id;

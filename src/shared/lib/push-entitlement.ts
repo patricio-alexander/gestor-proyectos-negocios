@@ -48,6 +48,7 @@ export async function pushEntitlementToApp(
         ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8_000),
     });
 
     if (!res.ok) {

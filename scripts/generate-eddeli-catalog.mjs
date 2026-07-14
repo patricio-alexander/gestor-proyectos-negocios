@@ -26,17 +26,25 @@ const STATUSES = new Set([
 
 const DEV_PREFIXES = ["/comprobantes-electronicos"];
 
+function normalizeStatus(status) {
+  if (status === "development") return "maintenance";
+  if (STATUSES.has(status) && status !== "development") return status;
+  return null;
+}
+
 function resolveSectionStatus(section) {
-  if (section?.status && STATUSES.has(section.status)) return section.status;
+  const fromField = normalizeStatus(section?.status);
+  if (fromField) return fromField;
   const path = String(section?.path || "").split("?")[0];
   if (DEV_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
-    return "development";
+    return "maintenance";
   }
   return "active";
 }
 
 function resolveGroupStatus(group) {
-  if (group?.status && STATUSES.has(group.status)) return group.status;
+  const fromField = normalizeStatus(group?.status);
+  if (fromField) return fromField;
   const sections = group.sections || [];
   if (sections.length === 0) return "planned";
   const operational = sections
@@ -44,7 +52,6 @@ function resolveGroupStatus(group) {
     .filter((s) => s !== "planned");
   if (operational.length === 0) return "planned";
   if (operational.some((s) => s === "active")) return "active";
-  if (operational.some((s) => s === "development")) return "development";
   if (operational.some((s) => s === "maintenance")) return "maintenance";
   if (operational.some((s) => s === "developer")) return "developer";
   return "active";

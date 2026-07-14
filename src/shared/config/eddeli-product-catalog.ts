@@ -199,12 +199,12 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     key: "comprobantes_electronicos",
     name: "Comprobantes electrónicos",
     description: "Documentos tributarios SRI: facturas, notas, retenciones y guías.",
-    status: "development",
+    status: "maintenance",
     sections: [
       {
         key: "/comprobantes-electronicos",
         name: "Inicio SRI",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "panel_de_secciones", name: "Panel de secciones" },
           { code: "atajos", name: "Atajos" },
@@ -213,7 +213,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/facturas",
         name: "Facturas",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -221,7 +221,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/notas-venta",
         name: "Notas de venta",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -229,7 +229,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/notas-credito",
         name: "Notas de crédito / débito",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "notas_de_credito", name: "Notas de crédito" },
           { code: "notas_de_debito", name: "Notas de débito" },
@@ -238,7 +238,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/retenciones",
         name: "Retenciones",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -246,7 +246,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/guias-remision",
         name: "Guías de remisión",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -254,7 +254,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/liquidacion-compras",
         name: "Liquidación de compras",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -262,7 +262,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes-electronicos/emitidos",
         name: "Documentos emitidos",
-        status: "development",
+        status: "maintenance",
         capabilities: [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
@@ -270,17 +270,17 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/comprobantes",
         name: "Comprobantes (redir)",
-        status: "development",
+        status: "maintenance",
       },
       {
         key: "/sistema/facturacion-electronica",
         name: "Facturación electrónica (atajo)",
-        status: "development",
+        status: "maintenance",
       },
       {
         key: "/facturacion/sri",
         name: "Config SRI (atajo)",
-        status: "development",
+        status: "maintenance",
       },
     ],
   },
