@@ -47,6 +47,7 @@ export async function GET() {
           id: a.id,
           hash: a.hash,
           name: a.name,
+          kind: a.kind,
           owner_name: a.owner_name,
           phone: a.phone,
           ruc: a.ruc,
@@ -141,6 +142,7 @@ export async function POST(request: Request) {
         maintenance: maintenance ?? false,
         entitlement_url: entitlement_url?.trim() || null,
         entitlement_secret: entitlement_secret?.trim() || null,
+        kind: "deployment",
       },
     });
 
@@ -149,6 +151,7 @@ export async function POST(request: Request) {
         id: app.id,
         hash: app.hash,
         name: app.name,
+        kind: app.kind,
         owner_name: app.owner_name,
         phone: app.phone,
         ruc: app.ruc,

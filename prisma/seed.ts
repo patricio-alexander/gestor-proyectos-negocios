@@ -148,6 +148,12 @@ async function seedGestorAccounts() {
   }
 }
 
+const RAPTOR_APP_HASH = crypto
+  .createHash("sha256")
+  .update("raptor-template-app")
+  .digest("hex")
+  .slice(0, 32);
+
 const EDDELI_APP_HASH = crypto
   .createHash("sha256")
   .update("eddeli-seed-app")
@@ -162,11 +168,34 @@ const EDDELI_ENTITLEMENT_URL =
 const EDDELI_ENTITLEMENT_SECRET =
   process.env.EDDELI_ENTITLEMENT_SECRET || EDDELI_API_KEY;
 
+async function seedRaptorTemplateApp() {
+  return prisma.apps.upsert({
+    where: { hash: RAPTOR_APP_HASH },
+    update: {
+      name: "Raptor",
+      owner_name: "Raptor",
+      email: "soporte@raptor.local",
+      kind: "template",
+      deleted_at: null,
+      entitlement_url: null,
+      entitlement_secret: null,
+    },
+    create: {
+      hash: RAPTOR_APP_HASH,
+      name: "Raptor",
+      owner_name: "Raptor",
+      email: "soporte@raptor.local",
+      kind: "template",
+    },
+  });
+}
+
 async function seedEdDeliApp() {
   return prisma.apps.upsert({
     where: { hash: EDDELI_APP_HASH },
     update: {
       name: "EdDeli",
+      kind: "deployment",
       deleted_at: null,
       entitlement_url: EDDELI_ENTITLEMENT_URL,
       entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
@@ -176,9 +205,42 @@ async function seedEdDeliApp() {
       name: "EdDeli",
       owner_name: "EdDeli",
       email: "soporte@eddeli.com",
+      kind: "deployment",
       entitlement_url: EDDELI_ENTITLEMENT_URL,
       entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
     },
+  });
+}
+
+/** Mueve módulos/planes/ofertas de apps desplegadas al catálogo Raptor. */
+async function migrateCatalogToTemplate(templateAppId: number) {
+  const sources = await prisma.apps.findMany({
+    where: { id: { not: templateAppId }, deleted_at: null },
+    select: { id: true },
+  });
+
+  for (const src of sources) {
+    await prisma.module.updateMany({
+      where: { app_id: src.id, deleted_at: null },
+      data: { app_id: templateAppId },
+    });
+    await prisma.plan.updateMany({
+      where: { app_id: src.id, deleted_at: null },
+      data: { app_id: templateAppId },
+    });
+    await prisma.offer.updateMany({
+      where: { app_id: src.id, deleted_at: null },
+      data: { app_id: templateAppId },
+    });
+  }
+
+  await prisma.apps.updateMany({
+    where: { id: { not: templateAppId }, deleted_at: null },
+    data: { kind: "deployment" },
+  });
+  await prisma.apps.update({
+    where: { id: templateAppId },
+    data: { kind: "template" },
   });
 }
 
@@ -668,9 +730,12 @@ async function seedEdDeliCommercialPlans(appId: number) {
 }
 
 /** Suscripción ACTIVE al Plan Socios (todos los módulos) para pruebas locales. */
-async function seedEdDeliLocalSubscription(appId: number, appHash: string) {
+async function seedEdDeliLocalSubscription(
+  appHash: string,
+  templateAppId: number,
+) {
   const plan = await prisma.plan.findFirst({
-    where: { app_id: appId, name: "Plan Socios", deleted_at: null },
+    where: { app_id: templateAppId, name: "Plan Socios", deleted_at: null },
   });
   if (!plan) {
     throw new Error("Plan Socios no encontrado; corre seedEdDeliCommercialPlans antes");
@@ -729,15 +794,17 @@ async function seedEdDeliLocalSubscription(appId: number, appHash: string) {
 async function main() {
   await seedRoles();
   await seedGestorAccounts();
-  const eddeliApp = await seedEdDeliApp();
+  const raptorApp = await seedRaptorTemplateApp();
+  await seedEdDeliApp();
+  await migrateCatalogToTemplate(raptorApp.id);
   const sectionCount = await seedEdDeliCatalog(
-    eddeliApp.id,
+    raptorApp.id,
     EDDELI_PRODUCT_CATALOG,
   );
-  const commercialPlans = await seedEdDeliCommercialPlans(eddeliApp.id);
+  const commercialPlans = await seedEdDeliCommercialPlans(raptorApp.id);
   const localSub = await seedEdDeliLocalSubscription(
-    eddeliApp.id,
     EDDELI_APP_HASH,
+    raptorApp.id,
   );
 
   // Empuja entitlement al backend EdDeli (si está corriendo).
@@ -747,7 +814,7 @@ async function main() {
   const push = await pushEntitlementToApp(EDDELI_APP_HASH);
 
   console.log(
-    "Seed OK: roles, EdDeli (%d módulos, %d secciones), API key seed, cuentas",
+    "Seed OK: roles, Raptor (plantilla, %d módulos, %d secciones), EdDeli (despliegue), cuentas",
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
   );

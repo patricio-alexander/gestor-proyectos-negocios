@@ -107,13 +107,24 @@ export async function PATCH(request: Request, { params }: Params) {
       push_error: null as string | null,
     };
 
-    if (updates.status !== undefined || updates.is_maintainer !== undefined) {
-      const { pushEntitlementToApp, toPushResponseFields } = await import(
-        "@/src/shared/lib/push-entitlement"
+    if (updates.status !== undefined) {
+      const { applyGlobalModuleStatus } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
       );
-      pushFields = toPushResponseFields(
-        await pushEntitlementToApp(mod.apps.hash),
+      pushFields = await applyGlobalModuleStatus(
+        mod.id,
+        String(updates.status) as
+          | "active"
+          | "development"
+          | "maintenance"
+          | "developer"
+          | "planned",
       );
+    } else if (updates.is_maintainer !== undefined) {
+      const { pushEntitlementForModuleToAllUsers } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
+      );
+      pushFields = await pushEntitlementForModuleToAllUsers(mod.id);
     }
 
     return NextResponse.json({

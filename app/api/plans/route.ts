@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { requireTemplateAppId } from "@/src/shared/lib/app-kind";
 import { Period } from "../../../prisma/generated/prisma/enums";
 import {
   mapPlan,
@@ -14,7 +15,10 @@ export async function GET() {
 
   try {
     const plans = await prisma.plan.findMany({
-      where: { deleted_at: null },
+      where: {
+        deleted_at: null,
+        apps: { kind: "template", deleted_at: null },
+      },
       include: planInclude,
       orderBy: [{ sort_order: "asc" }, { id: "asc" }],
     });
@@ -50,14 +54,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const apps = await prisma.apps.findFirst({
-      where: { id: app_id, deleted_at: null },
-    });
-
-    if (!apps) {
+    const templateCheck = await requireTemplateAppId(Number(app_id));
+    if (!templateCheck.ok) {
       return NextResponse.json(
-        { error: "La aplicación seleccionada no existe" },
-        { status: 404 },
+        { error: templateCheck.error },
+        { status: templateCheck.status },
       );
     }
 

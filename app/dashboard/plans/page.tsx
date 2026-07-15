@@ -47,15 +47,23 @@ function PlanForm({
   allOffers,
   children,
 }: PlanFormProps) {
-  const defaultAppId = editing?.app_id ? String(editing.app_id) : "";
+  const defaultAppId = editing?.app_id
+    ? String(editing.app_id)
+    : businesses[0]
+      ? String(businesses[0].id)
+      : "";
 
   const [selectedBusinessId, setSelectedBusinessId] = useState(defaultAppId);
 
   useEffect(() => {
-    if (!selectedBusinessId && defaultAppId) {
-      setSelectedBusinessId(defaultAppId);
+    if (editing?.app_id) {
+      setSelectedBusinessId(String(editing.app_id));
+      return;
     }
-  }, [defaultAppId, selectedBusinessId]);
+    if (!selectedBusinessId && businesses[0]) {
+      setSelectedBusinessId(String(businesses[0].id));
+    }
+  }, [editing?.app_id, businesses, selectedBusinessId]);
 
   const monthlyPrice =
     editing?.prices?.find((p) => p.period === "MONTHLY")?.price ?? "";
@@ -87,7 +95,7 @@ function PlanForm({
           />
         </label>
         <label className="gp-label">
-          App
+          Plantilla (catálogo)
           <select
             name="app_id"
             required
@@ -95,10 +103,10 @@ function PlanForm({
             onChange={(e) => setSelectedBusinessId(e.target.value)}
             className="gp-select"
           >
-            <option value="">Seleccionar app</option>
+            <option value="">Seleccionar plantilla</option>
             {businesses.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name}
+                {b.name || `App #${b.id}`}
               </option>
             ))}
           </select>
@@ -231,6 +239,14 @@ function getCheckedIds(form: HTMLFormElement, name: string) {
 export default function PlansPage() {
   const { plans, loading, create, update, remove } = usePlans();
   const { apps: businesses } = useApps();
+  const templateApps = useMemo(
+    () => businesses.filter((b) => b.kind === "template"),
+    [businesses],
+  );
+  const deploymentApps = useMemo(
+    () => businesses.filter((b) => b.kind !== "template"),
+    [businesses],
+  );
   const { modules: catalogModules } = useCatalog();
   const { offers } = useOffers();
   const { subscriptions, refetch: refetchSubscriptions } = useSubscriptions();
@@ -349,10 +365,12 @@ export default function PlansPage() {
     setEnableSuccess(null);
     setEnablePeriod(null);
     setPendingReplace(null);
-    const eddeli = businesses.find((b) =>
-      /eddeli/i.test(String(b.name || "")),
-    );
-    setEnableAppId(eddeli ? String(eddeli.id) : "");
+    // Por defecto: primera app desplegada (no la plantilla).
+    const preferred =
+      deploymentApps.find((b) => /eddeli/i.test(String(b.name || ""))) ||
+      deploymentApps.find((b) => /store/i.test(String(b.name || ""))) ||
+      deploymentApps[0];
+    setEnableAppId(preferred ? String(preferred.id) : "");
     setError("");
     enableState.open();
   }
@@ -405,11 +423,17 @@ export default function PlansPage() {
         throw new Error(data.error || data.message || "Error al habilitar suscripción");
       }
       setPendingReplace(null);
+      const pushErr = String(data.push_error || "");
+      const unauthorized =
+        /no autorizado|gestor sync|401/i.test(pushErr) ||
+        /no autorizado \(gestor sync\)/i.test(pushErr);
       const pushNote = data.push_skipped
         ? " (la app no tiene URL de entitlement; configurala en Aplicaciones)"
         : data.push_ok
           ? " y se envió a la app"
-          : ` (aviso: no se pudo empujar a la app${data.push_error ? `: ${data.push_error}` : ""})`;
+          : unauthorized
+            ? " (aviso: sync rechazado — la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. En Aplicaciones → Editar app, copiá la API Key al .env del backend y reiniciá)"
+            : ` (aviso: no se pudo empujar a la app${pushErr ? `: ${pushErr}` : ""})`;
       const replaced = data.replaced_subscription_id
         ? " (reemplazó el plan anterior)"
         : "";
@@ -475,7 +499,7 @@ export default function PlansPage() {
                       onSubmit={handleCreate}
                       error={error}
                       submitting={submitting}
-                      businesses={businesses}
+                      businesses={templateApps}
                       allModules={catalogModules}
                       allOffers={offers}
                     >
@@ -530,7 +554,7 @@ export default function PlansPage() {
                 error={error}
                 submitting={submitting}
                 editing={editing}
-                businesses={businesses}
+                businesses={templateApps}
                 allModules={catalogModules}
                 allOffers={offers}
               >
@@ -639,25 +663,30 @@ export default function PlansPage() {
                 ) : (
                   <>
                     <p className="gp-subtitle">
-                      Elegí a qué app habilitar el plan{" "}
-                      <strong>{enabling?.name}</strong>.
+                      Vinculá el plan <strong>{enabling?.name}</strong> a una
+                      app desplegada (crea/activa la suscripción). La plantilla
+                      Raptor no aparece aquí.
                     </p>
                     <div className="mt-4 space-y-3">
                       <label className="gp-label">
-                        App
+                        App desplegada
                         <select
                           value={enableAppId}
                           onChange={(e) => setEnableAppId(e.target.value)}
                           className="gp-select"
                         >
                           <option value="">Seleccionar app</option>
-                          {businesses.map((b) => (
+                          {deploymentApps.map((b) => (
                             <option key={b.id} value={b.id}>
                               {b.name}
                             </option>
                           ))}
                         </select>
                       </label>
+                      <p className="text-[11px] text-zinc-500">
+                        Tip: la app debe tener URL entitlement + API Key igual a
+                        GESTOR_SYNC_SECRET del backend para que el sync llegue.
+                      </p>
                       <p className="text-xs font-medium text-zinc-500">
                         Período
                       </p>

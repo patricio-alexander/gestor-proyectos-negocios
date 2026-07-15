@@ -1,7 +1,10 @@
+export type AppKind = "template" | "deployment";
+
 export type App = {
   id: number;
   hash: string;
   name: string | null;
+  kind?: AppKind;
   owner_name: string | null;
   phone: string | null;
   ruc: string | null;

@@ -68,7 +68,7 @@ function OfferForm({
           />
         </label>
         <label className={gp.label}>
-          Aplicación
+          Plantilla (catálogo)
           <select
             name="app_id"
             required
@@ -76,7 +76,7 @@ function OfferForm({
             onChange={(e) => setSelectedAppId(e.target.value)}
             className={gp.select}
           >
-            <option value="">Seleccionar aplicación</option>
+            <option value="">Seleccionar plantilla</option>
             {apps.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -167,6 +167,10 @@ function OfferForm({
 export function OffersManager() {
   const { offers, loading, create, update, remove } = useOffers();
   const { apps } = useApps();
+  const templateApps = useMemo(
+    () => apps.filter((a) => a.kind === "template"),
+    [apps],
+  );
   const { modules } = useCatalog();
   const [editing, setEditing] = useState<Offer | null>(null);
   const [deleting, setDeleting] = useState<Offer | null>(null);
@@ -295,7 +299,7 @@ export function OffersManager() {
                     onSubmit={handleCreate}
                     error={error}
                     submitting={submitting}
-                    apps={apps}
+                    apps={templateApps}
                     allModules={modules}
                   >
                     Crear
@@ -364,7 +368,7 @@ export function OffersManager() {
                 error={error}
                 submitting={submitting}
                 editing={editing}
-                apps={apps}
+                apps={templateApps}
                 allModules={modules}
               >
                 Guardar

@@ -14,13 +14,22 @@ function generateKey(name: string): string {
 
 export async function listModules(): Promise<ModuleRecord[]> {
   const rows = await prisma.module.findMany({
-    where: { deleted_at: null },
+    where: {
+      deleted_at: null,
+      apps: { kind: "template", deleted_at: null },
+    },
     orderBy: { id: "asc" },
   });
   return rows.map((r) => ({ id: r.id, name: r.name, app_id: r.app_id, is_trial: r.is_trial }));
 }
 
 export async function createModule(input: CreateModuleInput) {
+  const { requireTemplateAppId } = await import("@/src/shared/lib/app-kind");
+  const check = await requireTemplateAppId(input.app_id);
+  if (!check.ok) {
+    throw new Error(check.error);
+  }
+
   const row = await prisma.module.create({
     data: {
       name: input.name.trim(),

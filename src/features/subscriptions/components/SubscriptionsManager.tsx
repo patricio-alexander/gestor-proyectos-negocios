@@ -46,6 +46,10 @@ function matchesSubSearch(sub: Subscription, query: string) {
 export function SubscriptionsManager() {
   const { subscriptions, loading, create, cancel, update } = useSubscriptions();
   const { apps } = useApps();
+  const deploymentApps = useMemo(
+    () => apps.filter((a) => a.kind !== "template"),
+    [apps],
+  );
   const { plans } = usePlans();
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [canceling, setCanceling] = useState<Subscription | null>(null);
@@ -86,10 +90,7 @@ export function SubscriptionsManager() {
     };
   }
 
-  const createPlans = useMemo(
-    () => plans.filter((p) => String(p.app_id) === createAppId),
-    [plans, createAppId],
-  );
+  const createPlans = useMemo(() => plans, [plans]);
 
   const selectedPlan = useMemo(
     () => createPlans.find((p) => String(p.id) === createPlanId),
@@ -506,7 +507,7 @@ export function SubscriptionsManager() {
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        {apps.map((app) => (
+                        {deploymentApps.map((app) => (
                           <ListBox.Item key={String(app.id)} id={String(app.id)}>
                             {app.name || app.hash}
                           </ListBox.Item>
@@ -518,7 +519,7 @@ export function SubscriptionsManager() {
                     selectedKey={createPlanId || null}
                     onSelectionChange={(key) => setCreatePlanId(String(key))}
                     isRequired
-                    isDisabled={!createAppId}
+                    isDisabled={false}
                   >
                     <Label>Plan</Label>
                     <Select.Trigger>

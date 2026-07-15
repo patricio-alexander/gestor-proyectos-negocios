@@ -87,6 +87,7 @@ export function PlanCard({
             <Button
               size="sm"
               variant="ghost"
+              title="Ver apps con este plan"
               aria-label={`Apps vinculadas a ${plan.name ?? "plan"}`}
               onPress={appsModal.open}
             >
@@ -95,6 +96,7 @@ export function PlanCard({
             <Button
               size="sm"
               variant="ghost"
+              title="Editar plan"
               aria-label={`Editar ${plan.name ?? "plan"}`}
               onPress={() => onEdit(plan)}
             >
@@ -104,6 +106,7 @@ export function PlanCard({
               size="sm"
               variant="ghost"
               className="text-red-500"
+              title="Eliminar plan"
               aria-label={`Eliminar ${plan.name ?? "plan"}`}
               onPress={() => onDelete(plan)}
             >
@@ -180,15 +183,17 @@ export function PlanCard({
             size="sm"
             variant="secondary"
             className="flex-1 sm:flex-none"
+            title="Vincular este plan a una app (crear suscripción)"
             onPress={() => onEnableSubscription(plan)}
           >
             <ShieldKeyhole width={14} height={14} />
-            Habilitar suscripción
+            Vincular a app
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="flex-1 sm:flex-none"
+            title="Ver suscripciones de este plan"
             onPress={() => onViewSubscriptions(plan)}
           >
             <ListCheck width={14} height={14} />

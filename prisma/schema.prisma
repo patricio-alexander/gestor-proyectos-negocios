@@ -16,6 +16,12 @@ enum LifecycleStatus {
   planned
 }
 
+/** template = catálogo maestro (Raptor); deployment = instancia desplegada (EdDeli, Store…). */
+enum AppKind {
+  template
+  deployment
+}
+
 // ─── Usuarios del gestor (control plane) ───────────────────────────────────
 
 model User {
@@ -107,10 +113,11 @@ model Module {
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   deleted_at    DateTime?
-  apps          Apps          @relation(fields: [app_id], references: [id], onDelete: Restrict)
-  sections      Section[]
-  plan_modules  PlanModule[]
-  offersModules OfferModule[]
+  apps            Apps                   @relation(fields: [app_id], references: [id], onDelete: Restrict)
+  sections        Section[]
+  plan_modules    PlanModule[]
+  offersModules   OfferModule[]
+  statusOverrides ModuleStatusOverride[]
 
   @@unique([app_id, key])
   @@index([app_id])
@@ -130,9 +137,40 @@ model Section {
   deleted_at        DateTime?
   module            Module       @relation(fields: [module_id], references: [id], onDelete: Cascade)
   capabilities      Capability[]
+  statusOverrides   SectionStatusOverride[]
 
   @@index([module_id])
   @@index([status])
+}
+
+/** Override de lifecycle por app (gana sobre Module.status global). */
+model ModuleStatusOverride {
+  id         Int             @id @default(autoincrement())
+  module_id  Int
+  app_id     Int
+  status     LifecycleStatus
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  module     Module          @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  app        Apps            @relation(fields: [app_id], references: [id], onDelete: Cascade)
+
+  @@unique([module_id, app_id])
+  @@index([app_id])
+}
+
+/** Override de lifecycle por app (gana sobre Section.status global). */
+model SectionStatusOverride {
+  id         Int             @id @default(autoincrement())
+  section_id Int
+  app_id     Int
+  status     LifecycleStatus
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  section    Section         @relation(fields: [section_id], references: [id], onDelete: Cascade)
+  app        Apps            @relation(fields: [app_id], references: [id], onDelete: Cascade)
+
+  @@unique([section_id, app_id])
+  @@index([app_id])
 }
 
 model Capability {
@@ -169,14 +207,17 @@ model Apps {
   entitlement_url    String?       @db.VarChar(500)
   /** Secreto compartido con la app cliente (formato: gc_<hex>). */
   entitlement_secret String?       @db.VarChar(255)
+  kind               AppKind        @default(deployment)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?
-  plans         Plan[]
-  modules       Module[]
-  subscriptions Subscription[]
-  offers        Offer[]
-  events        Event[]
+  plans                   Plan[]
+  modules                 Module[]
+  subscriptions           Subscription[]
+  offers                  Offer[]
+  events                  Event[]
+  moduleStatusOverrides   ModuleStatusOverride[]
+  sectionStatusOverrides  SectionStatusOverride[]
 }
 
 model Plan {

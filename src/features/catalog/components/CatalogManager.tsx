@@ -20,6 +20,7 @@ import { INPUT_CLASS } from "@/src/shared/ui/form-styles";
 
 export function CatalogManager() {
   const { apps: businesses } = useApps();
+  const templateApps = businesses.filter((b) => b.kind === "template");
   const {
     modules,
     loading,
@@ -135,10 +136,10 @@ export function CatalogManager() {
                       </Alert>
                     )}
                     <label className="gp-label">
-                      Aplicación
+                      Plantilla (catálogo)
                       <select name="app_id" required className={INPUT_CLASS}>
-                        <option value="">Seleccionar aplicación</option>
-                        {businesses.map((b) => (
+                        <option value="">Seleccionar plantilla</option>
+                        {templateApps.map((b) => (
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </select>

@@ -1,4 +1,5 @@
 import { prisma } from "@/src/shared/lib/prisma";
+import { effectiveLifecycleStatus } from "./lifecycle-status-resolve";
 
 export type EntitlementPayload = {
   maintenance: boolean;
@@ -22,7 +23,7 @@ export async function buildEntitlementForAppHash(
 ): Promise<EntitlementPayload> {
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
-    select: { maintenance: true },
+    select: { id: true, maintenance: true },
   });
 
   if (!app) {
@@ -109,12 +110,41 @@ export async function buildEntitlementForAppHash(
   }
 
   const plan = subscription.plan_price.plan;
+  const moduleIds = plan.plan_modules.map((pm) => pm.module.id);
+  const sectionIds = plan.plan_modules.flatMap((pm) =>
+    pm.module.sections.map((s) => s.id),
+  );
+
+  const [moduleOverrides, sectionOverrides] = await Promise.all([
+    moduleIds.length
+      ? prisma.moduleStatusOverride.findMany({
+          where: { app_id: app.id, module_id: { in: moduleIds } },
+          select: { module_id: true, status: true },
+        })
+      : Promise.resolve([]),
+    sectionIds.length
+      ? prisma.sectionStatusOverride.findMany({
+          where: { app_id: app.id, section_id: { in: sectionIds } },
+          select: { section_id: true, status: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const moduleOverrideById = new Map(
+    moduleOverrides.map((o) => [o.module_id, o.status]),
+  );
+  const sectionOverrideById = new Map(
+    sectionOverrides.map((o) => [o.section_id, o.status]),
+  );
 
   const modules = plan.plan_modules.map((pm) => ({
     id: pm.module.id,
     name: pm.module.name,
     key: pm.module.key,
-    status: pm.module.status,
+    status: effectiveLifecycleStatus(
+      pm.module.status,
+      moduleOverrideById.get(pm.module.id),
+    ),
     is_maintainer: pm.module.is_maintainer,
     image_url: pm.module.image_url,
     is_trial: pm.module.is_trial,
@@ -125,7 +155,10 @@ export async function buildEntitlementForAppHash(
       id: s.id,
       key: s.key,
       name: s.name,
-      status: s.status,
+      status: effectiveLifecycleStatus(
+        s.status,
+        sectionOverrideById.get(s.id),
+      ),
       max_records_limit: s.max_records_limit,
       usage_count: s.usage_count,
       capabilities: s.capabilities,

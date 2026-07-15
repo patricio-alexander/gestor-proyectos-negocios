@@ -28,28 +28,24 @@ export async function PATCH(request: Request, { params }: Params) {
       updates.max_records_limit = limitResult.value;
     }
 
-    const section = await prisma.section.update({
-      where: { id: Number(id) },
-      data: {
-        ...(updates.name !== undefined && {
-          name: String(updates.name).trim(),
-        }),
-        ...(updates.key !== undefined && {
-          key: updates.key ? String(updates.key).trim() : null,
-        }),
-        ...(updates.max_records_limit !== undefined && {
-          max_records_limit: updates.max_records_limit as number | null,
-        }),
-        ...(updates.status !== undefined && {
-          status: String(updates.status) as
-            | "active"
-            | "development"
-            | "maintenance"
-            | "developer"
-            | "planned",
-        }),
-      },
-    });
+    const data: Record<string, unknown> = {
+      ...(updates.name !== undefined && {
+        name: String(updates.name).trim(),
+      }),
+      ...(updates.key !== undefined && {
+        key: updates.key ? String(updates.key).trim() : null,
+      }),
+      ...(updates.max_records_limit !== undefined && {
+        max_records_limit: updates.max_records_limit as number | null,
+      }),
+    };
+
+    if (Object.keys(data).length > 0) {
+      await prisma.section.update({
+        where: { id: Number(id) },
+        data,
+      });
+    }
 
     let pushFields = {
       push_ok: false,
@@ -58,18 +54,25 @@ export async function PATCH(request: Request, { params }: Params) {
     };
 
     if (updates.status !== undefined) {
-      const { pushEntitlementForSectionId } = await import(
+      const { applyGlobalSectionStatus } = await import(
         "@/src/shared/lib/push-entitlement-helpers"
       );
-      const { toPushResponseFields } = await import(
-        "@/src/shared/lib/push-entitlement"
-      );
-      pushFields = toPushResponseFields(
-        await pushEntitlementForSectionId(section.id),
+      pushFields = await applyGlobalSectionStatus(
+        Number(id),
+        String(updates.status) as
+          | "active"
+          | "development"
+          | "maintenance"
+          | "developer"
+          | "planned",
       );
     }
 
-    return NextResponse.json({ ...section, ...pushFields });
+    const sectionOut = await prisma.section.findFirst({
+      where: { id: Number(id) },
+    });
+
+    return NextResponse.json({ ...sectionOut, ...pushFields });
   } catch {
     return NextResponse.json({ error: "Error al actualizar la sección" }, { status: 500 });
   }

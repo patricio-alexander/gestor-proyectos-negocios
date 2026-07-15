@@ -21,6 +21,7 @@ import { SectionLimitBadge, SectionLimitSummary } from "./SectionLimitBadge";
 import { SectionMaxRecordsLimitField } from "./SectionMaxRecordsLimitField";
 import { SectionCapabilitiesPanel } from "./SectionCapabilitiesPanel";
 import { LifecycleStatusSelect } from "./LifecycleStatusSelect";
+import { StatusOverridesPanel } from "./StatusOverridesPanel";
 
 function parseMaxRecordsLimitInput(value: FormDataEntryValue | null) {
   if (value == null || String(value).trim() === "") return null;
@@ -115,7 +116,7 @@ export function ModuleSectionsPanel({
       );
       if (pushError) {
         setSectionError(
-          `Estado guardado, pero no se pudo sync a EdDeli: ${pushError}`,
+          `Estado global guardado, pero no se pudo sync a las apps: ${pushError}`,
         );
       }
     } catch (err) {
@@ -306,13 +307,28 @@ export function ModuleSectionsPanel({
                                 )}
                               </td>
                               <td className="px-5 py-3">
-                                <div className="min-w-[10.5rem]">
-                                  <LifecycleStatusSelect
-                                    value={normalizeLifecycleStatus(sec.status)}
-                                    onChange={(next) =>
-                                      handleChangeSectionStatus(sec, next)
-                                    }
-                                    aria-label={`Estado de ${sec.name}`}
+                                <div className="min-w-[12rem] space-y-2">
+                                  <div>
+                                    <span className="mb-0.5 block text-[9px] font-medium uppercase text-[var(--gp-text-muted)]">
+                                      Global
+                                    </span>
+                                    <LifecycleStatusSelect
+                                      value={normalizeLifecycleStatus(sec.status)}
+                                      onChange={(next) =>
+                                        handleChangeSectionStatus(sec, next)
+                                      }
+                                      aria-label={`Estado global de ${sec.name}`}
+                                    />
+                                  </div>
+                                  <StatusOverridesPanel
+                                    kind="section"
+                                    entityId={sec.id}
+                                    globalStatus={normalizeLifecycleStatus(
+                                      sec.status,
+                                    )}
+                                    apps={module.apps_using ?? []}
+                                    onError={setSectionError}
+                                    compact
                                   />
                                 </div>
                               </td>

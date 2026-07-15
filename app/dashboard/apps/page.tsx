@@ -13,11 +13,15 @@ import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
+import CreditCard from "@gravity-ui/icons/CreditCard";
 import Copy from "@gravity-ui/icons/Copy";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
+import { usePlans } from "@/src/features/plans/hooks/usePlans";
 import type { App } from "@/src/features/apps/types";
+import { entitlementSyncSummary } from "@/src/features/apps/lib/entitlementEnv";
+import { isTemplateApp } from "@/src/features/apps/lib/app-kind";
 import {
   ManagerHeader,
   TableSearchBar,
@@ -42,12 +46,17 @@ function matchesAppSearch(app: App, query: string) {
 }
 
 export default function AppsPage() {
-  const { apps, loading, create, update, remove, pushEntitlement } = useApps();
+  const { apps, loading, create, update, remove, pushEntitlement, enablePlan } =
+    useApps();
+  const { plans } = usePlans();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
+  const [planApp, setPlanApp] = useState<App | null>(null);
+  const [planId, setPlanId] = useState("");
+  const [planPeriod, setPlanPeriod] = useState<"MONTHLY" | "ANNUALLY">("MONTHLY");
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
   const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
   const [createApiKey, setCreateApiKey] = useState(generateApiKey);
@@ -57,8 +66,81 @@ export default function AppsPage() {
   const createState = useOverlayState();
   const editState = useOverlayState();
   const deleteState = useOverlayState();
+  const planState = useOverlayState();
 
   const filterApps = (app: App, query: string) => matchesAppSearch(app, query);
+
+  const assignablePlans = useMemo(() => {
+    if (!planApp) return [];
+    // Planes viven en plantilla Raptor; cualquier deployment puede suscribirse.
+    return [...plans].sort(
+      (a, b) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id,
+    );
+  }, [plans, planApp]);
+
+  const selectedPlan = useMemo(
+    () => assignablePlans.find((p) => String(p.id) === planId) ?? null,
+    [assignablePlans, planId],
+  );
+
+  function openAssignPlan(app: App) {
+    if (isTemplateApp(app)) {
+      setError(
+        "Raptor es la plantilla base: no se le asignan planes. Usá EdDeli, Store u otra app desplegada.",
+      );
+      return;
+    }
+    setError("");
+    setSuccess("");
+    setPlanApp(app);
+    const sorted = [...plans].sort(
+      (a, b) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id,
+    );
+    const defaultPlan =
+      app.plan?.id != null
+        ? String(app.plan.id)
+        : sorted[0]
+          ? String(sorted[0].id)
+          : "";
+    setPlanId(defaultPlan);
+    setPlanPeriod("MONTHLY");
+    planState.open();
+  }
+
+  async function handleAssignPlan(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!planApp || !planId) {
+      setError("Elegí un plan");
+      return;
+    }
+    const appName = planApp.name || "la app";
+    setError("");
+    setSubmitting(true);
+    try {
+      const result = await enablePlan({
+        app_id: planApp.id,
+        plan_id: Number(planId),
+        period: planPeriod,
+        replace: true,
+      });
+      planState.close();
+      setPlanApp(null);
+      const pushNote = result.push_ok
+        ? " · sync enviado"
+        : result.push_error
+          ? ` · aviso sync: ${result.push_error}`
+          : "";
+      setSuccess(
+        `Plan ${result.plan_name || selectedPlan?.name || ""} asignado a ${appName}${pushNote}`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al asignar plan");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const {
     search,
@@ -172,7 +254,14 @@ export default function AppsPage() {
       await pushEntitlement(app.id);
       setSuccess(`Entitlement enviado a ${app.name || "la app"}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al empujar");
+      const msg = err instanceof Error ? err.message : "Error al empujar";
+      if (/no autorizado|gestor sync/i.test(msg)) {
+        setError(
+          `Sync rechazado en ${app.name || "la app"}: la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. Copiá la API Key (Editar app) al .env del backend y reiniciá.`,
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setPushingIds((prev) => {
         const next = new Set(prev);
@@ -229,21 +318,25 @@ export default function AppsPage() {
             </Button>
             <Modal.Backdrop>
               <Modal.Container>
-                <Modal.Dialog className="sm:max-w-xl">
+                <Modal.Dialog className="flex max-h-[min(92vh,760px)] flex-col sm:max-w-xl">
                   <Modal.CloseTrigger />
                   <Modal.Header>
                     <Modal.Heading>Nueva aplicación</Modal.Heading>
                   </Modal.Header>
                   <form
                     onSubmit={handleCreate}
-                    className="flex flex-1 flex-col"
+                    className="flex min-h-0 flex-1 flex-col"
                   >
-                    <Modal.Body>
+                    <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
                       {error && (
                         <Alert status="danger">
                           <Alert.Description>{error}</Alert.Description>
                         </Alert>
                       )}
+                      <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+                        Solo el <strong>nombre</strong> es obligatorio. El resto es opcional (URL y API Key
+                        sirven para conectar el sync).
+                      </p>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                         <label className={`${gp.label} col-span-2`}>
                           Nombre
@@ -318,6 +411,9 @@ export default function AppsPage() {
                             placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
                             className={gp.input}
                           />
+                          <span className="mt-1 block text-[11px] text-[var(--gp-text-muted)]">
+                            Localhost → Desarrollo · dominio https → Producción · staging/test → Pruebas
+                          </span>
                         </label>
                         <div className="col-span-2 space-y-1.5">
                           <label className={gp.label}>API Key</label>
@@ -365,12 +461,12 @@ export default function AppsPage() {
                         </label>
                       </div>
                     </Modal.Body>
-                    <Modal.Footer>
+                    <Modal.Footer className="shrink-0 border-t border-[var(--gp-border)] bg-[var(--gp-surface)]">
                       <Button variant="secondary" slot="close">
                         Cancelar
                       </Button>
                       <Button type="submit" isDisabled={submitting}>
-                        {submitting ? <Spinner size="sm" /> : "Crear"}
+                        {submitting ? <Spinner size="sm" /> : "Guardar"}
                       </Button>
                     </Modal.Footer>
                   </form>
@@ -427,7 +523,16 @@ export default function AppsPage() {
             ) : (
               paginatedApps.map((app) => (
                 <tr key={app.id}>
-                  <td className="font-medium">{app.name || "—"}</td>
+                  <td className="font-medium">
+                    <span className="flex flex-col gap-0.5">
+                      <span>{app.name || "—"}</span>
+                      <span className="text-[10px] font-normal text-[var(--gp-text-muted)]">
+                        {isTemplateApp(app)
+                          ? "Plantilla (catálogo base)"
+                          : "Despliegue"}
+                      </span>
+                    </span>
+                  </td>
                   <td>{app.owner_name || "—"}</td>
                   <td>
                     {app.plan ? (
@@ -447,15 +552,21 @@ export default function AppsPage() {
                     )}
                   </td>
                   <td>
-                    {app.entitlement_url ? (
-                      <span className="text-xs font-medium text-emerald-700">
-                        {app.has_entitlement_secret ? "Listo" : "Sin secreto"}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-[var(--gp-text-muted)]">
-                        Sin URL
-                      </span>
-                    )}
+                    {(() => {
+                      const sync = entitlementSyncSummary(app);
+                      return (
+                        <div title={sync.title} className="max-w-[11rem]">
+                          <p className={`text-xs font-medium ${sync.toneClass}`}>
+                            {sync.primary}
+                          </p>
+                          {sync.secondary ? (
+                            <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
+                              {sync.secondary}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>{app.email || "—"}</td>
                   <td>
@@ -477,7 +588,26 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Empujar entitlement ${app.name}`}
+                        title={
+                          isTemplateApp(app)
+                            ? "Raptor es plantilla: no se le asignan planes"
+                            : "Asignar o cambiar plan"
+                        }
+                        aria-label={`Asignar plan a ${app.name || "aplicación"}`}
+                        isDisabled={isTemplateApp(app)}
+                        onPress={() => openAssignPlan(app)}
+                      >
+                        <CreditCard width={14} height={14} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={
+                          !app.entitlement_url
+                            ? "Sin URL de sync configurada"
+                            : "Empujar entitlement (sync) al backend de la app"
+                        }
+                        aria-label={`Empujar entitlement ${app.name || ""}`}
                         isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
                         onPress={() => handlePush(app)}
                       >
@@ -490,7 +620,8 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Editar ${app.name}`}
+                        title="Editar aplicación"
+                        aria-label={`Editar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setEditingApp(app);
                           setEditApiKey("");
@@ -506,7 +637,8 @@ export default function AppsPage() {
                         size="sm"
                         variant="ghost"
                         className="text-red-500"
-                        aria-label={`Eliminar ${app.name}`}
+                        title="Eliminar aplicación"
+                        aria-label={`Eliminar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setDeletingApp(app);
                           setError("");
@@ -534,14 +666,14 @@ export default function AppsPage() {
       <Modal state={editState}>
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="sm:max-w-xl">
+            <Modal.Dialog className="flex max-h-[min(92vh,760px)] flex-col sm:max-w-xl">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>Editar aplicación</Modal.Heading>
               </Modal.Header>
               {editingApp && (
-                <form onSubmit={handleEdit} className="flex flex-1 flex-col">
-                  <Modal.Body>
+                <form onSubmit={handleEdit} className="flex min-h-0 flex-1 flex-col">
+                  <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
                     {error && (
                       <Alert status="danger">
                         <Alert.Description>{error}</Alert.Description>
@@ -624,6 +756,18 @@ export default function AppsPage() {
                             placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
                             className={gp.input}
                           />
+                          {(() => {
+                            const sync = entitlementSyncSummary(editingApp);
+                            return (
+                              <span
+                                className={`mt-1 block text-[11px] font-medium ${sync.toneClass}`}
+                                title={sync.title}
+                              >
+                                Destino actual: {sync.primary}
+                                {sync.secondary ? ` (${sync.secondary})` : ""}
+                              </span>
+                            );
+                          })()}
                         </label>
                         <div className="col-span-2 space-y-1.5">
                           <label className={gp.label}>API Key</label>
@@ -681,7 +825,7 @@ export default function AppsPage() {
                       </label>
                     </div>
                   </Modal.Body>
-                  <Modal.Footer>
+                  <Modal.Footer className="shrink-0 border-t border-[var(--gp-border)] bg-[var(--gp-surface)]">
                     <Button variant="secondary" slot="close" onPress={() => setEditingApp(null)}>
                       Cancelar
                     </Button>
@@ -728,6 +872,124 @@ export default function AppsPage() {
                   {submitting ? <Spinner size="sm" /> : "Eliminar"}
                 </Button>
               </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      <Modal state={planState}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-md">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>
+                  Asignar plan
+                  {planApp?.name ? ` · ${planApp.name}` : ""}
+                </Modal.Heading>
+              </Modal.Header>
+              <form onSubmit={handleAssignPlan} className="flex flex-col">
+                <Modal.Body className="space-y-3">
+                  {error && (
+                    <Alert status="danger">
+                      <Alert.Description>{error}</Alert.Description>
+                    </Alert>
+                  )}
+                  {planApp?.plan ? (
+                    <p className="text-xs text-[var(--gp-text-muted)]">
+                      Plan actual: <strong>{planApp.plan.name}</strong>
+                      {" · "}al guardar se reemplaza automáticamente.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[var(--gp-text-muted)]">
+                      Esta app aún no tiene suscripción activa. Elegí un plan
+                      existente para habilitarla.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-[var(--gp-text-muted)]">
+                    Los planes y módulos viven en la <strong>plantilla Raptor</strong>.
+                    Acá solo asignás un plan a la app desplegada{" "}
+                    <strong>{planApp?.name || "esta app"}</strong>.
+                  </p>
+                  {assignablePlans.length === 0 ? (
+                    <Alert status="warning">
+                      <Alert.Description>
+                        Aún no hay planes en el catálogo Raptor. Creá uno en{" "}
+                        <strong>Planes</strong> (plantilla Raptor) y volvé acá
+                        para asignarlo a {planApp?.name || "la app"}.
+                      </Alert.Description>
+                    </Alert>
+                  ) : (
+                    <>
+                      <label className={gp.label}>
+                        Plan a asignar
+                        <select
+                          className={gp.input}
+                          value={planId}
+                          required
+                          onChange={(e) => setPlanId(e.target.value)}
+                        >
+                          <option value="">Elegí un plan…</option>
+                          {assignablePlans.map((p) => {
+                            const catalog =
+                              p.catalog_app_name || p.app_name || "Raptor";
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name || `Plan #${p.id}`}
+                                {` · ${p.plan_modules?.length ?? 0} módulos · ${catalog}`}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+                      <label className={gp.label}>
+                        Período
+                        <select
+                          className={gp.input}
+                          value={planPeriod}
+                          onChange={(e) =>
+                            setPlanPeriod(
+                              e.target.value === "ANNUALLY"
+                                ? "ANNUALLY"
+                                : "MONTHLY",
+                            )
+                          }
+                        >
+                          <option value="MONTHLY">Mensual</option>
+                          <option value="ANNUALLY">Anual</option>
+                        </select>
+                      </label>
+                      {selectedPlan ? (
+                        <p className="text-[11px] text-[var(--gp-text-muted)]">
+                          Vigencia desde hoy
+                          {planPeriod === "ANNUALLY"
+                            ? " · vence en 1 año"
+                            : " · vence en 1 mes"}
+                          .
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button
+                    variant="secondary"
+                    slot="close"
+                    onPress={() => {
+                      setPlanApp(null);
+                      planState.close();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    isDisabled={submitting || assignablePlans.length === 0 || !planId}
+                  >
+                    {submitting ? <Spinner size="sm" /> : "Asignar plan"}
+                  </Button>
+                </Modal.Footer>
+              </form>
             </Modal.Dialog>
           </Modal.Container>
         </Modal.Backdrop>

@@ -96,6 +96,37 @@ export function useApps() {
     };
   }
 
+  /** Asigna o reemplaza el plan activo de una app (POST /api/subscriptions/enable). */
+  async function enablePlan(input: {
+    app_id: number;
+    plan_id: number;
+    period?: "MONTHLY" | "ANNUALLY";
+    replace?: boolean;
+  }) {
+    const res = await fetch(apiUrl("/api/subscriptions/enable"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        app_id: input.app_id,
+        plan_id: input.plan_id,
+        period: input.period ?? "MONTHLY",
+        replace: input.replace ?? true,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Error al asignar el plan");
+    }
+    await fetchApps();
+    return data as {
+      plan_name?: string | null;
+      period?: string;
+      push_ok?: boolean;
+      push_skipped?: boolean;
+      push_error?: string | null;
+    };
+  }
+
   const activeApps = apps.filter((a) => !a.deleted_at);
 
   return {
@@ -105,6 +136,7 @@ export function useApps() {
     update,
     remove,
     pushEntitlement,
+    enablePlan,
     refetch: fetchApps,
   };
 }

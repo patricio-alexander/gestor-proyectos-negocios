@@ -6,6 +6,7 @@ import {
   SubscriptionStatus,
 } from "../../../../prisma/generated/prisma/enums";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
+import { requireDeploymentAppId } from "@/src/shared/lib/app-kind";
 
 /**
  * Habilita una suscripción desde el gestor para una app concreta.
@@ -48,16 +49,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    const targetApp = await prisma.apps.findFirst({
-      where: { id: appId, deleted_at: null },
-      select: { id: true, hash: true, name: true },
-    });
-    if (!targetApp) {
+    const deploymentCheck = await requireDeploymentAppId(appId);
+    if (!deploymentCheck.ok) {
       return NextResponse.json(
-        { error: "Aplicación no encontrada" },
-        { status: 404 },
+        { error: deploymentCheck.error },
+        { status: deploymentCheck.status },
       );
     }
+    const targetApp = deploymentCheck.app;
 
     const planPrice = await prisma.planPrice.findFirst({
       where: { plan_id: planId, period },

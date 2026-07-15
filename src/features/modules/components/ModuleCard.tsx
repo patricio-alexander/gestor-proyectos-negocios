@@ -19,6 +19,7 @@ import {
   LifecycleStatusSelect,
   LIFECYCLE_STATUS_STYLE,
 } from "./LifecycleStatusSelect";
+import { StatusOverridesPanel } from "./StatusOverridesPanel";
 
 type ModuleCardProps = {
   module: Module;
@@ -96,14 +97,22 @@ export function ModuleCard({
 
         <div>
           <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-[var(--gp-text-muted)]">
-            Estado
+            Estado global (todas las apps)
           </span>
           <LifecycleStatusSelect
             value={status}
             onChange={(next) => onChangeStatus(mod, next)}
-            aria-label={`Estado de ${mod.name}`}
+            aria-label={`Estado global de ${mod.name}`}
           />
         </div>
+
+        <StatusOverridesPanel
+          kind="module"
+          entityId={mod.id}
+          globalStatus={status}
+          apps={appsUsing}
+          compact
+        />
 
         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600">

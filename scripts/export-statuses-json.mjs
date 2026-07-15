@@ -13,9 +13,10 @@ const adapter = new PrismaMariaDb({
 const prisma = new PrismaClient({ adapter });
 
 const app = await prisma.apps.findFirst({
-  where: { deleted_at: null, name: { contains: "EdDeli" } },
+  where: { deleted_at: null, kind: "template" },
+  orderBy: { id: "asc" },
 });
-if (!app) throw new Error("EdDeli app not found");
+if (!app) throw new Error("App plantilla Raptor no encontrada");
 
 const modules = await prisma.module.findMany({
   where: { app_id: app.id, deleted_at: null },

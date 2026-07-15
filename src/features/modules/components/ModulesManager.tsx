@@ -48,6 +48,10 @@ function matchesModuleSearch(mod: Module, query: string) {
 
 export function ModulesManager() {
   const { apps: businesses } = useApps();
+  const templateApps = useMemo(
+    () => businesses.filter((b) => b.kind === "template"),
+    [businesses],
+  );
   const { modules, loading, create, update, remove, patchModule, refetch } = useModules();
 
   const [error, setError] = useState("");
@@ -270,10 +274,10 @@ export function ModulesManager() {
                         </Alert>
                       )}
                       <label className={gp.label}>
-                        App vinculada (catálogo)
+                        Plantilla (catálogo Raptor)
                         <select name="app_id" required className={gp.input}>
-                          <option value="">Seleccionar aplicación</option>
-                          {businesses.map((b) => (
+                          <option value="">Seleccionar plantilla</option>
+                          {templateApps.map((b) => (
                             <option key={b.id} value={b.id}>
                               {b.name}
                             </option>

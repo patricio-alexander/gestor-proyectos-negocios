@@ -1,4 +1,5 @@
 import { validateKey } from "@/src/shared/lib/api-auth";
+import { getTemplateApp } from "@/src/shared/lib/app-kind";
 import { prisma } from "@/src/shared/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -7,6 +8,9 @@ export async function GET(request: NextRequest) {
   if (apiKey.error) return apiKey.error;
 
   try {
+    const templateApp = await getTemplateApp();
+    const catalogAppId = templateApp?.id ?? apiKey.app_id;
+
     const plans = await prisma.plan.findMany({
       select: {
         name: true,
@@ -28,7 +32,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      where: { app_id: apiKey.app_id, deleted_at: null },
+      where: { app_id: catalogAppId, deleted_at: null },
       orderBy: [{ sort_order: "asc" }, { id: "asc" }],
     });
 

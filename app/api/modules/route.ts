@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { requireTemplateAppId } from "@/src/shared/lib/app-kind";
 
 function generateKey(name: string): string {
   return name
@@ -27,7 +28,7 @@ async function getAppsUsingModules(moduleIds: number[]) {
               subscriptions: {
                 where: { status: "ACTIVE" },
                 select: {
-                  apps: { select: { id: true, name: true, hash: true } },
+                  apps: { select: { id: true, name: true, hash: true, kind: true } },
                 },
               },
             },
@@ -41,8 +42,13 @@ async function getAppsUsingModules(moduleIds: number[]) {
     const list = map.get(link.module_id) ?? [];
     for (const price of link.plan.prices) {
       for (const sub of price.subscriptions) {
+        if (sub.apps.kind === "template") continue;
         if (!list.some((a) => a.hash === sub.apps.hash)) {
-          list.push(sub.apps);
+          list.push({
+            id: sub.apps.id,
+            name: sub.apps.name,
+            hash: sub.apps.hash,
+          });
         }
       }
     }
@@ -57,7 +63,10 @@ export async function GET() {
   if (auth.error) return auth.error;
   try {
     const modules = await prisma.module.findMany({
-      where: { deleted_at: null },
+      where: {
+        deleted_at: null,
+        apps: { kind: "template", deleted_at: null },
+      },
       include: {
         apps: { select: { id: true, name: true, hash: true } },
         sections: {
@@ -76,18 +85,8 @@ export async function GET() {
     return NextResponse.json(
       modules.map((m) => {
         const viaPlans = usage.get(m.id) ?? [];
-        // Siempre incluir la app de registro del catálogo (vinculación base)
+        // Solo apps desplegadas con suscripción (no incluir la plantilla Raptor)
         const appsUsing: LinkedApp[] = [...viaPlans];
-        if (
-          m.apps &&
-          !appsUsing.some((a) => a.hash === m.apps.hash)
-        ) {
-          appsUsing.unshift({
-            id: m.apps.id,
-            name: m.apps.name,
-            hash: m.apps.hash,
-          });
-        }
 
         return {
           ...m,
@@ -125,8 +124,16 @@ export async function POST(request: Request) {
     }
     if (!app_id) {
       return NextResponse.json(
-        { error: "Debe vincular el módulo a una aplicación del catálogo" },
+        { error: "Debe vincular el módulo a la plantilla Raptor (catálogo)" },
         { status: 400 },
+      );
+    }
+
+    const templateCheck = await requireTemplateAppId(Number(app_id));
+    if (!templateCheck.ok) {
+      return NextResponse.json(
+        { error: templateCheck.error },
+        { status: templateCheck.status },
       );
     }
 
