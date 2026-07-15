@@ -115,7 +115,6 @@ export async function buildEntitlementForAppHash(
     name: pm.module.name,
     key: pm.module.key,
     status: pm.module.status,
-    is_maintainer: pm.module.is_maintainer,
     image_url: pm.module.image_url,
     is_trial: pm.module.is_trial,
     start_trial: pm.module.start_trial,

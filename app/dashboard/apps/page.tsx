@@ -15,7 +15,7 @@ import TrashBin from "@gravity-ui/icons/TrashBin";
 import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
 import Copy from "@gravity-ui/icons/Copy";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
 import {
@@ -30,7 +30,12 @@ const PAGE_SIZE = 10;
 
 function generateApiKey(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return "gc_" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  return (
+    "gc_" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
 }
 
 function matchesAppSearch(app: App, query: string) {
@@ -338,7 +343,9 @@ export default function AppsPage() {
                               }}
                             >
                               {copiedId === "create" ? (
-                                <span className="text-xs text-emerald-600">Copiado</span>
+                                <span className="text-xs text-emerald-600">
+                                  Copiado
+                                </span>
                               ) : (
                                 <Copy width={14} height={14} />
                               )}
@@ -478,7 +485,9 @@ export default function AppsPage() {
                         size="sm"
                         variant="ghost"
                         aria-label={`Empujar entitlement ${app.name}`}
-                        isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
+                        isDisabled={
+                          !app.entitlement_url || pushingIds.has(app.id)
+                        }
                         onPress={() => handlePush(app)}
                       >
                         {pushingIds.has(app.id) ? (
@@ -615,56 +624,63 @@ export default function AppsPage() {
                           placeholder="ej: gestor_ed_deli"
                           className={gp.input}
                         />
-                        </label>
-                        <label className={`${gp.label} col-span-2`}>
-                          URL entitlement (sync)
+                      </label>
+                      <label className={`${gp.label} col-span-2`}>
+                        URL entitlement (sync)
+                        <input
+                          name="entitlement_url"
+                          defaultValue={editingApp.entitlement_url ?? ""}
+                          placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
+                          className={gp.input}
+                        />
+                      </label>
+                      <div className="col-span-2 space-y-1.5">
+                        <label className={gp.label}>API Key</label>
+                        <div className="flex gap-2">
                           <input
-                            name="entitlement_url"
-                            defaultValue={editingApp.entitlement_url ?? ""}
-                            placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
-                            className={gp.input}
+                            value={
+                              editApiKey || editingApp.entitlement_secret || ""
+                            }
+                            readOnly
+                            className={`${gp.input} flex-1 font-mono text-xs`}
                           />
-                        </label>
-                        <div className="col-span-2 space-y-1.5">
-                          <label className={gp.label}>API Key</label>
-                          <div className="flex gap-2">
-                            <input
-                              value={editApiKey || editingApp.entitlement_secret || ""}
-                              readOnly
-                              className={`${gp.input} flex-1 font-mono text-xs`}
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              aria-label="Copiar API Key"
-                              onPress={() => {
-                                const val = editApiKey || editingApp.entitlement_secret || "";
-                                navigator.clipboard.writeText(val);
-                                setCopiedId("edit");
-                                setTimeout(() => setCopiedId(null), 2000);
-                              }}
-                            >
-                              {copiedId === "edit" ? (
-                                <span className="text-xs text-emerald-600">Copiado</span>
-                              ) : (
-                                <Copy width={14} height={14} />
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              aria-label="Regenerar API Key"
-                              onPress={() => setEditApiKey(generateApiKey())}
-                            >
-                              <ArrowsRotateRight width={14} height={14} />
-                            </Button>
-                          </div>
-                          {editApiKey && (
-                            <p className="text-[11px] text-amber-600">
-                              Se va a regenerar la API Key al guardar.
-                            </p>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Copiar API Key"
+                            onPress={() => {
+                              const val =
+                                editApiKey ||
+                                editingApp.entitlement_secret ||
+                                "";
+                              navigator.clipboard.writeText(val);
+                              setCopiedId("edit");
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                          >
+                            {copiedId === "edit" ? (
+                              <span className="text-xs text-emerald-600">
+                                Copiado
+                              </span>
+                            ) : (
+                              <Copy width={14} height={14} />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Regenerar API Key"
+                            onPress={() => setEditApiKey(generateApiKey())}
+                          >
+                            <ArrowsRotateRight width={14} height={14} />
+                          </Button>
                         </div>
+                        {editApiKey && (
+                          <p className="text-[11px] text-amber-600">
+                            Se va a regenerar la API Key al guardar.
+                          </p>
+                        )}
+                      </div>
                       <label className={`${gp.label} col-span-2`}>
                         <Switch
                           name="maintenance"
@@ -682,7 +698,11 @@ export default function AppsPage() {
                     </div>
                   </Modal.Body>
                   <Modal.Footer>
-                    <Button variant="secondary" slot="close" onPress={() => setEditingApp(null)}>
+                    <Button
+                      variant="secondary"
+                      slot="close"
+                      onPress={() => setEditingApp(null)}
+                    >
                       Cancelar
                     </Button>
                     <Button type="submit" isDisabled={submitting}>
