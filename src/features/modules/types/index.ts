@@ -5,6 +5,8 @@ export type LifecycleStatus =
   | "developer"
   | "planned";
 
+export type NormalizedLifecycleStatus = Exclude<LifecycleStatus, "development">;
+
 export type Capability = {
   id: number;
   section_id: number;
@@ -114,17 +116,17 @@ export const LIFECYCLE_STATUS_LABELS: Record<LifecycleStatus, string> = {
 };
 
 /** Opciones editables (4 estados). */
-export const LIFECYCLE_STATUS_OPTIONS: LifecycleStatus[] = [
+export const LIFECYCLE_STATUS_OPTIONS = [
   "active",
   "maintenance",
   "planned",
   "developer",
-];
+] as const satisfies readonly LifecycleStatus[];
 
 /** Normaliza legacy: development → maintenance. */
 export function normalizeLifecycleStatus(
   status?: LifecycleStatus | string | null,
-): LifecycleStatus {
+): NormalizedLifecycleStatus {
   if (status === "development") return "maintenance";
   if (
     status === "active" ||
