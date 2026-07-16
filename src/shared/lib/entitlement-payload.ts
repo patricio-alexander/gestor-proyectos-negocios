@@ -63,7 +63,6 @@ export async function buildEntitlementForAppHash(
         },
       },
     },
-    orderBy: { id: "desc" },
   });
 
   const appModules = await prisma.appModule.findMany({
