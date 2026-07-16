@@ -649,12 +649,11 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        title={
+                        aria-label={
                           !app.entitlement_url
                             ? "Sin URL de sync configurada"
-                            : "Empujar entitlement (sync) al backend de la app"
+                            : `Empujar entitlement (sync) al backend de ${app.name || "la app"}`
                         }
-                        aria-label={`Empujar entitlement ${app.name || ""}`}
                         isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
                         onPress={() => handlePush(app)}
                       >
@@ -667,7 +666,6 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        title="Editar aplicación"
                         aria-label={`Editar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setEditingApp(app);
@@ -684,7 +682,6 @@ export default function AppsPage() {
                         size="sm"
                         variant="ghost"
                         className="text-red-500"
-                        title="Eliminar aplicación"
                         aria-label={`Eliminar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setDeletingApp(app);
