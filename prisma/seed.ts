@@ -196,7 +196,7 @@ async function removeLegacyRaptorApp() {
   const raptor = await prisma.apps.findFirst({
     where: {
       deleted_at: null,
-      OR: [{ hash: LEGACY_RAPTOR_APP_HASH }, { name: "Raptor", kind: "template" }],
+      OR: [{ hash: LEGACY_RAPTOR_APP_HASH }, { name: "Raptor" }],
     },
     select: { id: true, name: true },
   });
