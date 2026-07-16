@@ -98,28 +98,31 @@ npx prisma studio    # Abrir UI de Prisma para explorar datos
 npx prisma db push   # Sincronizar esquema con la DB
 npx prisma generate  # Regenerar cliente Prisma
 
-## Worker de reseteo diario
+## Workers
 
-El worker `workers/usage-reset-worker.ts` resetea `usage_count` de todas las secciones a 0
-cada día a la medianoche.
-
-### Ejecutar en producción
+Los workers viven en `workers/` y se levantan todos juntos con PM2:
 
 ```bash
-# Con pm2 (recomendado) — se reinicia automáticamente si crashea
 npm install -g pm2
-pm2 start npm --name "usage-reset" -- run worker:usage
-pm2 save
-
-# O con nohup (simple)
-nohup npm run worker:usage &
+npm run build          # Compilar antes de producción
+npm run start          # Levantar app + workers con PM2
+npm run workers:logs   # Ver logs
+npm run workers:stop   # Detener todo
+pm2 save               # Persistir tras reinicio del servidor
 ```
 
-Verificar que está corriendo:
+Workers incluidos:
+
+| PM2 name | Script | Descripción |
+|----------|--------|-------------|
+| `worker-usage` | `worker:usage` | Resetea `usage_count` de secciones a medianoche |
+| `worker-listener-folders` | `worker:listener-folders` | Escucha cambios en `/var/www/html` y actualiza peso de archivos |
+| `worker-polling-db-size` | `worker:polling-db-size` | Actualiza el peso de cada base de datos por app |
+
+También podés levantar uno solo:
 
 ```bash
-pm2 list
-pm2 logs usage-reset
+pm2 start npm --name "usage-reset" -- run worker:usage
 ```
 ```
 
