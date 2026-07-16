@@ -6,7 +6,7 @@ module.exports = {
       args: "run start",
       autorestart: true,
       env: {
-        PORT: 3003,
+        PORT: 3002,
       },
     },
     {
