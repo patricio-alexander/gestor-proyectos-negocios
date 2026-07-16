@@ -1,7 +1,10 @@
+export type AppKind = "template" | "deployment";
+
 export type App = {
   id: number;
   hash: string;
   name: string | null;
+  kind?: AppKind;
   owner_name: string | null;
   phone: string | null;
   ruc: string | null;
@@ -28,9 +31,8 @@ export type App = {
   plan?: {
     id: number;
     name: string | null;
-    modules_count: number;
-    modules: { id: number; key: string; name: string }[];
   } | null;
+  modules?: { id: number; key: string; name: string }[];
 };
 
 export type CreateAppInput = {

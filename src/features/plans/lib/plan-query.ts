@@ -1,13 +1,18 @@
 import { prisma } from "@/src/shared/lib/prisma";
 
 export const planInclude = {
-  apps: { select: { name: true } },
   prices: { select: { id: true, price: true, period: true } },
-  plan_modules: {
+  plan_app_modules: {
     select: {
-      id: true,
-      module_id: true,
-      module: { select: { name: true, is_trial: true } },
+      app_module: {
+        select: {
+          id: true,
+          app_id: true,
+          module_id: true,
+          app: { select: { id: true, name: true } },
+          module: { select: { name: true, is_trial: true } },
+        },
+      },
     },
   },
   planOffers: {
@@ -27,17 +32,19 @@ export type PlanAppUsage = {
 type PlanRow = {
   id: number;
   name: string | null;
-  app_id: number;
   sort_order: number;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
-  apps: { name: string | null };
   prices: { id: number; price: number | null; period: string }[];
-  plan_modules: {
-    id: number;
-    module_id: number;
-    module: { name: string; is_trial: boolean };
+  plan_app_modules: {
+    app_module: {
+      id: number;
+      app_id: number;
+      module_id: number;
+      app: { id: number; name: string | null };
+      module: { name: string; is_trial: boolean };
+    };
   }[];
   planOffers: {
     offer_id: number;
@@ -50,20 +57,28 @@ export async function getAppsUsageByPlanIds(planIds: number[]) {
   const usage = new Map<number, PlanAppUsage[]>();
   if (planIds.length === 0) return usage;
 
+  const planPrices = await prisma.planPrice.findMany({
+    where: { plan_id: { in: planIds } },
+    select: { id: true, plan_id: true },
+  });
+  if (planPrices.length === 0) return usage;
+
+  const priceIdToPlanId = new Map(planPrices.map((pp) => [pp.id, pp.plan_id]));
+
   const subscriptions = await prisma.subscription.findMany({
     where: {
       status: "ACTIVE",
-      plan_price: { plan_id: { in: planIds } },
+      plan_price_id: { in: planPrices.map((pp) => pp.id) },
     },
     select: {
-      app_hash: true,
-      plan_price: { select: { plan_id: true } },
+      plan_price_id: true,
       apps: { select: { id: true, name: true, hash: true } },
     },
   });
 
   for (const sub of subscriptions) {
-    const planId = sub.plan_price.plan_id;
+    const planId = priceIdToPlanId.get(sub.plan_price_id);
+    if (planId == null) continue;
     const list = usage.get(planId) ?? [];
     if (!list.some((a) => a.hash === sub.apps.hash)) {
       list.push({
@@ -78,16 +93,23 @@ export async function getAppsUsageByPlanIds(planIds: number[]) {
   return usage;
 }
 
-export function mapPlan(
-  plan: PlanRow,
-  appsUsing: PlanAppUsage[] = [],
-) {
+export function mapPlan(plan: PlanRow, appsUsing: PlanAppUsage[] = []) {
+  const appIds = [
+    ...new Set(plan.plan_app_modules.map((pam) => pam.app_module.app_id)),
+  ];
+  const catalogAppNames = [
+    ...new Set(
+      plan.plan_app_modules
+        .map((pam) => pam.app_module.app.name)
+        .filter(Boolean),
+    ),
+  ] as string[];
+
   return {
     id: plan.id,
     name: plan.name,
-    app_id: plan.app_id,
-    /** App de catálogo (módulos); los planes son plantilla SoftEd. */
-    catalog_app_name: plan.apps.name,
+    app_ids: appIds,
+    catalog_app_names: catalogAppNames,
     sort_order: plan.sort_order,
     apps_count: appsUsing.length,
     apps_using: appsUsing,
@@ -95,11 +117,13 @@ export function mapPlan(
     updated_at: plan.updated_at.toISOString(),
     deleted_at: plan.deleted_at?.toISOString() ?? null,
     prices: plan.prices,
-    plan_modules: plan.plan_modules.map((pm) => ({
-      id: pm.id,
-      module_id: pm.module_id,
-      module_name: pm.module.name,
-      is_trial: pm.module.is_trial,
+    plan_modules: plan.plan_app_modules.map((pam) => ({
+      id: pam.app_module.id,
+      app_id: pam.app_module.app_id,
+      app_name: pam.app_module.app.name,
+      module_id: pam.app_module.module_id,
+      module_name: pam.app_module.module.name,
+      is_trial: pam.app_module.module.is_trial,
     })),
     plan_offers: plan.planOffers.map((po) => ({
       offer_id: po.offer_id,

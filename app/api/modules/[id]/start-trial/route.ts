@@ -55,9 +55,6 @@ export async function POST(request: NextRequest, { params }: Params) {
         start_trial: now,
         end_trial: end,
       },
-      include: {
-        apps: { select: { name: true } },
-      },
     });
 
     return NextResponse.json({

@@ -14,12 +14,10 @@ import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import { useState } from "react";
 import { useCatalog } from "../hooks/useCatalog";
-import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { ModuleRecord } from "../types";
 import { INPUT_CLASS } from "@/src/shared/ui/form-styles";
 
 export function CatalogManager() {
-  const { apps: businesses } = useApps();
   const {
     modules,
     loading,
@@ -43,14 +41,8 @@ export function CatalogManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const appId = Number(form.get("app_id"));
-      if (!appId) {
-        setError("Debe seleccionar una aplicación");
-        return;
-      }
       await createModule({
         name: form.get("name") as string,
-        app_id: appId,
       });
       moduleCreateState.close();
     } catch (err) {
@@ -134,15 +126,6 @@ export function CatalogManager() {
                         <Alert.Description>{error}</Alert.Description>
                       </Alert>
                     )}
-                    <label className="gp-label">
-                      Aplicación
-                      <select name="app_id" required className={INPUT_CLASS}>
-                        <option value="">Seleccionar aplicación</option>
-                        {businesses.map((b) => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </select>
-                    </label>
                     <label className="gp-label">
                       Nombre
                       <input name="name" required placeholder="Plataforma" className={INPUT_CLASS} />

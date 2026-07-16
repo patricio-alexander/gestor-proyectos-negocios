@@ -20,19 +20,16 @@ export async function GET() {
             plan_price: {
               include: {
                 plan: {
-                  select: {
-                    id: true,
-                    name: true,
-                    plan_modules: {
-                      select: {
-                        module: {
-                          select: { id: true, name: true, key: true },
-                        },
-                      },
-                    },
-                  },
+                  select: { id: true, name: true },
                 },
               },
+            },
+          },
+        },
+        app_modules: {
+          select: {
+            module: {
+              select: { id: true, name: true, key: true },
             },
           },
         },
@@ -47,6 +44,7 @@ export async function GET() {
           id: a.id,
           hash: a.hash,
           name: a.name,
+          kind: a.kind,
           owner_name: a.owner_name,
           phone: a.phone,
           ruc: a.ruc,
@@ -76,14 +74,13 @@ export async function GET() {
             ? {
                 id: plan.id,
                 name: plan.name,
-                modules_count: plan.plan_modules.length,
-                modules: plan.plan_modules.map((pm) => ({
-                  id: pm.module.id,
-                  key: pm.module.key,
-                  name: pm.module.name,
-                })),
               }
             : null,
+          modules: a.app_modules.map((am) => ({
+            id: am.module.id,
+            key: am.module.key,
+            name: am.module.name,
+          })),
         };
       }),
     );
@@ -141,6 +138,17 @@ export async function POST(request: Request) {
         maintenance: maintenance ?? false,
         entitlement_url: entitlement_url?.trim() || null,
         entitlement_secret: entitlement_secret?.trim() || null,
+        kind: "deployment",
+        app_modules: {
+          create: await prisma.module
+            .findMany({
+              where: { deleted_at: null },
+              select: { id: true },
+            })
+            .then((modules) =>
+              modules.map((m) => ({ module_id: m.id })),
+            ),
+        },
       },
     });
 
@@ -149,6 +157,7 @@ export async function POST(request: Request) {
         id: app.id,
         hash: app.hash,
         name: app.name,
+        kind: app.kind,
         owner_name: app.owner_name,
         phone: app.phone,
         ruc: app.ruc,

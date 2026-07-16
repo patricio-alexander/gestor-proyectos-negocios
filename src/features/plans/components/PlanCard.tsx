@@ -17,8 +17,10 @@ import {
   formatPlanPrice,
   getAnnualSavingsPercent,
 } from "../lib/format-plan-price";
+import { groupPlanModulesByApp } from "../lib/group-plan-modules-by-app";
+import { getPlanAppIds } from "../lib/plan-for-app";
 
-const MAX_VISIBLE_CHIPS = 4;
+const MAX_VISIBLE_APP_CHIPS = 3;
 
 type PlanCardProps = {
   plan: Plan;
@@ -40,11 +42,15 @@ export function PlanCard({
   const savings = getAnnualSavingsPercent(monthly?.price, annual?.price);
   const modules = plan.plan_modules ?? [];
   const offers = plan.plan_offers ?? [];
-  const visibleModules = modules.slice(0, MAX_VISIBLE_CHIPS);
-  const hiddenModules = modules.length - visibleModules.length;
-  const visibleOffers = offers.slice(0, MAX_VISIBLE_CHIPS);
+  const modulesByApp = groupPlanModulesByApp(modules);
+  const planAppIds = getPlanAppIds(plan);
+  const canCreateSubscription = planAppIds.length > 0;
+  const visibleApps = modulesByApp.slice(0, MAX_VISIBLE_APP_CHIPS);
+  const hiddenApps = modulesByApp.length - visibleApps.length;
+  const visibleOffers = offers.slice(0, 4);
   const hiddenOffers = offers.length - visibleOffers.length;
   const appsModal = useOverlayState();
+  const modulesModal = useOverlayState();
   const appsUsing = plan.apps_using ?? [];
 
   return (
@@ -76,8 +82,7 @@ export function PlanCard({
                   aria-label={`Ver apps de ${plan.name ?? "plan"}`}
                 >
                   <Persons width={12} height={12} />
-                  {plan.apps_count}{" "}
-                  {plan.apps_count === 1 ? "app" : "apps"}
+                  {plan.apps_count} {plan.apps_count === 1 ? "app" : "apps"}
                 </Button>
               </div>
             </div>
@@ -87,6 +92,7 @@ export function PlanCard({
             <Button
               size="sm"
               variant="ghost"
+              title="Ver apps con este plan"
               aria-label={`Apps vinculadas a ${plan.name ?? "plan"}`}
               onPress={appsModal.open}
             >
@@ -95,6 +101,7 @@ export function PlanCard({
             <Button
               size="sm"
               variant="ghost"
+              title="Editar plan"
               aria-label={`Editar ${plan.name ?? "plan"}`}
               onPress={() => onEdit(plan)}
             >
@@ -104,6 +111,7 @@ export function PlanCard({
               size="sm"
               variant="ghost"
               className="text-red-500"
+              title="Eliminar plan"
               aria-label={`Eliminar ${plan.name ?? "plan"}`}
               onPress={() => onDelete(plan)}
             >
@@ -132,26 +140,55 @@ export function PlanCard({
             <p className="text-xs text-[var(--gp-text-muted)]">
               {modules.length > 0 && (
                 <>
-                  {modules.length}{" "}
-                  {modules.length === 1 ? "módulo" : "módulos"}
+                  {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
                 </>
               )}
               {modules.length > 0 && offers.length > 0 && " · "}
               {offers.length > 0 && (
                 <>
-                  {offers.length}{" "}
-                  {offers.length === 1 ? "oferta" : "ofertas"}
+                  {offers.length} {offers.length === 1 ? "oferta" : "ofertas"}
                 </>
               )}
             </p>
 
             {modules.length > 0 && (
-              <PlanChipGroup
-                icon={Cubes3Overlap}
-                label="Módulos"
-                items={visibleModules.map((m) => m.module_name)}
-                hiddenCount={hiddenModules}
-              />
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--gp-text-muted)]">
+                    <Cubes3Overlap width={12} height={12} />
+                    Módulos por app
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 min-h-0 px-2 text-xs"
+                    onPress={modulesModal.open}
+                    aria-label={`Ver módulos de ${plan.name ?? "plan"}`}
+                  >
+                    Ver todos
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  className="flex w-full flex-wrap gap-1 rounded-lg text-left transition-opacity hover:opacity-80"
+                  onClick={modulesModal.open}
+                  aria-label={`Ver módulos por app de ${plan.name ?? "plan"}`}
+                >
+                  {visibleApps.map((group) => (
+                    <span
+                      key={group.app_id}
+                      className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                    >
+                      {group.app_name} · {group.modules.length}
+                    </span>
+                  ))}
+                  {hiddenApps > 0 && (
+                    <span className="text-xs text-[var(--gp-text-muted)]">
+                      +{hiddenApps} {hiddenApps === 1 ? "app" : "apps"}
+                    </span>
+                  )}
+                </button>
+              </div>
             )}
 
             {offers.length > 0 && (
@@ -180,15 +217,22 @@ export function PlanCard({
             size="sm"
             variant="secondary"
             className="flex-1 sm:flex-none"
+            isDisabled={!canCreateSubscription}
+            title={
+              canCreateSubscription
+                ? "Crear una suscripción activa en una app del plan"
+                : "Asigná módulos a una app en el plan antes de crear suscripciones"
+            }
             onPress={() => onEnableSubscription(plan)}
           >
             <ShieldKeyhole width={14} height={14} />
-            Habilitar suscripción
+            Crear suscripción
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="flex-1 sm:flex-none"
+            title="Ver suscripciones de este plan"
             onPress={() => onViewSubscriptions(plan)}
           >
             <ListCheck width={14} height={14} />
@@ -196,6 +240,75 @@ export function PlanCard({
           </Button>
         </div>
       </div>
+
+      <Modal state={modulesModal}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-lg">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>
+                  Módulos por app · {plan.name || "Plan"}
+                </Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
+                  Configuración de módulos incluidos en este plan, agrupados por
+                  app.
+                </p>
+                {modulesByApp.length === 0 ? (
+                  <p className="text-sm text-[var(--gp-text-muted)]">
+                    Sin módulos asignados.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {modulesByApp.map((group) => (
+                      <section
+                        key={group.app_id}
+                        className="rounded-xl border p-3"
+                        style={{ borderColor: "var(--gp-border)" }}
+                      >
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className={gp.iconBoxSm}>
+                            <Briefcase width={14} height={14} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[var(--gp-text)]">
+                              {group.app_name}
+                            </p>
+                            <p className="text-xs text-[var(--gp-text-muted)]">
+                              {group.modules.length}{" "}
+                              {group.modules.length === 1
+                                ? "módulo"
+                                : "módulos"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.modules.map((mod) => (
+                            <span
+                              key={mod.id}
+                              className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                            >
+                              {mod.module_name}
+                              {mod.is_trial ? " (trial)" : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" slot="close">
+                  Cerrar
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
 
       <Modal state={appsModal}>
         <Modal.Backdrop>
@@ -269,7 +382,9 @@ function PlanPriceBlock({
     <div
       className="rounded-xl border px-3 py-3"
       style={{
-        borderColor: featured ? "var(--gp-input-focus)" : "var(--gp-card-border)",
+        borderColor: featured
+          ? "var(--gp-input-focus)"
+          : "var(--gp-card-border)",
         backgroundColor: featured
           ? "var(--gp-badge-bg)"
           : "var(--gp-surface-muted)",

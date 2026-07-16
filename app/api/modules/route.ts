@@ -11,42 +11,27 @@ function generateKey(name: string): string {
 
 type LinkedApp = { id: number; name: string | null; hash: string };
 
-/** Apps con plan ACTIVE que incluye el módulo. */
 async function getAppsUsingModules(moduleIds: number[]) {
   const map = new Map<number, LinkedApp[]>();
   if (moduleIds.length === 0) return map;
 
-  const links = await prisma.planModule.findMany({
+  const appModules = await prisma.appModule.findMany({
     where: { module_id: { in: moduleIds } },
     select: {
       module_id: true,
-      plan: {
-        select: {
-          prices: {
-            select: {
-              subscriptions: {
-                where: { status: "ACTIVE" },
-                select: {
-                  apps: { select: { id: true, name: true, hash: true } },
-                },
-              },
-            },
-          },
-        },
+      app: {
+        select: { id: true, name: true, hash: true, kind: true },
       },
     },
   });
 
-  for (const link of links) {
-    const list = map.get(link.module_id) ?? [];
-    for (const price of link.plan.prices) {
-      for (const sub of price.subscriptions) {
-        if (!list.some((a) => a.hash === sub.apps.hash)) {
-          list.push(sub.apps);
-        }
-      }
+  for (const am of appModules) {
+    if (am.app.kind === "template") continue;
+    const list = map.get(am.module_id) ?? [];
+    if (!list.some((a) => a.hash === am.app.hash)) {
+      list.push({ id: am.app.id, name: am.app.name, hash: am.app.hash });
     }
-    map.set(link.module_id, list);
+    map.set(am.module_id, list);
   }
 
   return map;
@@ -59,7 +44,7 @@ export async function GET() {
     const modules = await prisma.module.findMany({
       where: { deleted_at: null },
       include: {
-        apps: { select: { id: true, name: true, hash: true } },
+        _count: { select: { sections: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -75,24 +60,10 @@ export async function GET() {
 
     return NextResponse.json(
       modules.map((m) => {
-        const viaPlans = usage.get(m.id) ?? [];
-        // Siempre incluir la app de registro del catálogo (vinculación base)
-        const appsUsing: LinkedApp[] = [...viaPlans];
-        if (
-          m.apps &&
-          !appsUsing.some((a) => a.hash === m.apps.hash)
-        ) {
-          appsUsing.unshift({
-            id: m.apps.id,
-            name: m.apps.name,
-            hash: m.apps.hash,
-          });
-        }
-
+        const appsUsing = usage.get(m.id) ?? [];
         return {
           ...m,
-          app_name: m.apps.name,
-          catalog_app_name: m.apps.name,
+          _count: undefined,
           apps_count: appsUsing.length,
           apps_using: appsUsing,
         };
@@ -113,19 +84,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = body.name as string | undefined;
-    const app_id = body.app_id as number | undefined;
     const description = body.description as string | null | undefined;
     const image_url = body.image_url as string | null | undefined;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
         { error: "El nombre del módulo es obligatorio" },
-        { status: 400 },
-      );
-    }
-    if (!app_id) {
-      return NextResponse.json(
-        { error: "Debe vincular el módulo a una aplicación del catálogo" },
         { status: 400 },
       );
     }
@@ -136,12 +100,10 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         key,
-        app_id: Number(app_id),
         ...(description !== undefined && { description: description || null }),
         ...(image_url !== undefined && { image_url: image_url || null }),
       },
       include: {
-        apps: { select: { id: true, name: true, hash: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -155,12 +117,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ...mod,
-        app_name: mod.apps.name,
-        catalog_app_name: mod.apps.name,
-        apps_count: 1,
-        apps_using: [
-          { id: mod.apps.id, name: mod.apps.name, hash: mod.apps.hash },
-        ],
+        apps_count: 0,
+        apps_using: [],
       },
       { status: 201 },
     );

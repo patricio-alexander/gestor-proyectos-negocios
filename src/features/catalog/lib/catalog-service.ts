@@ -17,7 +17,7 @@ export async function listModules(): Promise<ModuleRecord[]> {
     where: { deleted_at: null },
     orderBy: { id: "asc" },
   });
-  return rows.map((r) => ({ id: r.id, name: r.name, app_id: r.app_id, is_trial: r.is_trial }));
+  return rows.map((r) => ({ id: r.id, name: r.name, is_trial: r.is_trial }));
 }
 
 export async function createModule(input: CreateModuleInput) {
@@ -25,10 +25,9 @@ export async function createModule(input: CreateModuleInput) {
     data: {
       name: input.name.trim(),
       key: generateKey(input.name.trim()),
-      app_id: input.app_id,
     },
   });
-  return { id: row.id, name: row.name, app_id: row.app_id, is_trial: row.is_trial };
+  return { id: row.id, name: row.name, is_trial: row.is_trial };
 }
 
 export async function updateModule(id: number, input: UpdateModuleInput) {
@@ -40,7 +39,7 @@ export async function updateModule(id: number, input: UpdateModuleInput) {
         : {}),
     },
   });
-  return { id: row.id, name: row.name, app_id: row.app_id, is_trial: row.is_trial };
+  return { id: row.id, name: row.name, is_trial: row.is_trial };
 }
 
 export async function deleteModule(id: number) {

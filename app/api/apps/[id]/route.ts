@@ -12,6 +12,15 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const app = await prisma.apps.findFirst({
       where: { id: Number(id), deleted_at: null },
+      include: {
+        app_modules: {
+          select: {
+            module: {
+              select: { id: true, name: true, key: true },
+            },
+          },
+        },
+      },
     });
 
     if (!app) {
@@ -25,6 +34,7 @@ export async function GET(_request: Request, { params }: Params) {
       id: app.id,
       hash: app.hash,
       name: app.name,
+      kind: app.kind,
       owner_name: app.owner_name,
       phone: app.phone,
       ruc: app.ruc,
@@ -41,6 +51,11 @@ export async function GET(_request: Request, { params }: Params) {
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: app.deleted_at?.toISOString() ?? null,
+      modules: app.app_modules.map((am) => ({
+        id: am.module.id,
+        key: am.module.key,
+        name: am.module.name,
+      })),
     });
   } catch {
     return NextResponse.json(
@@ -120,6 +135,7 @@ export async function PATCH(request: Request, { params }: Params) {
       id: app.id,
       hash: app.hash,
       name: app.name,
+      kind: app.kind,
       owner_name: app.owner_name,
       phone: app.phone,
       ruc: app.ruc,

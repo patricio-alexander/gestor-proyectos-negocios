@@ -41,7 +41,6 @@ export type Module = {
   id: number;
   name: string;
   key: string;
-  app_id: number;
   description: string | null;
   image_url: string | null;
   status: LifecycleStatus;
@@ -50,8 +49,6 @@ export type Module = {
   limit_days_trial: number | null;
   start_trial: string | null;
   end_trial: string | null;
-  app_name?: string | null;
-  catalog_app_name?: string | null;
   apps_count?: number;
   apps_using?: LinkedApp[];
   sections: Section[];
@@ -62,7 +59,6 @@ export type Module = {
 
 export type CreateModuleInput = {
   name: string;
-  app_id: number;
   description?: string | null;
   image_url?: string | null;
   status?: LifecycleStatus;

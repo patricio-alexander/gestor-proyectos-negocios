@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { requireAppId } from "@/src/shared/lib/app-kind";
 import { mapOffer, offerInclude } from "@/src/features/offers/lib/offer-query";
 
 export async function GET() {
@@ -9,7 +10,9 @@ export async function GET() {
 
   try {
     const offers = await prisma.offer.findMany({
-      where: { deleted_at: null },
+      where: {
+        deleted_at: null,
+      },
       include: offerInclude,
       orderBy: { created_at: "desc" },
     });
@@ -52,14 +55,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const apps = await prisma.apps.findFirst({
-      where: { id: app_id, deleted_at: null },
-    });
-
-    if (!apps) {
+    const appCheck = await requireAppId(Number(app_id));
+    if (!appCheck.ok) {
       return NextResponse.json(
-        { error: "La aplicación seleccionada no existe" },
-        { status: 404 },
+        { error: appCheck.error },
+        { status: appCheck.status },
       );
     }
 

@@ -28,7 +28,7 @@ type OfferFormProps = {
   submitting: boolean;
   editing?: Offer | null;
   apps: { id: number; name: string | null }[];
-  allModules: { id: number; name: string; app_id: number }[];
+  allModules: { id: number; name: string }[];
   children: React.ReactNode;
 };
 
@@ -42,9 +42,6 @@ function OfferForm({
   children,
 }: OfferFormProps) {
   const [selectedAppId, setSelectedAppId] = useState(editing?.app_id ?? "");
-  const filteredModules = allModules.filter(
-    (m) => m.app_id === Number(selectedAppId),
-  );
   const selectedModuleIds = new Set(
     editing?.modules?.map((m) => m.module_id) ?? [],
   );
@@ -68,7 +65,7 @@ function OfferForm({
           />
         </label>
         <label className={gp.label}>
-          Aplicación
+          Plantilla (catálogo)
           <select
             name="app_id"
             required
@@ -76,7 +73,7 @@ function OfferForm({
             onChange={(e) => setSelectedAppId(e.target.value)}
             className={gp.select}
           >
-            <option value="">Seleccionar aplicación</option>
+            <option value="">Seleccionar plantilla</option>
             {apps.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -122,17 +119,16 @@ function OfferForm({
             />
           </label>
         </div>
-        {selectedAppId && (
-          <fieldset>
+        <fieldset>
             <legend className={`${gp.label} mb-2`}>Módulos</legend>
-            {filteredModules.length === 0 ? (
-              <p className={gp.subtitle}>No hay módulos para esta aplicación</p>
+            {allModules.length === 0 ? (
+              <p className={gp.subtitle}>No hay módulos disponibles</p>
             ) : (
               <div
                 className="max-h-36 space-y-2 overflow-y-auto rounded-lg border p-3"
                 style={{ borderColor: "var(--gp-card-border)" }}
               >
-                {filteredModules.map((mod) => (
+                {allModules.map((mod) => (
                   <label
                     key={mod.id}
                     className="flex items-center gap-2 text-sm font-medium"
@@ -150,7 +146,6 @@ function OfferForm({
               </div>
             )}
           </fieldset>
-        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" slot="close">

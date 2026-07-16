@@ -21,6 +21,7 @@ import { SectionLimitBadge, SectionLimitSummary } from "./SectionLimitBadge";
 import { SectionMaxRecordsLimitField } from "./SectionMaxRecordsLimitField";
 import { SectionCapabilitiesPanel } from "./SectionCapabilitiesPanel";
 import { LifecycleStatusSelect } from "./LifecycleStatusSelect";
+import { SectionAppsPanel } from "./SectionAppsPanel";
 
 function parseMaxRecordsLimitInput(value: FormDataEntryValue | null) {
   if (value == null || String(value).trim() === "") return null;
@@ -115,7 +116,7 @@ export function ModuleSectionsPanel({
       );
       if (pushError) {
         setSectionError(
-          `Estado guardado, pero no se pudo sync a EdDeli: ${pushError}`,
+          `Estado global guardado, pero no se pudo sync a las apps: ${pushError}`,
         );
       }
     } catch (err) {
@@ -246,6 +247,11 @@ export function ModuleSectionsPanel({
               </Modal.Header>
 
               <Modal.Body className="space-y-4">
+                {sectionError ? (
+                  <Alert status="danger">
+                    <Alert.Description>{sectionError}</Alert.Description>
+                  </Alert>
+                ) : null}
                 {module.sections.length === 0 ? (
                   <div className={`${gp.empty} py-8`}>
                     <p className="text-sm font-medium text-[var(--gp-text)]">
@@ -257,120 +263,120 @@ export function ModuleSectionsPanel({
                     </p>
                   </div>
                 ) : (
-                  <div className="max-h-[min(50vh,420px)] overflow-auto rounded-xl border">
-                    <table className="w-full min-w-[640px] text-left text-sm">
-                      <thead className="sticky top-0 z-10">
-                        <tr
-                          className="border-b text-xs uppercase tracking-wide"
-                          style={{
-                            color: "var(--gp-text-muted)",
-                            borderColor: "var(--gp-border)",
-                            backgroundColor: "var(--gp-table-head)",
-                          }}
-                        >
-                          <th className="px-5 py-2.5 font-medium">Sección</th>
-                          <th className="px-5 py-2.5 font-medium">Key</th>
-                          <th className="px-5 py-2.5 font-medium">Estado</th>
-                          <th className="px-5 py-2.5 font-medium">
-                            Límite remoto
-                          </th>
-                          <th className="px-5 py-2.5 font-medium">
-                            Capacidades
-                          </th>
-                          <th className="w-36 px-5 py-2.5 font-medium text-right">
-                            Acciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {module.sections.map((sec) => {
-                          const caps = sec.capabilities ?? [];
-                          const activeCaps = caps.filter((c) => c.is_active).length;
+                  <div className="max-h-[min(55vh,480px)] space-y-3 overflow-y-auto pr-1">
+                    {module.sections.map((sec) => {
+                      const caps = sec.capabilities ?? [];
+                      const activeCaps = caps.filter((c) => c.is_active).length;
+                      const secStatus = normalizeLifecycleStatus(sec.status);
 
-                          return (
-                            <tr
-                              key={sec.id}
-                              className="border-b last:border-none"
-                              style={{ borderColor: "var(--gp-border)" }}
-                            >
-                              <td className="px-5 py-3 font-medium">{sec.name}</td>
-                              <td className="px-5 py-3">
-                                {sec.key ? (
-                                  <code className="rounded bg-[var(--gp-surface-muted)] px-1.5 py-0.5 text-xs text-[var(--gp-text-muted)]">
-                                    {sec.key}
-                                  </code>
-                                ) : (
-                                  <span className="text-xs text-[var(--gp-text-muted)]">
-                                    —
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-5 py-3">
-                                <div className="min-w-[10.5rem]">
-                                  <LifecycleStatusSelect
-                                    value={normalizeLifecycleStatus(sec.status)}
-                                    onChange={(next) =>
-                                      handleChangeSectionStatus(sec, next)
-                                    }
-                                    aria-label={`Estado de ${sec.name}`}
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-5 py-3">
+                      return (
+                        <div
+                          key={sec.id}
+                          className="rounded-xl border p-4"
+                          style={{ borderColor: "var(--gp-border)" }}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[var(--gp-text)]">
+                                {sec.name}
+                              </p>
+                              {sec.key ? (
+                                <code className="mt-0.5 inline-block rounded bg-[var(--gp-surface-muted)] px-1.5 py-0.5 text-[10px] text-[var(--gp-text-muted)]">
+                                  {sec.key}
+                                </code>
+                              ) : null}
+                              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--gp-text-muted)]">
                                 <SectionLimitBadge limit={sec.max_records_limit} />
-                              </td>
-                              <td className="px-5 py-3">
-                                <span className="text-xs text-[var(--gp-text-muted)]">
+                                <span>
                                   {caps.length === 0
                                     ? "Sin capacidades"
-                                    : `${activeCaps}/${caps.length} activas`}
+                                    : `${activeCaps}/${caps.length} capacidades activas`}
                                 </span>
-                              </td>
-                              <td className="px-5 py-3">
-                                <div className="flex justify-end gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    aria-label={`Capacidades de ${sec.name}`}
-                                    onPress={() => {
-                                      setManagingCapabilitiesSection(sec);
-                                      setSectionError("");
-                                    }}
-                                  >
-                                    <Key width={12} height={12} />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    aria-label={`Editar ${sec.name}`}
-                                    onPress={() => {
-                                      setEditingSection(sec);
-                                      setSectionError("");
-                                      sectionEditState.open();
-                                    }}
-                                  >
-                                    <Pencil width={12} height={12} />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-red-500"
-                                    aria-label={`Eliminar ${sec.name}`}
-                                    onPress={() => {
-                                      setDeletingSection(sec);
-                                      setSectionError("");
-                                      sectionDeleteState.open();
-                                    }}
-                                  >
-                                    <TrashBin width={12} height={12} />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={`Capacidades de ${sec.name}`}
+                                onPress={() => {
+                                  setManagingCapabilitiesSection(sec);
+                                  setSectionError("");
+                                }}
+                              >
+                                <Key width={12} height={12} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={`Editar ${sec.name}`}
+                                onPress={() => {
+                                  setEditingSection(sec);
+                                  setSectionError("");
+                                  sectionEditState.open();
+                                }}
+                              >
+                                <Pencil width={12} height={12} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-500"
+                                aria-label={`Eliminar ${sec.name}`}
+                                onPress={() => {
+                                  setDeletingSection(sec);
+                                  setSectionError("");
+                                  sectionDeleteState.open();
+                                }}
+                              >
+                                <TrashBin width={12} height={12} />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div
+                            className="mt-4 grid gap-3 sm:grid-cols-2"
+                          >
+                            <div
+                              className="rounded-lg border p-3"
+                              style={{ borderColor: "var(--gp-border)" }}
+                            >
+                              <p className="text-xs font-semibold text-[var(--gp-text)]">
+                                Estado en catálogo
+                              </p>
+                              <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+                                Valor por defecto para todas las apps.
+                              </p>
+                              <LifecycleStatusSelect
+                                value={secStatus}
+                                onChange={(next) =>
+                                  handleChangeSectionStatus(sec, next)
+                                }
+                                aria-label={`Estado global de ${sec.name}`}
+                              />
+                            </div>
+                            <div
+                              className="rounded-lg border p-3"
+                              style={{ borderColor: "var(--gp-border)" }}
+                            >
+                              <p className="text-xs font-semibold text-[var(--gp-text)]">
+                                Acceso por app
+                              </p>
+                              <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+                                Asigná la sección y el estado solo donde aplique.
+                              </p>
+                              <SectionAppsPanel
+                                sectionId={sec.id}
+                                sectionName={sec.name}
+                                globalStatus={secStatus}
+                                moduleApps={module.apps_using ?? []}
+                                onError={setSectionError}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Modal.Body>

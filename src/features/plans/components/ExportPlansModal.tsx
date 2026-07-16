@@ -22,7 +22,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
       ? plans
       : plans.filter(
           (p) =>
-            p.app_id === filterAppId ||
+            p.app_ids?.includes(filterAppId) ||
             p.apps_using?.some((a) => a.id === filterAppId),
         );
 
@@ -66,7 +66,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
         ? plans
         : plans.filter(
             (p) =>
-              p.app_id === filterAppId ||
+              p.app_ids.includes(filterAppId) ||
               p.apps_using?.some((a) => a.id === filterAppId),
           );
     const rows = targetPlans.map((plan) => {

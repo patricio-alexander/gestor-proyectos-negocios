@@ -6,6 +6,7 @@ import {
   SubscriptionStatus,
 } from "../../../../prisma/generated/prisma/enums";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
+import { requireDeploymentAppId } from "@/src/shared/lib/app-kind";
 
 /**
  * Habilita una suscripción desde el gestor para una app concreta.
@@ -48,14 +49,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    const targetApp = await prisma.apps.findFirst({
-      where: { id: appId, deleted_at: null },
-      select: { id: true, hash: true, name: true },
-    });
-    if (!targetApp) {
+    const deploymentCheck = await requireDeploymentAppId(appId);
+    if (!deploymentCheck.ok) {
       return NextResponse.json(
-        { error: "Aplicación no encontrada" },
-        { status: 404 },
+        { error: deploymentCheck.error },
+        { status: deploymentCheck.status },
+      );
+    }
+    const targetApp = deploymentCheck.app;
+
+    const planModulesForApp = await prisma.planAppModule.count({
+      where: {
+        plan_id: planId,
+        app_module: { app_id: appId },
+      },
+    });
+    if (planModulesForApp === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Este plan no tiene módulos configurados para esa app. Editá el plan y asigná módulos antes de crear la suscripción.",
+        },
+        { status: 400 },
       );
     }
 

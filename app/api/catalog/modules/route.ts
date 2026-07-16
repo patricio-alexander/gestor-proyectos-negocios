@@ -23,9 +23,9 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    if (!body.name?.trim() || !body.app_id) {
+    if (!body.name?.trim()) {
       return NextResponse.json(
-        { error: "name y app_id son obligatorios" },
+        { error: "name es obligatorio" },
         { status: 400 },
       );
     }

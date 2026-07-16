@@ -73,8 +73,8 @@ export function usePlans() {
 
     setPlans((prev) =>
       prev.map((p) =>
-        p.id === id ? { ...p, deleted_at: new Date().toISOString() } : p
-      )
+        p.id === id ? { ...p, deleted_at: new Date().toISOString() } : p,
+      ),
     );
   }
 

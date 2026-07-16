@@ -19,6 +19,7 @@ import {
   LifecycleStatusSelect,
   LIFECYCLE_STATUS_STYLE,
 } from "./LifecycleStatusSelect";
+import { ModuleAppsPanel } from "./ModuleAppsPanel";
 
 type ModuleCardProps = {
   module: Module;
@@ -26,6 +27,7 @@ type ModuleCardProps = {
   onEdit: (module: Module) => void;
   onDelete: (module: Module) => void;
   onChangeStatus: (module: Module, status: LifecycleStatus) => void;
+  onAppsChanged?: () => void;
 };
 
 export function ModuleCard({
@@ -34,12 +36,14 @@ export function ModuleCard({
   onEdit,
   onDelete,
   onChangeStatus,
+  onAppsChanged,
 }: ModuleCardProps) {
   const detailsModal = useOverlayState();
   const appsModal = useOverlayState();
   const appsUsing = mod.apps_using ?? [];
   const appsCount = mod.apps_count ?? appsUsing.length;
   const status = normalizeLifecycleStatus(mod.status);
+  const statusStyle = LIFECYCLE_STATUS_STYLE[status];
   const maintenanceSections = mod.sections.filter(
     (s) => normalizeLifecycleStatus(s.status) === "maintenance",
   );
@@ -48,8 +52,9 @@ export function ModuleCard({
   return (
     <Card className="gp-card gp-card-interactive flex h-full flex-col overflow-hidden p-0">
       <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+        {/* Header: icon + name + status badge + actions */}
         <div className="flex items-start gap-3">
-          <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
+          <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
             {mod.image_url ? (
               <img
                 src={apiUrl(mod.image_url)}
@@ -58,72 +63,122 @@ export function ModuleCard({
               />
             ) : (
               <div className="flex size-full items-center justify-center">
-                <Cubes3Overlap width={20} height={20} className="text-zinc-300" />
+                <Cubes3Overlap width={18} height={18} className="text-zinc-300" />
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-1">
-              <h3 className="truncate text-sm font-semibold text-[var(--gp-text)]">
-                {mod.name}
-              </h3>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="truncate text-sm font-semibold text-[var(--gp-text)]">
+                    {mod.name}
+                  </h3>
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold ${statusStyle.chip}`}
+                  >
+                    <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
+                    {LIFECYCLE_STATUS_LABELS[status]}
+                  </span>
+                </div>
+                <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--gp-text-muted)]">
+                  {mod.description || "Sin descripción"}
+                </p>
+              </div>
               <div className="flex shrink-0 gap-0.5">
                 <Button
                   size="sm"
                   variant="ghost"
                   aria-label={`Editar ${mod.name}`}
                   onPress={() => onEdit(mod)}
-                  className="min-w-0 px-1.5"
+                  className="min-w-0 px-1"
                 >
-                  <Pencil width={13} height={13} />
+                  <Pencil width={12} height={12} />
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="min-w-0 px-1.5 text-red-500"
+                  className="min-w-0 px-1 text-red-500"
                   aria-label={`Eliminar ${mod.name}`}
                   onPress={() => onDelete(mod)}
                 >
-                  <TrashBin width={13} height={13} />
+                  <TrashBin width={12} height={12} />
                 </Button>
               </div>
             </div>
-            <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--gp-text-muted)]">
-              {mod.description || "Sin descripción"}
-            </p>
           </div>
         </div>
 
-        <div>
-          <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-[var(--gp-text-muted)]">
-            Estado
-          </span>
-          <LifecycleStatusSelect
-            value={status}
-            onChange={(next) => onChangeStatus(mod, next)}
-            aria-label={`Estado de ${mod.name}`}
-          />
+        {/* Estado global + apps */}
+        <div
+          className="space-y-3 rounded-xl border p-3"
+          style={{ borderColor: "var(--gp-border)" }}
+        >
+          <div>
+            <p className="text-xs font-semibold text-[var(--gp-text)]">
+              Estado en catálogo
+            </p>
+            <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+              Valor por defecto para todas las apps que usen este módulo.
+            </p>
+            <LifecycleStatusSelect
+              value={status}
+              onChange={(next) => onChangeStatus(mod, next)}
+              aria-label={`Estado global de ${mod.name}`}
+            />
+          </div>
+          <div
+            className="border-t pt-3"
+            style={{ borderColor: "var(--gp-border)" }}
+          >
+            <p className="text-xs font-semibold text-[var(--gp-text)]">
+              Apps que lo usan
+            </p>
+            <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+              Asigná el módulo a cada app y ajustá el estado solo donde haga falta.
+            </p>
+            <ModuleAppsPanel
+              moduleId={mod.id}
+              moduleName={mod.name}
+              globalStatus={status}
+              onChanged={onAppsChanged}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600">
-            {mod.sections.length} sec.
+        {/* Stats bar */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+            <Layers width={11} height={11} />
+            {mod.sections.length} secc.
           </span>
           {maintenanceCount > 0 ? (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-800">
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+              <span className="size-1.5 rounded-full bg-red-500" />
               {maintenanceCount} en mant.
             </span>
           ) : null}
           <button
             type="button"
             onClick={() => appsModal.open()}
-            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600 hover:bg-zinc-200"
+            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
           >
             <Persons width={11} height={11} />
-            {appsCount}
+            {appsCount} {appsCount === 1 ? "app" : "apps"}
           </button>
+          {mod.is_trial ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+              Trial {mod.limit_days_trial ? `(${mod.limit_days_trial}d)` : null}
+            </span>
+          ) : null}
+          {mod.is_maintainer ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700">
+              Mantenimiento
+            </span>
+          ) : null}
         </div>
 
+        {/* Action buttons */}
         <div
           className="mt-auto flex gap-1.5 border-t pt-2.5"
           style={{ borderColor: "var(--gp-border)" }}
@@ -134,7 +189,7 @@ export function ModuleCard({
             className="flex-1"
             onPress={() => detailsModal.open()}
           >
-            <Eye width={13} height={13} />
+            <Eye width={12} height={12} />
             Detalle
           </Button>
           <Button
@@ -146,7 +201,7 @@ export function ModuleCard({
             }}
             onPress={() => onManageSections(mod)}
           >
-            <Layers width={13} height={13} />
+            <Layers width={12} height={12} />
             Secciones
           </Button>
         </div>
@@ -163,11 +218,9 @@ export function ModuleCard({
               <Modal.Body className="space-y-4">
                 <div className="flex flex-wrap gap-1.5">
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${LIFECYCLE_STATUS_STYLE[status].chip}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyle.chip}`}
                   >
-                    <span
-                      className={`size-1.5 rounded-full ${LIFECYCLE_STATUS_STYLE[status].dot}`}
-                    />
+                    <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
                     Módulo: {LIFECYCLE_STATUS_LABELS[status]}
                   </span>
                   <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
@@ -206,6 +259,7 @@ export function ModuleCard({
                         })
                         .map((sec) => {
                           const secStatus = normalizeLifecycleStatus(sec.status);
+                          const secStyle = LIFECYCLE_STATUS_STYLE[secStatus];
                           return (
                             <li
                               key={sec.id}
@@ -223,11 +277,9 @@ export function ModuleCard({
                                 ) : null}
                               </div>
                               <span
-                                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${LIFECYCLE_STATUS_STYLE[secStatus].chip}`}
+                                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${secStyle.chip}`}
                               >
-                                <span
-                                  className={`size-1.5 rounded-full ${LIFECYCLE_STATUS_STYLE[secStatus].dot}`}
-                                />
+                                <span className={`size-1.5 rounded-full ${secStyle.dot}`} />
                                 {LIFECYCLE_STATUS_LABELS[secStatus]}
                               </span>
                             </li>

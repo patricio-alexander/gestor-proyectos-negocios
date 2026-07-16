@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { requireAppId } from "@/src/shared/lib/app-kind";
 import { Period } from "../../../../prisma/generated/prisma/enums";
+import { findPlanById, mapPlanById } from "@/src/features/plans/lib/plan-query";
 import {
-  findPlanById,
-  mapPlanById,
-} from "@/src/features/plans/lib/plan-query";
+  replacePlanAppModulesForApp,
+  syncPlanAppModules,
+} from "@/src/features/plans/lib/plan-app-modules";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -18,7 +20,10 @@ export async function GET(_request: Request, { params }: Params) {
     const mapped = await mapPlanById(Number(id));
 
     if (!mapped) {
-      return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Plan no encontrado" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(mapped);
@@ -37,35 +42,89 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const planId = Number(id);
-    const { name, app_id, price_monthly, price_annual, module_ids, offer_ids } =
-      await request.json();
+    const {
+      name,
+      app_ids,
+      price_monthly,
+      price_annual,
+      module_ids,
+      offer_ids,
+    } = await request.json();
 
     const existing = await findPlanById(planId);
 
     if (!existing) {
-      return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Plan no encontrado" },
+        { status: 404 },
+      );
     }
 
-    if (app_id) {
-      const apps = await prisma.apps.findFirst({
-        where: { id: app_id, deleted_at: null },
-      });
-      if (!apps) {
-        return NextResponse.json(
-          { error: "La aplicación seleccionada no existe" },
-          { status: 404 },
-        );
+    if (app_ids) {
+      for (const appId of app_ids) {
+        const appCheck = await requireAppId(Number(appId));
+        if (!appCheck.ok) {
+          return NextResponse.json(
+            { error: appCheck.error },
+            { status: appCheck.status },
+          );
+        }
       }
     }
 
-    const plan = await prisma.$transaction(async (tx) => {
-      await tx.plan.update({
-        where: { id: planId },
-        data: {
-          ...(name !== undefined && { name: name.trim() }),
-          ...(app_id !== undefined && { app_id }),
-        },
-      });
+    await prisma.$transaction(async (tx) => {
+      const updateData: Record<string, unknown> = {};
+      if (name !== undefined) {
+        updateData.name = name.trim();
+      }
+      if (Object.keys(updateData).length > 0) {
+        await tx.plan.update({
+          where: { id: planId },
+          data: updateData,
+        });
+      }
+
+      if (module_ids !== undefined || app_ids !== undefined) {
+        const selectedAppIds =
+          app_ids !== undefined && Array.isArray(app_ids) && app_ids.length > 0
+            ? app_ids
+                .map((app_id: number) => Number(app_id))
+                .filter((id) => !Number.isNaN(id))
+            : [
+                ...new Set(
+                  existing.plan_app_modules.map((pam) => pam.app_module.app_id),
+                ),
+              ];
+
+        const selectedModuleIds =
+          module_ids !== undefined && Array.isArray(module_ids)
+            ? module_ids
+                .map((id: unknown) => Number(id))
+                .filter((id) => !Number.isNaN(id))
+            : [
+                ...new Set(
+                  existing.plan_app_modules.map(
+                    (pam) => pam.app_module.module_id,
+                  ),
+                ),
+              ];
+
+        if (selectedAppIds.length === 1 && module_ids !== undefined) {
+          await replacePlanAppModulesForApp(
+            tx,
+            planId,
+            selectedAppIds[0],
+            selectedModuleIds,
+          );
+        } else {
+          await syncPlanAppModules(
+            tx,
+            planId,
+            selectedAppIds,
+            selectedModuleIds,
+          );
+        }
+      }
 
       if (price_monthly !== undefined || price_annual !== undefined) {
         if (price_monthly != null && price_monthly !== "") {
@@ -79,7 +138,11 @@ export async function PATCH(request: Request, { params }: Params) {
             });
           } else {
             await tx.planPrice.create({
-              data: { plan_id: planId, price: Number(price_monthly), period: Period.MONTHLY },
+              data: {
+                plan_id: planId,
+                price: Number(price_monthly),
+                period: Period.MONTHLY,
+              },
             });
           }
         }
@@ -94,21 +157,13 @@ export async function PATCH(request: Request, { params }: Params) {
             });
           } else {
             await tx.planPrice.create({
-              data: { plan_id: planId, price: Number(price_annual), period: Period.ANNUALLY },
+              data: {
+                plan_id: planId,
+                price: Number(price_annual),
+                period: Period.ANNUALLY,
+              },
             });
           }
-        }
-      }
-
-      if (module_ids !== undefined) {
-        await tx.planModule.deleteMany({ where: { plan_id: planId } });
-        if (module_ids.length > 0) {
-          await tx.planModule.createMany({
-            data: module_ids.map((module_id: number) => ({
-              module_id,
-              plan_id: planId,
-            })),
-          });
         }
       }
 
@@ -126,20 +181,17 @@ export async function PATCH(request: Request, { params }: Params) {
     });
 
     const mapped = await mapPlanById(planId);
-    const appHash = (
-      await prisma.apps.findFirst({
-        where: {
-          id: mapped?.app_id ?? existing.app_id,
-          deleted_at: null,
-        },
+    const appIds = mapped?.app_ids.length ? mapped.app_ids : (app_ids ?? []);
+    if (appIds.length > 0 && module_ids !== undefined) {
+      const apps = await prisma.apps.findMany({
+        where: { id: { in: appIds }, deleted_at: null },
         select: { hash: true },
-      })
-    )?.hash;
-    if (appHash && module_ids !== undefined) {
-      const { pushEntitlementToApp } = await import(
-        "@/src/shared/lib/push-entitlement"
-      );
-      await pushEntitlementToApp(appHash);
+      });
+      const { pushEntitlementToApp } =
+        await import("@/src/shared/lib/push-entitlement");
+      for (const app of apps) {
+        await pushEntitlementToApp(app.hash);
+      }
     }
 
     return NextResponse.json(mapped);
@@ -162,7 +214,10 @@ export async function DELETE(_request: Request, { params }: Params) {
     const existing = await findPlanById(Number(id));
 
     if (!existing) {
-      return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Plan no encontrado" },
+        { status: 404 },
+      );
     }
 
     await prisma.plan.update({

@@ -16,6 +16,12 @@ enum LifecycleStatus {
   planned
 }
 
+/** template = catálogo maestro (Raptor); deployment = instancia desplegada (EdDeli, Store…). */
+enum AppKind {
+  template
+  deployment
+}
+
 // ─── Usuarios del gestor (control plane) ───────────────────────────────────
 
 model User {
@@ -28,6 +34,8 @@ model User {
   updated_at   DateTime?  @updatedAt
   deleted_at   DateTime?
   roles        UserRole[]
+
+  @@index([deleted_at])
 }
 
 model Role {
@@ -67,6 +75,8 @@ model Offer {
   planOffers    PlanOffer[]
 
   @@index([app_id])
+  @@index([deleted_at])
+  @@index([app_id, deleted_at])
 }
 
 model OfferModule {
@@ -77,6 +87,7 @@ model OfferModule {
   modules Module @relation(fields: [module_id], references: [id])
 
   @@id([offer_id, module_id])
+  @@index([module_id])
 }
 
 model PlanOffer {
@@ -87,14 +98,14 @@ model PlanOffer {
 
   @@id([plan_id, offer_id])
   @@index([plan_id])
+  @@index([offer_id])
 }
 
 // ─── Módulos y secciones ────────────────────────────────────────────────────
 
 model Module {
   id            Int           @id @default(autoincrement())
-  app_id        Int
-  key           String
+  key           String        @unique
   name          String
   description      String?       @db.Text
   image_url        String?
@@ -107,14 +118,13 @@ model Module {
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   deleted_at    DateTime?
-  apps          Apps          @relation(fields: [app_id], references: [id], onDelete: Restrict)
-  sections      Section[]
-  plan_modules  PlanModule[]
-  offersModules OfferModule[]
+  sections        Section[]
+  offersModules   OfferModule[]
+  app_modules     AppModule[]
 
-  @@unique([app_id, key])
-  @@index([app_id])
   @@index([status])
+  @@index([deleted_at])
+  @@index([deleted_at, name])
 }
 
 model Section {
@@ -130,9 +140,42 @@ model Section {
   deleted_at        DateTime?
   module            Module       @relation(fields: [module_id], references: [id], onDelete: Cascade)
   capabilities      Capability[]
+  app_sections      AppSection[]
 
   @@index([module_id])
   @@index([status])
+  @@index([module_id, deleted_at])
+  @@index([module_id, key])
+}
+
+/** Asignación directa módulo → app (M:N). */
+model AppModule {
+  id               Int             @id @default(autoincrement())
+  app_id           Int
+  module_id        Int
+  /** null = hereda Module.status; si tiene valor = override por app. */
+  status           LifecycleStatus?
+  app              Apps            @relation(fields: [app_id], references: [id], onDelete: Cascade)
+  module           Module          @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  plan_app_modules PlanAppModule[]
+
+  @@unique([app_id, module_id])
+  @@index([app_id])
+  @@index([module_id])
+}
+
+/** Filtro granular de secciones por app (M:N opcional). */
+model AppSection {
+  app_id     Int
+  section_id Int
+  /** null = hereda Section.status; si tiene valor = override por app. */
+  status     LifecycleStatus?
+  app        Apps    @relation(fields: [app_id], references: [id], onDelete: Cascade)
+  section    Section @relation(fields: [section_id], references: [id], onDelete: Cascade)
+
+  @@id([app_id, section_id])
+  @@index([app_id])
+  @@index([section_id])
 }
 
 model Capability {
@@ -169,39 +212,47 @@ model Apps {
   entitlement_url    String?       @db.VarChar(500)
   /** Secreto compartido con la app cliente (formato: gc_<hex>). */
   entitlement_secret String?       @db.VarChar(255)
+  kind               AppKind        @default(deployment)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   deleted_at    DateTime?
-  plans         Plan[]
-  modules       Module[]
-  subscriptions Subscription[]
-  offers        Offer[]
-  events        Event[]
+  subscriptions           Subscription[]
+  offers                  Offer[]
+  events                  Event[]
+  app_modules             AppModule[]
+  app_sections            AppSection[]
+
+  @@index([deleted_at])
+  @@index([deleted_at, created_at])
+  @@index([kind, deleted_at])
+  @@index([entitlement_secret])
 }
 
 model Plan {
   id           Int          @id @default(autoincrement())
   name         String?
-  apps         Apps         @relation(fields: [app_id], references: [id])
-  app_id       Int
   sort_order   Int          @default(0)
   created_at   DateTime     @default(now())
   updated_at   DateTime     @updatedAt
   deleted_at   DateTime?
-  prices       PlanPrice[]
-  plan_modules PlanModule[]
-  planOffers   PlanOffer[]
+  prices           PlanPrice[]
+  plan_app_modules PlanAppModule[]
+  planOffers       PlanOffer[]
+
+  @@index([deleted_at])
+  @@index([deleted_at, sort_order])
 }
 
-model PlanModule {
-  id        Int    @id @default(autoincrement())
-  plan_id   Int
-  module_id Int
-  plan      Plan   @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  module    Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+/** Módulos de una app incluidos en un plan (configuración por app). */
+model PlanAppModule {
+  plan_id       Int
+  app_module_id Int
+  plan          Plan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  app_module    AppModule @relation(fields: [app_module_id], references: [id], onDelete: Cascade)
 
+  @@id([plan_id, app_module_id])
   @@index([plan_id])
-  @@index([module_id])
+  @@index([app_module_id])
 }
 
 model PlanPrice {
@@ -211,6 +262,8 @@ model PlanPrice {
   plan_id       Int
   period        Period
   subscriptions Subscription[]
+
+  @@unique([plan_id, period])
 }
 
 model Subscription {
@@ -222,6 +275,9 @@ model Subscription {
   start_at      DateTime?
   expires_at    DateTime?
   status        SubscriptionStatus
+
+  @@index([app_hash, status])
+  @@index([status, plan_price_id])
 }
 
 enum SubscriptionStatus {
@@ -260,4 +316,5 @@ model Event {
   @@index([app_id])
   @@index([type_id])
   @@index([created_at])
+  @@index([app_id, created_at])
 }

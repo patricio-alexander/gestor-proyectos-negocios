@@ -12,7 +12,6 @@ import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Plus from "@gravity-ui/icons/Plus";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useModules } from "../hooks/useModules";
-import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { LifecycleStatus, Module } from "../types";
 import {
   matchesLifecycleFilter,
@@ -41,13 +40,12 @@ function matchesModuleSearch(mod: Module, query: string) {
     .map((a) => a.name)
     .filter(Boolean)
     .join(" ");
-  return [mod.name, mod.app_name, mod.catalog_app_name, appNames, "softed"]
+  return [mod.name, appNames]
     .filter(Boolean)
     .some((v) => String(v).toLowerCase().includes(q));
 }
 
 export function ModulesManager() {
-  const { apps: businesses } = useApps();
   const { modules, loading, create, update, remove, patchModule, refetch } = useModules();
 
   const [error, setError] = useState("");
@@ -117,11 +115,6 @@ export function ModulesManager() {
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
-      const appId = Number(form.get("app_id"));
-      if (!appId) {
-        setError("Debe vincular el módulo a una aplicación del catálogo");
-        return;
-      }
       const file = form.get("image") as File | null;
       let imageUrl: string | null = null;
       if (file && file.size > 0) {
@@ -137,7 +130,6 @@ export function ModulesManager() {
       }
       await create({
         name: form.get("name") as string,
-        app_id: appId,
         description: (form.get("description") as string) || null,
         image_url: imageUrl,
       });
@@ -270,17 +262,6 @@ export function ModulesManager() {
                         </Alert>
                       )}
                       <label className={gp.label}>
-                        App vinculada (catálogo)
-                        <select name="app_id" required className={gp.input}>
-                          <option value="">Seleccionar aplicación</option>
-                          {businesses.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={gp.label}>
                         Nombre
                         <input
                           name="name"
@@ -384,6 +365,7 @@ export function ModulesManager() {
                   moduleDeleteState.open();
                 }}
                 onChangeStatus={handleChangeStatus}
+                onAppsChanged={() => void refetch()}
               />
             ))}
           </div>

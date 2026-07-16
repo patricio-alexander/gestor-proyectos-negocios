@@ -25,7 +25,7 @@ export const BACKUP_TABLE_ENTRIES: { key: string; get: () => Delegate }[] = [
   { key: "Offer", get: () => prisma.offer },
   { key: "OfferModule", get: () => prisma.offerModule },
   { key: "Plan", get: () => prisma.plan },
-  { key: "PlanModule", get: () => prisma.planModule },
+  { key: "PlanAppModule", get: () => prisma.planAppModule },
   { key: "PlanPrice", get: () => prisma.planPrice },
   { key: "PlanOffer", get: () => prisma.planOffer },
   { key: "Subscription", get: () => prisma.subscription },

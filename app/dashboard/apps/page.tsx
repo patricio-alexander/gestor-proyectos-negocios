@@ -13,11 +13,22 @@ import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
 import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
+import CreditCard from "@gravity-ui/icons/CreditCard";
 import Copy from "@gravity-ui/icons/Copy";
+import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
-import { useState } from "react";
+import { AppModulesModal } from "@/src/features/apps/components/AppModulesModal";
+import { useState, useMemo } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
+import { usePlans } from "@/src/features/plans/hooks/usePlans";
+import {
+  filterPlansForApp,
+  getPlanModulesForApp,
+} from "@/src/features/plans/lib/plan-for-app";
+import { formatPlanPrice } from "@/src/features/plans/lib/format-plan-price";
+import { entitlementSyncSummary } from "@/src/features/apps/lib/entitlementEnv";
+import { isTemplateApp } from "@/src/features/apps/lib/app-kind";
 import {
   ManagerHeader,
   TableSearchBar,
@@ -47,12 +58,18 @@ function matchesAppSearch(app: App, query: string) {
 }
 
 export default function AppsPage() {
-  const { apps, loading, create, update, remove, pushEntitlement } = useApps();
+  const { apps, loading, create, update, remove, pushEntitlement, enablePlan, updateModules, refetch } =
+    useApps();
+  const { plans } = usePlans();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
+  const [modulesApp, setModulesApp] = useState<App | null>(null);
+  const [planApp, setPlanApp] = useState<App | null>(null);
+  const [planId, setPlanId] = useState("");
+  const [planPeriod, setPlanPeriod] = useState<"MONTHLY" | "ANNUALLY">("MONTHLY");
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
   const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
   const [createApiKey, setCreateApiKey] = useState(generateApiKey);
@@ -62,8 +79,100 @@ export default function AppsPage() {
   const createState = useOverlayState();
   const editState = useOverlayState();
   const deleteState = useOverlayState();
+  const planState = useOverlayState();
 
   const filterApps = (app: App, query: string) => matchesAppSearch(app, query);
+
+  const sortedPlans = useMemo(
+    () => [...plans].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id,
+    ),
+    [plans],
+  );
+
+  const plansForSelectedApp = useMemo(() => {
+    if (!planApp) return [];
+    return filterPlansForApp(sortedPlans, planApp.id);
+  }, [sortedPlans, planApp]);
+
+  const selectedPlan = useMemo(
+    () => plansForSelectedApp.find((p) => String(p.id) === planId) ?? null,
+    [plansForSelectedApp, planId],
+  );
+
+  const selectedPlanModules = useMemo(() => {
+    if (!selectedPlan || !planApp) return [];
+    return getPlanModulesForApp(selectedPlan, planApp.id);
+  }, [selectedPlan, planApp]);
+
+  function openModules(app: App) {
+    setError("");
+    setSuccess("");
+    setModulesApp(app);
+  }
+
+  async function handleSaveAppModules(appId: number, moduleIds: number[]) {
+    const result = await updateModules(appId, moduleIds);
+    await refetch();
+    const pushNote = result.push_ok
+      ? " · sync enviado"
+      : result.push_skipped
+        ? " · sync omitido (sin URL)"
+        : result.push_error
+          ? ` · sync falló: ${result.push_error}`
+          : "";
+    setSuccess(`Módulos actualizados${pushNote}`);
+  }
+
+  function openAssignPlan(app: App) {
+    setError("");
+    setSuccess("");
+    setPlanApp(app);
+    const forApp = filterPlansForApp(sortedPlans, app.id);
+    const defaultPlan =
+      app.plan?.id != null && forApp.some((p) => p.id === app.plan!.id)
+        ? String(app.plan.id)
+        : forApp[0]
+          ? String(forApp[0].id)
+          : "";
+    setPlanId(defaultPlan);
+    setPlanPeriod("MONTHLY");
+    planState.open();
+  }
+
+  async function handleAssignPlan(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!planApp || !planId) {
+      setError("Elegí un plan");
+      return;
+    }
+    const appName = planApp.name || "la app";
+    const selectedPlan = plans.find((p) => String(p.id) === planId);
+    setError("");
+    setSubmitting(true);
+    try {
+      const result = await enablePlan({
+        app_id: planApp.id,
+        plan_id: Number(planId),
+        period: planPeriod,
+        replace: true,
+      });
+      planState.close();
+      setPlanApp(null);
+      const pushNote = result.push_ok
+        ? " · sync enviado"
+        : result.push_error
+          ? ` · aviso sync: ${result.push_error}`
+          : "";
+      setSuccess(
+        `Plan ${result.plan_name || selectedPlan?.name || ""} asignado a ${appName}${pushNote}`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al asignar plan");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const {
     search,
@@ -177,7 +286,14 @@ export default function AppsPage() {
       await pushEntitlement(app.id);
       setSuccess(`Entitlement enviado a ${app.name || "la app"}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al empujar");
+      const msg = err instanceof Error ? err.message : "Error al empujar";
+      if (/no autorizado|gestor sync/i.test(msg)) {
+        setError(
+          `Sync rechazado en ${app.name || "la app"}: la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. Copiá la API Key (Editar app) al .env del backend y reiniciá.`,
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setPushingIds((prev) => {
         const next = new Set(prev);
@@ -234,21 +350,25 @@ export default function AppsPage() {
             </Button>
             <Modal.Backdrop>
               <Modal.Container>
-                <Modal.Dialog className="sm:max-w-xl">
+                <Modal.Dialog className="flex max-h-[min(92vh,760px)] flex-col sm:max-w-xl">
                   <Modal.CloseTrigger />
                   <Modal.Header>
                     <Modal.Heading>Nueva aplicación</Modal.Heading>
                   </Modal.Header>
                   <form
                     onSubmit={handleCreate}
-                    className="flex flex-1 flex-col"
+                    className="flex min-h-0 flex-1 flex-col"
                   >
-                    <Modal.Body>
+                    <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
                       {error && (
                         <Alert status="danger">
                           <Alert.Description>{error}</Alert.Description>
                         </Alert>
                       )}
+                      <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
+                        Solo el <strong>nombre</strong> es obligatorio. El resto es opcional (URL y API Key
+                        sirven para conectar el sync).
+                      </p>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                         <label className={`${gp.label} col-span-2`}>
                           Nombre
@@ -323,6 +443,9 @@ export default function AppsPage() {
                             placeholder="http://127.0.0.1:3001/eddeliapi/subscription/entitlement"
                             className={gp.input}
                           />
+                          <span className="mt-1 block text-[11px] text-[var(--gp-text-muted)]">
+                            Localhost → Desarrollo · dominio https → Producción · staging/test → Pruebas
+                          </span>
                         </label>
                         <div className="col-span-2 space-y-1.5">
                           <label className={gp.label}>API Key</label>
@@ -372,12 +495,12 @@ export default function AppsPage() {
                         </label>
                       </div>
                     </Modal.Body>
-                    <Modal.Footer>
+                    <Modal.Footer className="shrink-0 border-t border-[var(--gp-border)] bg-[var(--gp-surface)]">
                       <Button variant="secondary" slot="close">
                         Cancelar
                       </Button>
                       <Button type="submit" isDisabled={submitting}>
-                        {submitting ? <Spinner size="sm" /> : "Crear"}
+                        {submitting ? <Spinner size="sm" /> : "Guardar"}
                       </Button>
                     </Modal.Footer>
                   </form>
@@ -413,7 +536,8 @@ export default function AppsPage() {
             <tr>
               <th>Nombre</th>
               <th>Propietario</th>
-              <th>Plan activo</th>
+              <th>Plan</th>
+              <th>Módulos</th>
               <th>Sync</th>
               <th>Email</th>
               <th>Mantenimiento</th>
@@ -423,7 +547,7 @@ export default function AppsPage() {
           <tbody>
             {paginatedApps.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center">
+                <td colSpan={8} className="py-10 text-center">
                   <p className={gp.subtitle}>
                     {search.trim()
                       ? "No hay aplicaciones que coincidan con la búsqueda."
@@ -434,19 +558,22 @@ export default function AppsPage() {
             ) : (
               paginatedApps.map((app) => (
                 <tr key={app.id}>
-                  <td className="font-medium">{app.name || "—"}</td>
+                  <td className="font-medium">
+                    <span className="flex flex-col gap-0.5">
+                      <span>{app.name || "—"}</span>
+                      <span className="text-[10px] font-normal text-[var(--gp-text-muted)]">
+                        {isTemplateApp(app)
+                          ? "Plantilla (catálogo base)"
+                          : "Despliegue"}
+                      </span>
+                    </span>
+                  </td>
                   <td>{app.owner_name || "—"}</td>
                   <td>
                     {app.plan ? (
-                      <div>
-                        <p className="font-medium text-[var(--gp-text)]">
-                          {app.plan.name}
-                        </p>
-                        <p className="text-xs text-[var(--gp-text-muted)]">
-                          {app.plan.modules_count}{" "}
-                          {app.plan.modules_count === 1 ? "módulo" : "módulos"}
-                        </p>
-                      </div>
+                      <span className="font-medium text-[var(--gp-text)]">
+                        {app.plan.name}
+                      </span>
                     ) : (
                       <span className="text-[var(--gp-text-muted)]">
                         Sin plan
@@ -454,15 +581,35 @@ export default function AppsPage() {
                     )}
                   </td>
                   <td>
-                    {app.entitlement_url ? (
-                      <span className="text-xs font-medium text-emerald-700">
-                        {app.has_entitlement_secret ? "Listo" : "Sin secreto"}
-                      </span>
+                    {isTemplateApp(app) ? (
+                      <span className="text-[var(--gp-text-muted)]">—</span>
                     ) : (
-                      <span className="text-xs text-[var(--gp-text-muted)]">
-                        Sin URL
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openModules(app)}
+                        className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                      >
+                        <Cubes3Overlap width={11} height={11} />
+                        {app.modules?.length ?? 0}
+                      </button>
                     )}
+                  </td>
+                  <td>
+                    {(() => {
+                      const sync = entitlementSyncSummary(app);
+                      return (
+                        <div title={sync.title} className="max-w-[11rem]">
+                          <p className={`text-xs font-medium ${sync.toneClass}`}>
+                            {sync.primary}
+                          </p>
+                          {sync.secondary ? (
+                            <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
+                              {sync.secondary}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>{app.email || "—"}</td>
                   <td>
@@ -484,10 +631,31 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Empujar entitlement ${app.name}`}
-                        isDisabled={
-                          !app.entitlement_url || pushingIds.has(app.id)
+                        aria-label={`Módulos de ${app.name || "aplicación"}`}
+                        isDisabled={isTemplateApp(app)}
+                        onPress={() => openModules(app)}
+                      >
+                        <Cubes3Overlap width={14} height={14} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Plan de ${app.name || "aplicación"}`}
+                        isDisabled={isTemplateApp(app)}
+                        onPress={() => openAssignPlan(app)}
+                      >
+                        <CreditCard width={14} height={14} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={
+                          !app.entitlement_url
+                            ? "Sin URL de sync configurada"
+                            : "Empujar entitlement (sync) al backend de la app"
                         }
+                        aria-label={`Empujar entitlement ${app.name || ""}`}
+                        isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
                         onPress={() => handlePush(app)}
                       >
                         {pushingIds.has(app.id) ? (
@@ -499,7 +667,8 @@ export default function AppsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Editar ${app.name}`}
+                        title="Editar aplicación"
+                        aria-label={`Editar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setEditingApp(app);
                           setEditApiKey("");
@@ -515,7 +684,8 @@ export default function AppsPage() {
                         size="sm"
                         variant="ghost"
                         className="text-red-500"
-                        aria-label={`Eliminar ${app.name}`}
+                        title="Eliminar aplicación"
+                        aria-label={`Eliminar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setDeletingApp(app);
                           setError("");
@@ -543,14 +713,14 @@ export default function AppsPage() {
       <Modal state={editState}>
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="sm:max-w-xl">
+            <Modal.Dialog className="flex max-h-[min(92vh,760px)] flex-col sm:max-w-xl">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>Editar aplicación</Modal.Heading>
               </Modal.Header>
               {editingApp && (
-                <form onSubmit={handleEdit} className="flex flex-1 flex-col">
-                  <Modal.Body>
+                <form onSubmit={handleEdit} className="flex min-h-0 flex-1 flex-col">
+                  <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
                     {error && (
                       <Alert status="danger">
                         <Alert.Description>{error}</Alert.Description>
@@ -644,24 +814,42 @@ export default function AppsPage() {
                             readOnly
                             className={`${gp.input} flex-1 font-mono text-xs`}
                           />
+
+                          {(() => {
+                            const sync = entitlementSyncSummary(editingApp);
+                            return (
+                              <span
+                                className={`mt-1 block text-[11px] font-medium ${sync.toneClass}`}
+                                title={sync.title}
+                              >
+                                Destino actual: {sync.primary}
+                                {sync.secondary ? ` (${sync.secondary})` : ""}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <div className="col-span-2 space-y-1.5">
+                        <label className={gp.label}>API Key</label>
+                        <div className="flex gap-2">
+                          <input
+                            value={editApiKey || editingApp.entitlement_secret || ""}
+                            readOnly
+                            className={`${gp.input} flex-1 font-mono text-xs`}
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
                             aria-label="Copiar API Key"
                             onPress={() => {
-                              const val =
-                                editApiKey ||
-                                editingApp.entitlement_secret ||
-                                "";
+                              const val = editApiKey || editingApp.entitlement_secret || "";
                               navigator.clipboard.writeText(val);
                               setCopiedId("edit");
                               setTimeout(() => setCopiedId(null), 2000);
                             }}
                           >
                             {copiedId === "edit" ? (
-                              <span className="text-xs text-emerald-600">
-                                Copiado
-                              </span>
+                              <span className="text-xs text-emerald-600">Copiado</span>
                             ) : (
                               <Copy width={14} height={14} />
                             )}
@@ -697,12 +885,8 @@ export default function AppsPage() {
                       </label>
                     </div>
                   </Modal.Body>
-                  <Modal.Footer>
-                    <Button
-                      variant="secondary"
-                      slot="close"
-                      onPress={() => setEditingApp(null)}
-                    >
+                  <Modal.Footer className="shrink-0 border-t border-[var(--gp-border)] bg-[var(--gp-surface)]">
+                    <Button variant="secondary" slot="close" onPress={() => setEditingApp(null)}>
                       Cancelar
                     </Button>
                     <Button type="submit" isDisabled={submitting}>
@@ -752,6 +936,150 @@ export default function AppsPage() {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      <Modal state={planState}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-md">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>
+                  Asignar plan
+                  {planApp?.name ? ` · ${planApp.name}` : ""}
+                </Modal.Heading>
+              </Modal.Header>
+              <form onSubmit={handleAssignPlan} className="flex flex-col">
+                <Modal.Body className="space-y-3">
+                  {error && (
+                    <Alert status="danger">
+                      <Alert.Description>{error}</Alert.Description>
+                    </Alert>
+                  )}
+                  {planApp?.plan ? (
+                    <p className="text-xs text-[var(--gp-text-muted)]">
+                      Plan actual: <strong>{planApp.plan.name}</strong>
+                      {" · "}al guardar se reemplaza automáticamente.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[var(--gp-text-muted)]">
+                      Esta app aún no tiene suscripción activa.
+                    </p>
+                  )}
+                  {plansForSelectedApp.length === 0 ? (
+                    <Alert status="warning">
+                      <Alert.Description>
+                        No hay planes con módulos configurados para{" "}
+                        <strong>{planApp?.name || "esta app"}</strong>. En{" "}
+                        <strong>Planes</strong>, editá un plan, seleccioná esta
+                        app y marcá sus módulos.
+                      </Alert.Description>
+                    </Alert>
+                  ) : (
+                    <>
+                      <label className={gp.label}>
+                        Plan
+                        <select
+                          className={gp.input}
+                          value={planId}
+                          required
+                          onChange={(e) => setPlanId(e.target.value)}
+                        >
+                          <option value="">Elegí un plan…</option>
+                          {plansForSelectedApp.map((p) => {
+                            const modCount = getPlanModulesForApp(
+                              p,
+                              planApp!.id,
+                            ).length;
+                            const monthly = p.prices?.find(
+                              (price) => price.period === "MONTHLY",
+                            )?.price;
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name || `Plan #${p.id}`}
+                                {modCount > 0 ? ` · ${modCount} módulos` : ""}
+                                {monthly != null
+                                  ? ` · ${formatPlanPrice(monthly)}/mes`
+                                  : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+
+                      {selectedPlan && selectedPlanModules.length > 0 && (
+                        <div
+                          className="rounded-xl border p-3"
+                          style={{ borderColor: "var(--gp-border)" }}
+                        >
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--gp-text-muted)]">
+                            Módulos incluidos en{" "}
+                            {planApp?.name || "esta app"}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedPlanModules.map((mod) => (
+                              <span
+                                key={mod.id}
+                                className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                              >
+                                {mod.module_name}
+                                {mod.is_trial ? " (trial)" : ""}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <label className={gp.label}>
+                        Período
+                        <select
+                          className={gp.input}
+                          value={planPeriod}
+                          onChange={(e) =>
+                            setPlanPeriod(
+                              e.target.value === "ANNUALLY"
+                                ? "ANNUALLY"
+                                : "MONTHLY",
+                            )
+                          }
+                        >
+                          <option value="MONTHLY">Mensual</option>
+                          <option value="ANNUALLY">Anual</option>
+                        </select>
+                      </label>
+                    </>
+                  )}
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button
+                    variant="secondary"
+                    slot="close"
+                    onPress={() => {
+                      setPlanApp(null);
+                      planState.close();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    isDisabled={
+                      submitting || plansForSelectedApp.length === 0 || !planId
+                    }
+                  >
+                    {submitting ? <Spinner size="sm" /> : "Asignar plan"}
+                  </Button>
+                </Modal.Footer>
+              </form>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      <AppModulesModal
+        app={modulesApp}
+        onClose={() => setModulesApp(null)}
+        onSave={handleSaveAppModules}
+      />
     </div>
   );
 }

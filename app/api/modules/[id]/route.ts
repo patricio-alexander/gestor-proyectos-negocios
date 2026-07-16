@@ -12,7 +12,6 @@ export async function GET(_request: Request, { params }: Params) {
     const mod = await prisma.module.findFirst({
       where: { id: Number(id), deleted_at: null },
       include: {
-        apps: { select: { name: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -27,7 +26,7 @@ export async function GET(_request: Request, { params }: Params) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json({ ...mod, app_name: mod.apps.name });
+    return NextResponse.json(mod);
   } catch {
     return NextResponse.json({ error: "Error al obtener el módulo" }, { status: 500 });
   }
@@ -90,7 +89,6 @@ export async function PATCH(request: Request, { params }: Params) {
         }),
       },
       include: {
-        apps: { select: { name: true, hash: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -107,18 +105,28 @@ export async function PATCH(request: Request, { params }: Params) {
       push_error: null as string | null,
     };
 
-    if (updates.status !== undefined || updates.is_maintainer !== undefined) {
-      const { pushEntitlementToApp, toPushResponseFields } = await import(
-        "@/src/shared/lib/push-entitlement"
+    if (updates.status !== undefined) {
+      const { applyGlobalModuleStatus } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
       );
-      pushFields = toPushResponseFields(
-        await pushEntitlementToApp(mod.apps.hash),
+      pushFields = await applyGlobalModuleStatus(
+        mod.id,
+        String(updates.status) as
+          | "active"
+          | "development"
+          | "maintenance"
+          | "developer"
+          | "planned",
       );
+    } else if (updates.is_maintainer !== undefined) {
+      const { pushEntitlementForModuleToAllUsers } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
+      );
+      pushFields = await pushEntitlementForModuleToAllUsers(mod.id);
     }
 
     return NextResponse.json({
       ...mod,
-      app_name: mod.apps.name,
       ...pushFields,
     });
   } catch {

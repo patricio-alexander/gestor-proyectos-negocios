@@ -1,5 +1,5 @@
 /**
- * Aplica statuses del catálogo TS a la BD (módulos/secciones EdDeli).
+ * Aplica statuses del catálogo TS a la BD (módulos/secciones de la plantilla Raptor).
  * Uso: node scripts/apply-catalog-statuses.mjs
  */
 import "dotenv/config";
@@ -33,10 +33,10 @@ function normalizeStatus(status) {
 
 async function main() {
   const app = await prisma.apps.findFirst({
-    where: { deleted_at: null, name: { contains: "EdDeli" } },
+    where: { deleted_at: null, kind: "template" },
     orderBy: { id: "asc" },
   });
-  if (!app) throw new Error("App EdDeli no encontrada");
+  if (!app) throw new Error("App plantilla Raptor no encontrada");
 
   const counts = {
     modules: 0,

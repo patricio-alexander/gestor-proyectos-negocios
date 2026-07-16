@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   if (apiKey.error) return apiKey.error;
 
   try {
+    const catalogAppId = apiKey.app_id;
+
     const plans = await prisma.plan.findMany({
       select: {
         name: true,
@@ -17,34 +19,36 @@ export async function GET(request: NextRequest) {
           },
         },
 
-        plan_modules: {
+        plan_app_modules: {
           select: {
-            module: {
+            app_module: {
               select: {
-                name: true,
-                description: true,
+                module: {
+                  select: {
+                    name: true,
+                    description: true,
+                  },
+                },
               },
             },
           },
         },
       },
-      where: { app_id: apiKey.app_id, deleted_at: null },
+      where: {
+        plan_app_modules: {
+          some: { app_module: { app_id: catalogAppId } },
+        },
+        deleted_at: null,
+      },
       orderBy: [{ sort_order: "asc" }, { id: "asc" }],
     });
-
-    if (!plans) {
-      return NextResponse.json(
-        { error: "Aplicación no encontrada" },
-        { status: 404 },
-      );
-    }
 
     const mapPlans = plans.map((p) => ({
       name: p.name,
       prices: p.prices,
-      modules: p.plan_modules.map((pm) => ({
-        name: pm.module.name,
-        desription: pm.module.description,
+      modules: p.plan_app_modules.map((pam) => ({
+        name: pam.app_module.module.name,
+        description: pam.app_module.module.description,
       })),
     }));
 

@@ -6,6 +6,8 @@ export type PlanPrice = {
 
 export type PlanModule = {
   id: number;
+  app_id: number;
+  app_name: string | null;
   module_id: number;
   module_name: string;
   is_trial: boolean;
@@ -25,10 +27,8 @@ export type PlanAppUsing = {
 export type Plan = {
   id: number;
   name: string | null;
-  app_id: number;
-  /** @deprecated prefer catalog_app_name / apps_using */
-  app_name?: string | null;
-  catalog_app_name?: string | null;
+  app_ids: number[];
+  catalog_app_names: string[];
   sort_order?: number;
   /** Apps con suscripción ACTIVE en este plan */
   apps_count: number;
@@ -43,7 +43,7 @@ export type Plan = {
 
 export type CreatePlanInput = {
   name: string;
-  app_id: number;
+  app_ids: number[];
   price_monthly?: number | null;
   price_annual?: number | null;
   module_ids?: number[];
@@ -52,7 +52,7 @@ export type CreatePlanInput = {
 
 export type UpdatePlanInput = {
   name?: string;
-  app_id?: number;
+  app_ids?: number[];
   price_monthly?: number | null;
   price_annual?: number | null;
   module_ids?: number[];
