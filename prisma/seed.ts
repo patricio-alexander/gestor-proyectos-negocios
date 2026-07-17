@@ -10,11 +10,22 @@ import {
   type CatalogModuleDef,
 } from "../src/shared/config/eddeli-product-catalog";
 
+/** Conexión y branding del seed — valores desde .env (default: raptorsolutions). */
+const SEED_ENV = {
+  databaseHost: process.env.DATABASE_HOST ?? "localhost",
+  databaseUser: process.env.DATABASE_USER ?? "root",
+  databasePassword: process.env.DATABASE_PASSWORD ?? "",
+  databaseName: process.env.DATABASE_NAME ?? "raptorsolutions",
+  databasePort: Number(process.env.DATABASE_PORT ?? 3306),
+  platformName: "Raptor Solutions",
+} as const;
+
 const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST,
-  user: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME,
+  host: SEED_ENV.databaseHost,
+  user: SEED_ENV.databaseUser,
+  password: SEED_ENV.databasePassword,
+  database: SEED_ENV.databaseName,
+  port: SEED_ENV.databasePort,
   connectionLimit: 1,
 });
 
@@ -71,8 +82,8 @@ async function assignRoles(userId: string, roleKeys: string[]) {
   }
 }
 
-/** Cuentas del gestor — alineadas con EdDeli (User + Account → User unificado). */
-async function seedGestorAccounts() {
+/** Cuentas del panel Raptor Solutions (control plane). */
+async function seedPlatformAccounts() {
   const password = await bcrypt.hash("12345678", 10);
 
   const existing = await prisma.user.findFirst({
@@ -92,7 +103,7 @@ async function seedGestorAccounts() {
         where: { id: existing.id },
         data: {
           username: "administrador",
-          email: "edgar@mail.com",
+          email: "edgar@raptorsolutions.local",
           display_name: "Edgar Torres",
           password,
           deleted_at: null,
@@ -102,7 +113,7 @@ async function seedGestorAccounts() {
         data: {
           id: "edgar-torres-id",
           username: "administrador",
-          email: "edgar@mail.com",
+          email: "edgar@raptorsolutions.local",
           display_name: "Edgar Torres",
           password,
         },
@@ -112,17 +123,17 @@ async function seedGestorAccounts() {
 
   const demoAccounts = [
     {
-      id: "gestor-operador-id",
+      id: "raptor-operador-id",
       username: "operador",
-      email: "operador@mail.com",
+      email: "operador@raptorsolutions.local",
       display_name: "Operador Demo",
       roleKeys: ["operator"],
     },
     {
-      id: "gestor-soporte-id",
+      id: "raptor-soporte-id",
       username: "soporte",
-      email: "soporte@mail.com",
-      display_name: "Soporte EdDeli",
+      email: "soporte@raptorsolutions.local",
+      display_name: "Soporte Raptor Solutions",
       roleKeys: ["admin"],
     },
   ] as const;
@@ -794,8 +805,10 @@ async function seedEdDeliLocalSubscription(appHash: string) {
 }
 
 async function main() {
+  console.log("Seed %s → BD `%s`", SEED_ENV.platformName, SEED_ENV.databaseName);
+
   await seedRoles();
-  await seedGestorAccounts();
+  await seedPlatformAccounts();
   const removedRaptor = await removeLegacyRaptorApp();
   const eddeliApp = await seedEdDeliApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
@@ -818,7 +831,8 @@ async function main() {
   const push = await pushEntitlementToApp(EDDELI_APP_HASH);
 
   console.log(
-    "Seed OK: roles, catálogo global (%d módulos, %d secciones), EdDeli, cuentas%s",
+    "Seed OK [%s]: roles, catálogo global (%d módulos, %d secciones), EdDeli, cuentas%s",
+    SEED_ENV.databaseName,
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
     removedRaptor ? " · Raptor legacy eliminada" : "",
