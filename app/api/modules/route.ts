@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import {
+  enrichModuleWithApps,
+  getAppsUsingModules,
+} from "@/src/features/modules/lib/module-query";
 
 function generateKey(name: string): string {
   return name
@@ -11,32 +15,6 @@ function generateKey(name: string): string {
 
 type LinkedApp = { id: number; name: string | null; hash: string };
 
-async function getAppsUsingModules(moduleIds: number[]) {
-  const map = new Map<number, LinkedApp[]>();
-  if (moduleIds.length === 0) return map;
-
-  const appModules = await prisma.appModule.findMany({
-    where: { module_id: { in: moduleIds } },
-    select: {
-      module_id: true,
-      app: {
-        select: { id: true, name: true, hash: true, kind: true },
-      },
-    },
-  });
-
-  for (const am of appModules) {
-    if (am.app.kind === "template") continue;
-    const list = map.get(am.module_id) ?? [];
-    if (!list.some((a) => a.hash === am.app.hash)) {
-      list.push({ id: am.app.id, name: am.app.name, hash: am.app.hash });
-    }
-    map.set(am.module_id, list);
-  }
-
-  return map;
-}
-
 export async function GET() {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;
@@ -44,7 +22,6 @@ export async function GET() {
     const modules = await prisma.module.findMany({
       where: { deleted_at: null },
       include: {
-        _count: { select: { sections: true } },
         sections: {
           where: { deleted_at: null },
           orderBy: { created_at: "asc" },
@@ -61,12 +38,10 @@ export async function GET() {
     return NextResponse.json(
       modules.map((m) => {
         const appsUsing = usage.get(m.id) ?? [];
-        return {
-          ...m,
-          _count: undefined,
-          apps_count: appsUsing.length,
-          apps_using: appsUsing,
-        };
+        return enrichModuleWithApps(
+          m,
+          appsUsing,
+        );
       }),
     );
   } catch {

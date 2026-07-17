@@ -12,7 +12,7 @@ import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Plus from "@gravity-ui/icons/Plus";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useModules } from "../hooks/useModules";
-import type { LifecycleStatus, Module } from "../types";
+import type { Module } from "../types";
 import {
   matchesLifecycleFilter,
   normalizeLifecycleStatus,
@@ -24,7 +24,6 @@ import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { ModulesDashboard } from "./ModulesDashboard";
 import { ModuleCard } from "./ModuleCard";
-import { ModuleSectionsPanel } from "./ModuleSectionsPanel";
 import { getModuleStats } from "../lib/module-stats";
 import {
   ModuleStatusFilter,
@@ -56,7 +55,6 @@ export function ModulesManager() {
   const [editIsTrial, setEditIsTrial] = useState(false);
   const [editLimitDays, setEditLimitDays] = useState("");
 
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [statusFilter, setStatusFilter] =
     useState<ModuleStatusFilterValue>("all");
 
@@ -76,7 +74,9 @@ export function ModulesManager() {
     };
     for (const mod of modules) {
       const status = normalizeLifecycleStatus(mod.status);
-      counts[status] = (counts[status] ?? 0) + 1;
+      if (status === "active" || status === "maintenance" || status === "planned" || status === "developer") {
+        counts[status] += 1;
+      }
     }
     return counts;
   }, [modules]);
@@ -104,10 +104,6 @@ export function ModulesManager() {
   useEffect(() => {
     setPage(1);
   }, [statusFilter, setPage]);
-
-  function handleManageSections(mod: Module) {
-    setSelectedModule(mod);
-  }
 
   async function handleCreateModule(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -168,9 +164,6 @@ export function ModulesManager() {
         is_trial: editIsTrial,
         limit_days_trial: editIsTrial && editLimitDays ? Number(editLimitDays) : null,
       });
-      if (selectedModule?.id === mod.id) {
-        setSelectedModule(mod);
-      }
       moduleEditState.close();
       setEditingModule(null);
     } catch (err) {
@@ -186,9 +179,6 @@ export function ModulesManager() {
     setSubmitting(true);
     try {
       await remove(deletingModule.id);
-      if (selectedModule?.id === deletingModule.id) {
-        setSelectedModule(null);
-      }
       moduleDeleteState.close();
       setDeletingModule(null);
     } catch (err) {
@@ -200,26 +190,6 @@ export function ModulesManager() {
 
   function handleModuleUpdate(updated: Module) {
     patchModule(updated.id, () => updated);
-    setSelectedModule(updated);
-  }
-
-  async function handleChangeStatus(mod: Module, status: LifecycleStatus) {
-    patchModule(mod.id, (m) => ({ ...m, status }));
-    setError("");
-    try {
-      const updated = await update(mod.id, { status });
-      setSelectedModule((prev) => (prev?.id === mod.id ? updated : prev));
-      const pushError = (updated as Module & { push_error?: string | null })
-        ?.push_error;
-      if (pushError) {
-        setError(
-          `Estado guardado, pero no se pudo sync a EdDeli: ${pushError}`,
-        );
-      }
-    } catch {
-      await refetch();
-      setError("No se pudo actualizar el estado del módulo");
-    }
   }
 
   if (loading) {
@@ -351,7 +321,6 @@ export function ModulesManager() {
               <ModuleCard
                 key={mod.id}
                 module={mod}
-                onManageSections={handleManageSections}
                 onEdit={(m) => {
                   setEditingModule(m);
                   setEditIsTrial(m.is_trial);
@@ -364,7 +333,7 @@ export function ModulesManager() {
                   setError("");
                   moduleDeleteState.open();
                 }}
-                onChangeStatus={handleChangeStatus}
+                onModuleUpdate={handleModuleUpdate}
                 onAppsChanged={() => void refetch()}
               />
             ))}
@@ -377,15 +346,6 @@ export function ModulesManager() {
             onPageChange={setPage}
           />
         </>
-      )}
-
-      {selectedModule && (
-        <ModuleSectionsPanel
-          module={selectedModule}
-          open
-          onClose={() => setSelectedModule(null)}
-          onModuleUpdate={handleModuleUpdate}
-        />
       )}
 
       <Modal state={moduleEditState}>

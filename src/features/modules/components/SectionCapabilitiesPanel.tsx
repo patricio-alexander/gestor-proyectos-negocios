@@ -145,13 +145,13 @@ export function SectionCapabilitiesPanel({
       <Modal state={panelState}>
         <Modal.Backdrop>
           <Modal.Container>
-            <Modal.Dialog className="sm:max-w-2xl">
+            <Modal.Dialog className="flex max-h-[min(92dvh,720px)] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden">
               <Modal.CloseTrigger />
-              <Modal.Header>
+              <Modal.Header className="shrink-0">
                 <Modal.Icon className="bg-default text-foreground">
                   <Key width={20} height={20} />
                 </Modal.Icon>
-                <Modal.Heading>Capacidades · {section.name}</Modal.Heading>
+                <Modal.Heading className="truncate">Capacidades · {section.name}</Modal.Heading>
                 <p className="text-sm text-[var(--gp-text-muted)]">
                   {capabilities.length === 0
                     ? "Sin capacidades configuradas"
@@ -159,7 +159,7 @@ export function SectionCapabilitiesPanel({
                 </p>
               </Modal.Header>
 
-              <Modal.Body className="space-y-4">
+              <Modal.Body className="min-h-0 flex-1 space-y-4 overflow-y-auto">
                 {error && (
                   <Alert status="danger">
                     <Alert.Description>{error}</Alert.Description>
@@ -266,7 +266,7 @@ export function SectionCapabilitiesPanel({
                 )}
               </Modal.Body>
 
-              <Modal.Footer>
+              <Modal.Footer className="shrink-0">
                 <Button variant="secondary" slot="close">
                   Cerrar
                 </Button>

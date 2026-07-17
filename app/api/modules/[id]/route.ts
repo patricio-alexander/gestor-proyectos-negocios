@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import {
+  enrichModuleWithApps,
+  getAppsUsingModules,
+} from "@/src/features/modules/lib/module-query";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -26,7 +30,10 @@ export async function GET(_request: Request, { params }: Params) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json(mod);
+    const usage = await getAppsUsingModules([mod.id]);
+    return NextResponse.json(
+      enrichModuleWithApps(mod, usage.get(mod.id) ?? []),
+    );
   } catch {
     return NextResponse.json({ error: "Error al obtener el módulo" }, { status: 500 });
   }
@@ -46,6 +53,16 @@ export async function PATCH(request: Request, { params }: Params) {
     if (!existing) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
     }
+
+    const statusUpdate =
+      updates.status !== undefined
+        ? (String(updates.status) as
+            | "active"
+            | "development"
+            | "maintenance"
+            | "developer"
+            | "planned")
+        : undefined;
 
     const mod = await prisma.module.update({
       where: { id: Number(id) },
@@ -79,15 +96,29 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(updates.end_trial !== undefined && {
           end_trial: updates.end_trial ? new Date(String(updates.end_trial)) : null,
         }),
-        ...(updates.status !== undefined && {
-          status: String(updates.status) as
-            | "active"
-            | "development"
-            | "maintenance"
-            | "developer"
-            | "planned",
-        }),
       },
+    });
+
+    let pushFields = {
+      push_ok: false,
+      push_skipped: true,
+      push_error: null as string | null,
+    };
+
+    if (statusUpdate !== undefined) {
+      const { applyGlobalModuleStatus } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
+      );
+      pushFields = await applyGlobalModuleStatus(mod.id, statusUpdate);
+    } else if (updates.is_maintainer !== undefined) {
+      const { pushEntitlementForModuleToAllUsers } = await import(
+        "@/src/shared/lib/push-entitlement-helpers"
+      );
+      pushFields = await pushEntitlementForModuleToAllUsers(mod.id);
+    }
+
+    const modOut = await prisma.module.findFirst({
+      where: { id: mod.id },
       include: {
         sections: {
           where: { deleted_at: null },
@@ -99,34 +130,11 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
 
-    let pushFields = {
-      push_ok: false,
-      push_skipped: true,
-      push_error: null as string | null,
-    };
-
-    if (updates.status !== undefined) {
-      const { applyGlobalModuleStatus } = await import(
-        "@/src/shared/lib/push-entitlement-helpers"
-      );
-      pushFields = await applyGlobalModuleStatus(
-        mod.id,
-        String(updates.status) as
-          | "active"
-          | "development"
-          | "maintenance"
-          | "developer"
-          | "planned",
-      );
-    } else if (updates.is_maintainer !== undefined) {
-      const { pushEntitlementForModuleToAllUsers } = await import(
-        "@/src/shared/lib/push-entitlement-helpers"
-      );
-      pushFields = await pushEntitlementForModuleToAllUsers(mod.id);
-    }
+    const usage = await getAppsUsingModules([mod.id]);
+    const appsUsing = usage.get(mod.id) ?? [];
 
     return NextResponse.json({
-      ...mod,
+      ...enrichModuleWithApps(modOut ?? mod, appsUsing),
       ...pushFields,
     });
   } catch {

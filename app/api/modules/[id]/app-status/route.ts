@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { getModuleAccessAssignments } from "@/src/features/modules/lib/module-access-query";
 import { pushEntitlementForAppId } from "@/src/shared/lib/push-entitlement-helpers";
 import { toPushResponseFields } from "@/src/shared/lib/push-entitlement";
 
@@ -20,22 +21,9 @@ export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   const moduleId = Number(id);
 
-  const rows = await prisma.appModule.findMany({
-    where: { module_id: moduleId },
-    select: {
-      app_id: true,
-      status: true,
-      app: { select: { name: true, hash: true } },
-    },
-  });
+  const rows = await getModuleAccessAssignments(moduleId);
 
-  return NextResponse.json(
-    rows.map((r) => ({
-      app_id: r.app_id,
-      status: r.status,
-      app_name: r.app.name,
-    })),
-  );
+  return NextResponse.json(rows);
 }
 
 export async function POST(request: Request, { params }: Params) {

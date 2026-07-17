@@ -120,20 +120,8 @@ export const LIFECYCLE_STATUS_OPTIONS = [
 ] as const satisfies readonly LifecycleStatus[];
 
 /** Normaliza legacy: development → maintenance. */
-export function normalizeLifecycleStatus(
-  status?: LifecycleStatus | string | null,
-): NormalizedLifecycleStatus {
-  if (status === "development") return "maintenance";
-  if (
-    status === "active" ||
-    status === "maintenance" ||
-    status === "developer" ||
-    status === "planned"
-  ) {
-    return status;
-  }
-  return "active";
-}
+import { normalizeLifecycleStatus } from "@/src/shared/lib/lifecycle-status-resolve";
+export { normalizeLifecycleStatus };
 
 /** Compara filtros UI (mantenimiento incluye development). */
 export function matchesLifecycleFilter(

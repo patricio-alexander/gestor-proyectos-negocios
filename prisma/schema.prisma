@@ -146,6 +146,7 @@ model Section {
   @@index([status])
   @@index([module_id, deleted_at])
   @@index([module_id, key])
+  @@index([module_id, deleted_at, created_at])
 }
 
 /** Asignación directa módulo → app (M:N). */
@@ -176,6 +177,7 @@ model AppSection {
   @@id([app_id, section_id])
   @@index([app_id])
   @@index([section_id])
+  @@index([section_id, status])
 }
 
 model Capability {
@@ -190,6 +192,7 @@ model Capability {
 
   @@unique([section_id, code])
   @@index([section_id])
+  @@index([section_id, created_at])
 }
 
 // ─── Apps / licencias ───────────────────────────────────────────────────────

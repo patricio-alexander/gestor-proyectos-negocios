@@ -155,8 +155,9 @@ export function ModuleAppsPanel({
               <Modal.Header>
                 <Modal.Heading>Apps · {moduleName}</Modal.Heading>
                 <p className="mt-1 text-sm text-[var(--gp-text-muted)]">
-                  Asigná el módulo a cada app y, si hace falta, definí un estado
-                  distinto al global.
+                  Asigná el módulo y, si hace falta, definí un estado distinto
+                  al global para esa app. Aplica a todas las secciones salvo
+                  override por sección.
                 </p>
               </Modal.Header>
               <Modal.Body className="space-y-4">
@@ -265,10 +266,7 @@ export function ModuleAppsPanel({
                                   <option value="__global__">
                                     Hereda · {globalLabel}
                                   </option>
-                                  {LIFECYCLE_STATUS_OPTIONS.filter(
-                                    (opt) =>
-                                      opt !== normalizeLifecycleStatus(globalStatus),
-                                  ).map((opt) => (
+                                  {LIFECYCLE_STATUS_OPTIONS.map((opt) => (
                                     <option key={opt} value={opt}>
                                       {LIFECYCLE_STATUS_LABELS[opt]}
                                     </option>

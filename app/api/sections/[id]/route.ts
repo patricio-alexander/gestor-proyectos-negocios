@@ -70,9 +70,16 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const sectionOut = await prisma.section.findFirst({
       where: { id: Number(id) },
+      include: {
+        module: { select: { id: true, status: true } },
+      },
     });
 
-    return NextResponse.json({ ...sectionOut, ...pushFields });
+    return NextResponse.json({
+      ...sectionOut,
+      module_status: sectionOut?.module.status ?? null,
+      ...pushFields,
+    });
   } catch {
     return NextResponse.json({ error: "Error al actualizar la sección" }, { status: 500 });
   }

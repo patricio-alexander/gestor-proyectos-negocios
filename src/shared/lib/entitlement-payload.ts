@@ -1,5 +1,5 @@
 import { prisma } from "@/src/shared/lib/prisma";
-import { effectiveLifecycleStatus } from "./lifecycle-status-resolve";
+import { effectiveSectionStatusForApp, deriveModuleEffectiveStatus, normalizeLifecycleStatus } from "./lifecycle-status-resolve";
 
 export type EntitlementPayload = {
   maintenance: boolean;
@@ -111,40 +111,32 @@ export async function buildEntitlementForAppHash(
   });
 
   const sectionOverrideById = new Map(
-    appSections.map((as) => [as.section_id, as.status]),
+    appSections
+      .filter((as) => as.status != null)
+      .map((as) => [as.section_id, as.status]),
   );
 
   const modules = appModules.map((am) => {
-    const moduleStatus = effectiveLifecycleStatus(
+    // Todas las secciones del módulo, cada una con su status efectivo (global + override por app).
+    const sections = am.module.sections.map((s) => ({
+      id: s.id,
+      key: s.key,
+      name: s.name,
+      status: effectiveSectionStatusForApp(
+        s.status,
+        sectionOverrideById.get(s.id),
+        am.status,
+      ),
+      max_records_limit: s.max_records_limit,
+      usage_count: s.usage_count,
+      capabilities: s.capabilities,
+    }));
+
+    const moduleStatus = deriveModuleEffectiveStatus(
       am.module.status,
       am.status,
+      sections.map((s) => s.status),
     );
-
-    const moduleSectionIds = new Set(am.module.sections.map((s) => s.id));
-    const explicitForModule = appSections.filter((as) =>
-      moduleSectionIds.has(as.section_id),
-    );
-    const hasExplicitForModule = explicitForModule.length > 0;
-    const allowedForModule = new Set(
-      explicitForModule.map((as) => as.section_id),
-    );
-
-    const sections = am.module.sections
-      .filter(
-        (s) => !hasExplicitForModule || allowedForModule.has(s.id),
-      )
-      .map((s) => ({
-        id: s.id,
-        key: s.key,
-        name: s.name,
-        status: effectiveLifecycleStatus(
-          s.status,
-          sectionOverrideById.get(s.id),
-        ),
-        max_records_limit: s.max_records_limit,
-        usage_count: s.usage_count,
-        capabilities: s.capabilities,
-      }));
 
     return {
       id: am.module.id,
@@ -165,6 +157,9 @@ export async function buildEntitlementForAppHash(
 
   modules.forEach((mod) =>
     (mod.sections as typeof mod.sections).forEach((s) => {
+      const sectionStatus = normalizeLifecycleStatus(s.status);
+      // Capabilities solo para secciones utilizables; las demás van en sections con su status.
+      if (sectionStatus !== "active" && sectionStatus !== "developer") return;
       if (!capabilitiesMapped.has(s.key ?? "")) {
         capabilitiesMapped.set(s.key ?? "", []);
       }

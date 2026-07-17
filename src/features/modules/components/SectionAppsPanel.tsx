@@ -10,10 +10,11 @@ import {
   normalizeLifecycleStatus,
 } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
+import { effectiveSectionStatusForApp } from "@/src/shared/lib/lifecycle-status-resolve";
 import { gp } from "@/src/shared/ui/theme";
 import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
 
-type AssignmentRow = {
+type OverrideRow = {
   app_id: number;
   status: LifecycleStatus | null;
   app_name?: string | null;
@@ -23,73 +24,84 @@ type SectionAppsPanelProps = {
   sectionId: number;
   sectionName: string;
   globalStatus: LifecycleStatus;
-  /** Apps con el módulo padre asignado */
-  moduleApps: LinkedApp[];
+  moduleId: number;
   onChanged?: () => void;
   onError?: (message: string) => void;
+};
+
+type ModuleAppRow = {
+  app_id: number;
+  app_name?: string | null;
+  app_hash?: string;
+  status?: LifecycleStatus | null;
 };
 
 export function SectionAppsPanel({
   sectionId,
   sectionName,
   globalStatus,
-  moduleApps,
+  moduleId,
   onChanged,
   onError,
 }: SectionAppsPanelProps) {
-  const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
+  const [moduleApps, setModuleApps] = useState<LinkedApp[]>([]);
+  const [moduleStatusByApp, setModuleStatusByApp] = useState(
+    new Map<number, LifecycleStatus | null>(),
+  );
+  const [overrides, setOverrides] = useState<OverrideRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyAppId, setBusyAppId] = useState<number | null>(null);
   const modal = useOverlayState();
 
-  const assignedAppIds = useMemo(
-    () => new Set(assignments.map((a) => a.app_id)),
-    [assignments],
+  const overrideByApp = useMemo(
+    () => new Map(overrides.map((o) => [o.app_id, o.status])),
+    [overrides],
   );
 
-  const overrideCount = assignments.filter((a) => a.status !== null).length;
-  const assignedCount = assignments.length;
+  const overrideCount = overrides.filter((o) => o.status != null).length;
 
-  const load = useCallback(async () => {
+  const loadModuleApps = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl(`/api/modules/${moduleId}/app-status`));
+      if (!res.ok) throw new Error("No se pudieron cargar apps del módulo");
+      const data = (await res.json()) as ModuleAppRow[];
+      setModuleApps(
+        data.map((row) => ({
+          id: row.app_id,
+          name: row.app_name ?? null,
+          hash: row.app_hash ?? "",
+        })),
+      );
+      setModuleStatusByApp(
+        new Map(data.map((row) => [row.app_id, row.status ?? null])),
+      );
+    } catch (err) {
+      onError?.(err instanceof Error ? err.message : "Error al cargar apps");
+      setModuleApps([]);
+    }
+  }, [moduleId, onError]);
+
+  const loadOverrides = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(apiUrl(`/api/sections/${sectionId}/app-status`));
       if (!res.ok) throw new Error("No se pudieron cargar apps de la sección");
-      const data = (await res.json()) as AssignmentRow[];
-      setAssignments(data);
+      const data = (await res.json()) as OverrideRow[];
+      setOverrides(data);
     } catch (err) {
       onError?.(err instanceof Error ? err.message : "Error al cargar");
-    } finally {
-      setLoading(false);
     }
   }, [sectionId, onError]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadModuleApps(), loadOverrides()]);
+    setLoading(false);
+  }, [loadModuleApps, loadOverrides]);
 
-  async function toggleAssignment(appId: number, assign: boolean) {
-    setBusyAppId(appId);
-    onError?.("");
-    try {
-      const res = await fetch(apiUrl(`/api/sections/${sectionId}/assign-app`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ app_id: appId, assigned: assign }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al asignar");
-      if (data.push_error) {
-        onError?.(`Guardado, pero sync falló: ${data.push_error}`);
-      }
-      await load();
-      onChanged?.();
-    } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Error al asignar");
-    } finally {
-      setBusyAppId(null);
-    }
-  }
+  useEffect(() => {
+    void loadModuleApps();
+  }, [loadModuleApps]);
 
   async function saveStatus(appId: number, value: string) {
     setBusyAppId(appId);
@@ -119,7 +131,6 @@ export function SectionAppsPanel({
     }
   }
 
-  const statusByApp = new Map(assignments.map((a) => [a.app_id, a.status]));
   const globalLabel = LIFECYCLE_STATUS_LABELS[normalizeLifecycleStatus(globalStatus)];
   const globalStyle = LIFECYCLE_STATUS_STYLE[normalizeLifecycleStatus(globalStatus)];
 
@@ -144,9 +155,9 @@ export function SectionAppsPanel({
       >
         <Briefcase width={13} height={13} />
         Apps
-        {assignedCount > 0 ? (
-          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
-            {assignedCount}
+        {overrideCount > 0 ? (
+          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+            {overrideCount}
           </span>
         ) : null}
       </Button>
@@ -159,8 +170,8 @@ export function SectionAppsPanel({
               <Modal.Header>
                 <Modal.Heading>Apps · {sectionName}</Modal.Heading>
                 <p className="mt-1 text-sm text-[var(--gp-text-muted)]">
-                  Solo apps con el módulo asignado. Marcá la sección por app y
-                  ajustá el estado si difiere del catálogo.
+                  Override solo para esta sección. Gana sobre el módulo por app
+                  y el catálogo global.
                 </p>
               </Modal.Header>
               <Modal.Body className="space-y-4">
@@ -169,7 +180,7 @@ export function SectionAppsPanel({
                   style={{ borderColor: "var(--gp-border)" }}
                 >
                   <p className="text-xs font-medium uppercase tracking-wide text-[var(--gp-text-muted)]">
-                    Estado global del catálogo
+                    Estado default (catálogo)
                   </p>
                   <div className="mt-1.5 flex items-center gap-2">
                     <span
@@ -179,7 +190,7 @@ export function SectionAppsPanel({
                       {globalLabel}
                     </span>
                     <span className="text-xs text-[var(--gp-text-muted)]">
-                      Si no asignás la sección, hereda del módulo
+                      Aplica salvo override por app
                     </span>
                   </div>
                 </div>
@@ -190,10 +201,20 @@ export function SectionAppsPanel({
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    <div className="grid grid-cols-[1fr_auto] gap-3 px-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--gp-text-muted)]">
+                      <span>App</span>
+                      <span className="min-w-[140px] text-right">Estado en la app</span>
+                    </div>
                     {moduleApps.map((app) => {
-                      const isAssigned = assignedAppIds.has(app.id);
-                      const currentStatus = statusByApp.get(app.id);
+                      const currentStatus = overrideByApp.get(app.id);
                       const hasOverride = currentStatus != null;
+                      const inheritedStatus = effectiveSectionStatusForApp(
+                        globalStatus,
+                        null,
+                        moduleStatusByApp.get(app.id),
+                      );
+                      const inheritedLabel =
+                        LIFECYCLE_STATUS_LABELS[inheritedStatus];
                       const selectValue = hasOverride
                         ? normalizeLifecycleStatus(currentStatus)
                         : "__global__";
@@ -203,62 +224,47 @@ export function SectionAppsPanel({
                         <div
                           key={app.id}
                           className={`rounded-xl border p-3 ${
-                            isAssigned
-                              ? "border-indigo-200 bg-indigo-50/40"
+                            hasOverride
+                              ? "border-amber-200 bg-amber-50/40"
                               : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/30"
                           }`}
                         >
                           <div className="flex items-start gap-3">
-                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isAssigned}
-                                disabled={busy}
-                                onChange={(e) =>
-                                  void toggleAssignment(app.id, e.target.checked)
-                                }
-                                className="mt-1 size-4 rounded border-zinc-300"
-                              />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className={gp.iconBoxSm}>
-                                    <Briefcase width={14} height={14} />
-                                  </div>
-                                  <p className="truncate text-sm font-semibold text-[var(--gp-text)]">
-                                    {app.name || `App #${app.id}`}
-                                  </p>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <div className={gp.iconBoxSm}>
+                                  <Briefcase width={14} height={14} />
                                 </div>
-                                <p className="mt-0.5 text-xs text-[var(--gp-text-muted)]">
-                                  {isAssigned
-                                    ? "Sección habilitada en esta app"
-                                    : "Sin asignar — no limita por sección"}
+                                <p className="truncate text-sm font-semibold text-[var(--gp-text)]">
+                                  {app.name || `App #${app.id}`}
                                 </p>
                               </div>
-                            </label>
+                              <p className="mt-0.5 text-xs text-[var(--gp-text-muted)]">
+                                {hasOverride
+                                  ? `Override · ${LIFECYCLE_STATUS_LABELS[normalizeLifecycleStatus(currentStatus!)]}`
+                                  : `Hereda · ${inheritedLabel}`}
+                              </p>
+                            </div>
 
                             <div className="flex shrink-0 flex-col items-end gap-1">
                               {busy ? <Spinner size="sm" /> : null}
                               <select
                                 className={`h-9 min-w-[140px] rounded-lg border px-2 text-xs ${
-                                  !isAssigned
-                                    ? "cursor-not-allowed opacity-40"
-                                    : hasOverride
-                                      ? "border-amber-300 bg-amber-50 font-semibold"
-                                      : "border-[var(--gp-border)] bg-white"
+                                  hasOverride
+                                    ? "border-amber-300 bg-amber-50 font-semibold"
+                                    : "border-[var(--gp-border)] bg-white"
                                 }`}
                                 value={selectValue}
-                                disabled={!isAssigned || busy}
+                                disabled={busy}
+                                aria-label={`Estado de ${sectionName} en ${app.name || "app"}`}
                                 onChange={(e) =>
                                   void saveStatus(app.id, e.target.value)
                                 }
                               >
                                 <option value="__global__">
-                                  Hereda · {globalLabel}
+                                  Hereda · {inheritedLabel}
                                 </option>
-                                {LIFECYCLE_STATUS_OPTIONS.filter(
-                                  (opt) =>
-                                    opt !== normalizeLifecycleStatus(globalStatus),
-                                ).map((opt) => (
+                                {LIFECYCLE_STATUS_OPTIONS.map((opt) => (
                                   <option key={opt} value={opt}>
                                     {LIFECYCLE_STATUS_LABELS[opt]}
                                   </option>
@@ -272,15 +278,11 @@ export function SectionAppsPanel({
                   </div>
                 )}
 
-                {assignedCount > 0 && (
+                {overrideCount > 0 && (
                   <p className="text-xs text-[var(--gp-text-muted)]">
-                    {assignedCount}{" "}
-                    {assignedCount === 1 ? "app tiene" : "apps tienen"} esta
-                    sección asignada
-                    {overrideCount > 0
-                      ? ` · ${overrideCount} con estado personalizado`
-                      : ""}
-                    .
+                    {overrideCount}{" "}
+                    {overrideCount === 1 ? "app con" : "apps con"} estado
+                    personalizado (sobrescribe el default).
                   </p>
                 )}
               </Modal.Body>

@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
-import { pushEntitlementForAppId } from "@/src/shared/lib/push-entitlement-helpers";
+import {
+  pushEntitlementForAppId,
+  buildEntitlementForAppId,
+  moduleSectionsFromEntitlement,
+} from "@/src/shared/lib/push-entitlement-helpers";
 import { toPushResponseFields } from "@/src/shared/lib/push-entitlement";
+
+async function pushWithModulePreview(appId: number, moduleId: number) {
+  const pushFields = toPushResponseFields(await pushEntitlementForAppId(appId));
+  const payload = await buildEntitlementForAppId(appId);
+  return {
+    ...pushFields,
+    entitlement_module: moduleSectionsFromEntitlement(payload, moduleId),
+  };
+}
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,7 +34,7 @@ export async function GET(_request: Request, { params }: Params) {
   const sectionId = Number(id);
 
   const rows = await prisma.appSection.findMany({
-    where: { section_id: sectionId },
+    where: { section_id: sectionId, status: { not: null } },
     select: {
       app_id: true,
       status: true,
@@ -89,25 +102,10 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     if (clear || body.status == null || body.status === "") {
-      const existing = await prisma.appSection.findUnique({
-        where: { app_id_section_id: { app_id: appId, section_id: sectionId } },
+      await prisma.appSection.deleteMany({
+        where: { app_id: appId, section_id: sectionId },
       });
-      if (!existing) {
-        return NextResponse.json(
-          {
-            error:
-              "La sección no está asignada a esta app. Asignalá primero para cambiar el estado.",
-          },
-          { status: 400 },
-        );
-      }
-      await prisma.appSection.update({
-        where: { app_id_section_id: { app_id: appId, section_id: sectionId } },
-        data: { status: null },
-      });
-      const pushFields = toPushResponseFields(
-        await pushEntitlementForAppId(appId),
-      );
+      const pushFields = await pushWithModulePreview(appId, section.module_id);
       return NextResponse.json({ ok: true, cleared: true, ...pushFields });
     }
 
@@ -116,22 +114,21 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Status inválido" }, { status: 400 });
     }
 
-    const existing = await prisma.appSection.findUnique({
-      where: { app_id_section_id: { app_id: appId, section_id: sectionId } },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        {
-          error:
-            "La sección no está asignada a esta app. Asignalá primero para cambiar el estado.",
-        },
-        { status: 400 },
-      );
-    }
-
-    await prisma.appSection.update({
-      where: { app_id_section_id: { app_id: appId, section_id: sectionId } },
-      data: {
+    await prisma.appSection.upsert({
+      where: {
+        app_id_section_id: { app_id: appId, section_id: sectionId },
+      },
+      create: {
+        app_id: appId,
+        section_id: sectionId,
+        status: status as
+          | "active"
+          | "development"
+          | "maintenance"
+          | "developer"
+          | "planned",
+      },
+      update: {
         status: status as
           | "active"
           | "development"
@@ -141,9 +138,7 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
 
-    const pushFields = toPushResponseFields(
-      await pushEntitlementForAppId(appId),
-    );
+    const pushFields = await pushWithModulePreview(appId, section.module_id);
 
     return NextResponse.json({
       ok: true,
