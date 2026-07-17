@@ -14,7 +14,7 @@ import Sliders from "@gravity-ui/icons/Sliders";
 import Shield from "@gravity-ui/icons/Shield";
 import TargetDart from "@gravity-ui/icons/TargetDart";
 import { useLandingTheme } from "../hooks/useLandingTheme";
-import { RaptorSolutionsLogo } from "./RaptorSolutionsLogo";
+import { RaptorBrand } from "./RaptorBrand";
 
 const PILLARS = [
   {
@@ -36,7 +36,7 @@ const PILLARS = [
 
 const VALUES = [
   { value: "360°", label: "Enfoque integral" },
-  { value: "1", label: "Socio tecnológico" },
+  { value: "2", label: "Socio tecnológico" },
   { value: "24/7", label: "Compromiso continuo" },
   { value: "100%", label: "Orientados a resultados" },
 ] as const;
@@ -116,12 +116,12 @@ export function LandingPage() {
       <div className="landing-page__noise" aria-hidden />
 
       <header className="landing-page__header relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
-        <RaptorSolutionsLogo className="h-7 w-auto text-white sm:h-8" />
+        <RaptorBrand variant="header" />
         <Link href="/login" className="inline-flex">
           <Button
             size="sm"
             variant="secondary"
-            className="landing-page__header-cta border-white/10 bg-white/5 text-white"
+            className="landing-page__header-cta border-white/12 bg-white/6 text-white backdrop-blur-md"
           >
             Entrar
             <ArrowRight width={14} height={14} />
@@ -132,7 +132,7 @@ export function LandingPage() {
       <section className="landing-page__hero relative z-10 mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-6xl flex-col items-center justify-center px-6 pb-16 pt-6 text-center sm:px-10">
         <div className="landing-page__logo-wrap mb-8 sm:mb-10">
           <div className="landing-page__logo-glow" aria-hidden />
-          <RaptorSolutionsLogo className="landing-page__logo relative z-10 h-auto w-[min(88vw,560px)] text-white" />
+          <RaptorBrand variant="hero" className="relative z-10" />
         </div>
 
         <p className="landing-page__eyebrow mb-5 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#FF6B00]">
@@ -166,23 +166,13 @@ export function LandingPage() {
           ))}
         </ul>
 
-        <div className="landing-page__cta-wrap mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/login" className="inline-flex">
-            <Button size="lg" className="landing-page__cta min-w-[200px] font-semibold">
-              Entrar
-              <ArrowRight width={18} height={18} />
-            </Button>
-          </Link>
-          <p className="text-sm text-white/40">
-            Acceso para clientes y equipos Raptor
-          </p>
-        </div>
+       
       </section>
 
-      <section className="landing-page__stats relative z-10 border-y border-white/8 bg-white/[0.02]">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-white/8 sm:grid-cols-4">
+      <section className="landing-page__stats relative z-10 border-y border-white/8">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-white/6 sm:grid-cols-4">
           {VALUES.map(({ value, label }) => (
-            <div key={label} className="landing-page__stat bg-black px-6 py-8 text-center">
+            <div key={label} className="landing-page__stat px-6 py-8 text-center">
               <p className="text-2xl font-semibold tracking-tight text-[#FF6B00] sm:text-3xl">
                 {value}
               </p>
@@ -191,6 +181,64 @@ export function LandingPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="landing-page__section landing-page__section--muted relative z-10 border-y border-white/8">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-10">
+          <div>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#FF6B00]">
+              Cómo trabajamos
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              Un proceso claro, de la conversación inicial al resultado
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/55 sm:text-base">
+              Creemos en relaciones transparentes: primero entendemos, después
+              proponemos y recién entonces construimos. Sin atajos que generen
+              deuda técnica o dependencia innecesaria.
+            </p>
+
+            <ol className="mt-10 space-y-6">
+              {APPROACH.map(({ step, title, text }) => (
+                <li key={step} className="flex gap-4">
+                  <span className="landing-page__step-num shrink-0 font-mono text-sm font-semibold">
+                    {step}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-white">{title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-white/50">
+                      {text}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="landing-page__preview relative">
+            <div className="landing-page__preview-glow" aria-hidden />
+            <div className="landing-page__preview-card landing-page__preview-card--back" />
+            <div className="landing-page__preview-card landing-page__preview-card--front">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#FF6B00]">
+                Nuestra misión
+              </p>
+              <p className="mb-6 text-lg font-semibold leading-snug text-white">
+                Devolverle a cada cliente el control sobre su operación digital.
+              </p>
+              <ul className="space-y-3">
+                {MISSION_POINTS.map((point) => (
+                  <li
+                    key={point}
+                    className="landing-page__glass-chip flex items-start gap-3 rounded-xl px-3 py-3 text-sm text-white/60"
+                  >
+                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#FF6B00]" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -252,64 +300,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-page__section relative z-10 mx-auto w-full max-w-6xl px-6 py-20 sm:px-10">
-        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
-          <div>
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#FF6B00]">
-              Cómo trabajamos
-            </p>
-            <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Un proceso claro, de la conversación inicial al resultado
-            </h2>
-            <p className="mt-4 text-sm leading-relaxed text-white/55 sm:text-base">
-              Creemos en relaciones transparentes: primero entendemos, después
-              proponemos y recién entonces construimos. Sin atajos que generen
-              deuda técnica o dependencia innecesaria.
-            </p>
-
-            <ol className="mt-10 space-y-6">
-              {APPROACH.map(({ step, title, text }) => (
-                <li key={step} className="flex gap-4">
-                  <span className="landing-page__step-num shrink-0 font-mono text-sm font-semibold">
-                    {step}
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-white">{title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-white/50">
-                      {text}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="landing-page__preview relative">
-            <div className="landing-page__preview-glow" aria-hidden />
-            <div className="landing-page__preview-card landing-page__preview-card--back" />
-            <div className="landing-page__preview-card landing-page__preview-card--front">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#FF6B00]">
-                Nuestra misión
-              </p>
-              <p className="mb-6 text-lg font-semibold leading-snug text-white">
-                Devolverle a cada cliente el control sobre su operación digital.
-              </p>
-              <ul className="space-y-3">
-                {MISSION_POINTS.map((point) => (
-                  <li
-                    key={point}
-                    className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-3 text-sm text-white/60"
-                  >
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#FF6B00]" />
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="landing-page__cta-band relative z-10 mx-auto max-w-6xl px-6 py-20 sm:px-10">
         <div className="landing-page__cta-band-inner rounded-3xl px-6 py-12 text-center sm:px-12 sm:py-14">
           <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
@@ -333,7 +323,7 @@ export function LandingPage() {
 
       <footer className="landing-page__footer relative z-10 border-t border-white/8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 py-10 text-center sm:flex-row sm:px-10 sm:text-left">
-          <RaptorSolutionsLogo className="h-6 w-auto text-white/80" />
+          <RaptorBrand variant="footer" />
           <p className="max-w-md text-xs leading-relaxed text-white/35">
             Raptor Solutions — apps y tecnología configurable para empresas que
             quieren operar con orden y control.

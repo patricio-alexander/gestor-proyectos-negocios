@@ -47,6 +47,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (/\.(?:svg|png|jpe?g|gif|webp|ico|woff2?|ttf|eot)$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
   if (publicPaths.includes(pathname)) {
     return NextResponse.next();
   }
