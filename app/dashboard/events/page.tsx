@@ -5,8 +5,8 @@ import {
   Modal,
   Spinner,
   useOverlayState,
-  toast,
 } from "@heroui/react";
+import { appToast } from "@/src/shared/utils/app-toast";
 import ClockArrowRotateLeft from "@gravity-ui/icons/ClockArrowRotateLeft";
 import Plus from "@gravity-ui/icons/Plus";
 import TrashBin from "@gravity-ui/icons/TrashBin";
@@ -81,9 +81,9 @@ export default function EventsPage() {
       setTypeKey("");
       setTypeName("");
       setTypeDesc("");
-      toast.success("Tipo de evento creado");
+      appToast.success("Tipo de evento creado");
     } catch (err) {
-      toast.danger(err instanceof Error ? err.message : "Error al crear tipo");
+      appToast.error(err instanceof Error ? err.message : "Error al crear tipo");
     } finally {
       setSubmitting(false);
     }
@@ -92,9 +92,9 @@ export default function EventsPage() {
   async function handleDeleteType(id: number) {
     try {
       await deleteType(id);
-      toast.success("Tipo de evento eliminado");
+      appToast.success("Tipo de evento eliminado");
     } catch (err) {
-      toast.danger(err instanceof Error ? err.message : "Error al eliminar tipo");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar tipo");
     }
   }
 
@@ -125,11 +125,11 @@ export default function EventsPage() {
         } catch { errors++; }
       }
       setImportResult({ ok, errors });
-      if (errors === 0) toast.success(`${ok} tipos importados`);
-      else toast.danger(`${ok} importados, ${errors} con errores`);
+      if (errors === 0) appToast.success(`${ok} tipos importados`);
+      else appToast.warning(`${ok} importados, ${errors} con errores`);
       refetchTypes();
     } catch (err) {
-      toast.danger(err instanceof Error ? err.message : "Error al importar CSV");
+      appToast.error(err instanceof Error ? err.message : "Error al importar CSV");
     } finally {
       setImporting(false);
       e.target.value = "";

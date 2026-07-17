@@ -1,9 +1,11 @@
 "use client";
 
 import {
-  Alert,
   Button,
+  Label,
+  ListBox,
   Modal,
+  Select,
   Spinner,
   useOverlayState,
 } from "@heroui/react";
@@ -19,12 +21,12 @@ import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { PageHeader } from "@/src/shared/components/PageHeader";
 import { StatCard } from "@/src/shared/components/StatCard";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { getDateRangeStatus } from "@/src/shared/utils/format-display";
 import { OfferCard } from "./OfferCard";
 
 type OfferFormProps = {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  error: string;
   submitting: boolean;
   editing?: Offer | null;
   apps: { id: number; name: string | null }[];
@@ -34,7 +36,6 @@ type OfferFormProps = {
 
 function OfferForm({
   onSubmit,
-  error,
   submitting,
   editing,
   apps,
@@ -49,11 +50,6 @@ function OfferForm({
   return (
     <form onSubmit={onSubmit}>
       <Modal.Body className="space-y-4">
-        {error && (
-          <Alert status="danger">
-            <Alert.Description>{error}</Alert.Description>
-          </Alert>
-        )}
         <label className={gp.label}>
           Nombre
           <input
@@ -64,23 +60,33 @@ function OfferForm({
             className={gp.input}
           />
         </label>
-        <label className={gp.label}>
-          Plantilla (catálogo)
-          <select
-            name="app_id"
-            required
-            value={String(selectedAppId)}
-            onChange={(e) => setSelectedAppId(e.target.value)}
-            className={gp.select}
-          >
-            <option value="">Seleccionar plantilla</option>
-            {apps.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          aria-label="Plantilla (catálogo)"
+          selectedKey={selectedAppId ? String(selectedAppId) : null}
+          onSelectionChange={(key) => setSelectedAppId(key ? String(key) : "")}
+          isRequired
+        >
+          <Label>Plantilla (catálogo)</Label>
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {apps.map((a) => (
+                <ListBox.Item
+                  key={a.id}
+                  id={String(a.id)}
+                  textValue={a.name ?? `App ${a.id}`}
+                >
+                  {a.name}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
+        <input type="hidden" name="app_id" value={selectedAppId} required />
         <label className={gp.label}>
           Precio ($)
           <input
@@ -165,7 +171,6 @@ export function OffersManager() {
   const { modules } = useCatalog();
   const [editing, setEditing] = useState<Offer | null>(null);
   const [deleting, setDeleting] = useState<Offer | null>(null);
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const createState = useOverlayState();
@@ -190,7 +195,6 @@ export function OffersManager() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -205,8 +209,9 @@ export function OffersManager() {
         module_ids: (form.getAll("module_ids") as string[]).map(Number),
       });
       createState.close();
+      appToast.success("Oferta creada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -215,7 +220,6 @@ export function OffersManager() {
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -231,8 +235,9 @@ export function OffersManager() {
       });
       editState.close();
       setEditing(null);
+      appToast.success("Oferta actualizada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -240,14 +245,14 @@ export function OffersManager() {
 
   async function handleDelete() {
     if (!deleting) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deleting.id);
       deleteState.close();
       setDeleting(null);
+      appToast.success("Oferta eliminada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -288,7 +293,6 @@ export function OffersManager() {
                   <OfferForm
                     key="create"
                     onSubmit={handleCreate}
-                    error={error}
                     submitting={submitting}
                     apps={apps}
                     allModules={modules}
@@ -332,12 +336,10 @@ export function OffersManager() {
               offer={offer}
               onEdit={(o) => {
                 setEditing(o);
-                setError("");
                 editState.open();
               }}
               onDelete={(o) => {
                 setDeleting(o);
-                setError("");
                 deleteState.open();
               }}
             />
@@ -356,7 +358,6 @@ export function OffersManager() {
               <OfferForm
                 key={editing?.id ?? "edit"}
                 onSubmit={handleEdit}
-                error={error}
                 submitting={submitting}
                 editing={editing}
                 apps={apps}
@@ -378,11 +379,6 @@ export function OffersManager() {
                 <Modal.Heading>Eliminar oferta</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar la oferta <strong>{deleting?.name}</strong>?
                 </p>

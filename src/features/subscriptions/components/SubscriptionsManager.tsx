@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Button,
   Modal,
   Spinner,
@@ -31,6 +30,7 @@ import { TableSearchBar } from "@/src/shared/components/TableSearchBar";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { SubscriptionCard } from "./SubscriptionCard";
 
 const PAGE_SIZE = 9;
@@ -53,7 +53,6 @@ export function SubscriptionsManager() {
   const { plans } = usePlans();
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [canceling, setCanceling] = useState<Subscription | null>(null);
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [createAppId, setCreateAppId] = useState("");
   const [createPlanId, setCreatePlanId] = useState("");
@@ -137,7 +136,6 @@ export function SubscriptionsManager() {
   }
 
   function openCreate() {
-    setError("");
     setCreateAppId("");
     setCreatePlanId("");
     setCreatePeriod("MONTHLY");
@@ -161,11 +159,10 @@ export function SubscriptionsManager() {
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selectedPrice) return;
-    setError("");
     setSubmitting(true);
     const app = apps.find((a) => String(a.id) === createAppId);
     if (!app?.hash) {
-      setError("Seleccioná una aplicación");
+      appToast.warning("Seleccioná una aplicación");
       setSubmitting(false);
       return;
     }
@@ -177,8 +174,9 @@ export function SubscriptionsManager() {
         expires_at: toISO(createExpiresDate, createExpiresTime),
       });
       createState.close();
+      appToast.success("Suscripción creada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -187,7 +185,6 @@ export function SubscriptionsManager() {
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
-    setError("");
     setSubmitting(true);
     try {
       await update(editing.id, {
@@ -197,7 +194,7 @@ export function SubscriptionsManager() {
       editState.close();
       setEditing(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -205,14 +202,13 @@ export function SubscriptionsManager() {
 
   async function handleCancel() {
     if (!canceling) return;
-    setError("");
     setSubmitting(true);
     try {
       await cancel(canceling.id);
       cancelState.close();
       setCanceling(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cancelar");
+      appToast.error(err instanceof Error ? err.message : "Error al cancelar");
     } finally {
       setSubmitting(false);
     }
@@ -287,7 +283,6 @@ export function SubscriptionsManager() {
                 subscription={sub}
                 onEdit={(s) => {
                   setEditing(s);
-                  setError("");
                   const sd = fromISO(s.start_at);
                   const ed = fromISO(s.expires_at);
                   setEditDate(sd.date);
@@ -298,7 +293,6 @@ export function SubscriptionsManager() {
                 }}
                 onCancel={(s) => {
                   setCanceling(s);
-                  setError("");
                   cancelState.open();
                 }}
               />
@@ -324,11 +318,6 @@ export function SubscriptionsManager() {
               {editing && (
                 <form onSubmit={handleEdit}>
                   <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <p className="text-sm text-[var(--gp-text-muted)]">
                       {editing.app_name} · {editing.plan_name}
                     </p>
@@ -449,11 +438,6 @@ export function SubscriptionsManager() {
                 <Modal.Heading>Cancelar suscripción</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Cancelar la suscripción de{" "}
                   <strong>{canceling?.app_name}</strong> ({canceling?.plan_name}
@@ -487,11 +471,6 @@ export function SubscriptionsManager() {
               </Modal.Header>
               <form onSubmit={handleCreate}>
                 <Modal.Body className="space-y-4">
-                  {error && (
-                    <Alert status="danger">
-                      <Alert.Description>{error}</Alert.Description>
-                    </Alert>
-                  )}
                   <Select
                     selectedKey={createAppId || null}
                     onSelectionChange={(key) => {

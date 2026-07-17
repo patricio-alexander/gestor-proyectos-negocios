@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Button,
   Modal,
   Spinner,
@@ -12,6 +11,7 @@ import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import type { App } from "../types";
 import { useCatalog } from "@/src/features/catalog/hooks/useCatalog";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 
 type AppModulesModalProps = {
   app: App | null;
@@ -23,7 +23,6 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
   const { modules: catalogModules, loading: catalogLoading } = useCatalog();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const modal = useOverlayState({
     isOpen: Boolean(app),
     onOpenChange: (open) => {
@@ -34,7 +33,6 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
   useEffect(() => {
     if (!app) return;
     setSelectedIds(new Set((app.modules ?? []).map((m) => m.id)));
-    setError("");
   }, [app]);
 
   const sortedModules = useMemo(
@@ -53,13 +51,12 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
 
   async function handleSave() {
     if (!app) return;
-    setError("");
     setSubmitting(true);
     try {
       await onSave(app.id, [...selectedIds]);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar módulos");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar módulos");
     } finally {
       setSubmitting(false);
     }
@@ -79,12 +76,6 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
               </p>
             </Modal.Header>
             <Modal.Body className="space-y-4">
-              {error && (
-                <Alert status="danger">
-                  <Alert.Description>{error}</Alert.Description>
-                </Alert>
-              )}
-
               <div
                 className="rounded-xl border px-4 py-3 text-sm"
                 style={{ borderColor: "var(--gp-border)" }}

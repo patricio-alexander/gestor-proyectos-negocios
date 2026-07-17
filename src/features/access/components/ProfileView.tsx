@@ -1,23 +1,20 @@
 "use client";
 
-import { Alert, Button, Card, Spinner } from "@heroui/react";
+import { Button, Card, Spinner } from "@heroui/react";
 import Person from "@gravity-ui/icons/Person";
 import { useState } from "react";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { PageHeader } from "@/src/shared/components/PageHeader";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { apiUrl } from "@/src/utils/apiUrl";
 
 export function ProfileView() {
   const { user, loading } = useAuth();
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     const password = form.get("password") as string;
@@ -38,9 +35,9 @@ export function ProfileView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
-      setSuccess("Perfil actualizado");
+      appToast.success("Perfil actualizado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setSubmitting(false);
     }
@@ -60,17 +57,6 @@ export function ProfileView() {
 
       <Card className={`${gp.card} max-w-lg p-6`}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <Alert status="danger">
-              <Alert.Description>{error}</Alert.Description>
-            </Alert>
-          )}
-          {success && (
-            <Alert status="success">
-              <Alert.Description>{success}</Alert.Description>
-            </Alert>
-          )}
-
           <p className={gp.subtitle}>
             Usuario:{" "}
             <span className="font-medium" style={{ color: "var(--gp-text)" }}>

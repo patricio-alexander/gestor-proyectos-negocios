@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Modal, useOverlayState } from "@heroui/react";
+import { Button, Label, ListBox, Modal, Select, useOverlayState } from "@heroui/react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Plan } from "../types";
@@ -170,22 +170,42 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
               <Modal.Body>
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <select
-                      value={filterAppId}
-                      onChange={(e) =>
-                        setFilterAppId(
-                          e.target.value === "all" ? "all" : Number(e.target.value),
-                        )
+                    <Select
+                      aria-label="Filtrar por aplicación"
+                      selectedKey={
+                        filterAppId === "all" ? "all" : String(filterAppId)
                       }
-                      className="gp-select max-w-64 text-sm"
+                      onSelectionChange={(key) => {
+                        if (!key) return;
+                        setFilterAppId(
+                          key === "all" ? "all" : Number(key),
+                        );
+                      }}
+                      className="max-w-64"
                     >
-                      <option value="all">Todas las aplicaciones</option>
-                      {apps.map((app) => (
-                        <option key={app.id} value={app.id}>
-                          {app.name}
-                        </option>
-                      ))}
-                    </select>
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          <ListBox.Item id="all" textValue="Todas las aplicaciones">
+                            Todas las aplicaciones
+                            <ListBox.ItemIndicator />
+                          </ListBox.Item>
+                          {apps.map((app) => (
+                            <ListBox.Item
+                              key={app.id}
+                              id={String(app.id)}
+                              textValue={app.name ?? `App ${app.id}`}
+                            >
+                              {app.name}
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
                     <p className="text-sm text-zinc-500">
                       {filteredPlans.length}{" "}
                       {filteredPlans.length === 1 ? "plan" : "planes"}

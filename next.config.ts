@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: "/gestor-proyectos-negocios",
+  basePath: "/raptorsolutions",
 
   /* config options here */
 };

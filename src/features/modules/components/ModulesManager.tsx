@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Button,
   Modal,
   Spinner,
@@ -21,6 +20,7 @@ import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSear
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { ModulesDashboard } from "./ModulesDashboard";
 import { ModuleCard } from "./ModuleCard";
@@ -47,7 +47,6 @@ function matchesModuleSearch(mod: Module, query: string) {
 export function ModulesManager() {
   const { modules, loading, create, update, remove, patchModule, refetch } = useModules();
 
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [editingModule, setEditingModule] = useState<Module | null>(null);
@@ -107,7 +106,6 @@ export function ModulesManager() {
 
   async function handleCreateModule(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -130,8 +128,9 @@ export function ModulesManager() {
         image_url: imageUrl,
       });
       moduleCreateState.close();
+      appToast.success("Módulo creado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +139,6 @@ export function ModulesManager() {
   async function handleEditModule(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editingModule) return;
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -166,8 +164,9 @@ export function ModulesManager() {
       });
       moduleEditState.close();
       setEditingModule(null);
+      appToast.success("Módulo actualizado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -175,14 +174,14 @@ export function ModulesManager() {
 
   async function handleDeleteModule() {
     if (!deletingModule) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deletingModule.id);
       moduleDeleteState.close();
       setDeletingModule(null);
+      appToast.success("Módulo eliminado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -226,11 +225,6 @@ export function ModulesManager() {
                   </Modal.Header>
                   <form onSubmit={handleCreateModule}>
                     <Modal.Body className="space-y-4">
-                      {error && (
-                        <Alert status="danger">
-                          <Alert.Description>{error}</Alert.Description>
-                        </Alert>
-                      )}
                       <label className={gp.label}>
                         Nombre
                         <input
@@ -277,12 +271,6 @@ export function ModulesManager() {
 
       <ModulesDashboard stats={stats} />
 
-      {error ? (
-        <Alert status="danger">
-          <Alert.Description>{error}</Alert.Description>
-        </Alert>
-      ) : null}
-
       <div className="space-y-3">
         <TableSearchBar
           value={search}
@@ -325,12 +313,10 @@ export function ModulesManager() {
                   setEditingModule(m);
                   setEditIsTrial(m.is_trial);
                   setEditLimitDays(m.limit_days_trial?.toString() ?? "");
-                  setError("");
                   moduleEditState.open();
                 }}
                 onDelete={(m) => {
                   setDeletingModule(m);
-                  setError("");
                   moduleDeleteState.open();
                 }}
                 onModuleUpdate={handleModuleUpdate}
@@ -359,11 +345,6 @@ export function ModulesManager() {
               {editingModule && (
                 <form onSubmit={handleEditModule}>
                   <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <label className={gp.label}>
                       Nombre
                       <input
@@ -457,11 +438,6 @@ export function ModulesManager() {
                 <Modal.Heading>Eliminar módulo</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar <strong>{deletingModule?.name}</strong>?
                   <br />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { apiUrl } from "@/src/utils/apiUrl";
 
 export type BackupMainInfo = {
@@ -36,10 +37,8 @@ export function useBackups() {
   const [stored, setStored] = useState<StoredBackup[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
-    setError("");
     setLoading(true);
     try {
       const res = await fetch(apiUrl("/api/backups"));
@@ -48,7 +47,7 @@ export function useBackups() {
       setMain(data.main);
       setStored(data.stored ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al listar backups");
+      appToast.error(err instanceof Error ? err.message : "Error al listar backups");
     } finally {
       setLoading(false);
     }
@@ -59,7 +58,6 @@ export function useBackups() {
   }, [refresh]);
 
   async function exportAndDownload() {
-    setError("");
     setBusy(true);
     try {
       const res = await fetch(apiUrl("/api/backups/export"));
@@ -72,8 +70,9 @@ export function useBackups() {
       const match = /filename="?([^"]+)"?/.exec(cd);
       triggerBlobDownload(blob, match?.[1] || "backup-gestor.json");
       await refresh();
+      appToast.success("Backup exportado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al exportar");
+      appToast.error(err instanceof Error ? err.message : "Error al exportar");
       throw err;
     } finally {
       setBusy(false);
@@ -81,16 +80,16 @@ export function useBackups() {
   }
 
   async function saveOnly() {
-    setError("");
     setBusy(true);
     try {
       const res = await fetch(apiUrl("/api/backups/export"), { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
       await refresh();
+      appToast.success("Backup guardado en el servidor");
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
       throw err;
     } finally {
       setBusy(false);
@@ -98,7 +97,6 @@ export function useBackups() {
   }
 
   async function downloadMain() {
-    setError("");
     setBusy(true);
     try {
       const res = await fetch(apiUrl("/api/backups/main/download"));
@@ -108,8 +106,9 @@ export function useBackups() {
       }
       const blob = await res.blob();
       triggerBlobDownload(blob, "backup.json");
+      appToast.success("Descarga iniciada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al descargar");
+      appToast.error(err instanceof Error ? err.message : "Error al descargar");
       throw err;
     } finally {
       setBusy(false);
@@ -117,7 +116,6 @@ export function useBackups() {
   }
 
   async function downloadStored(filename: string) {
-    setError("");
     setBusy(true);
     try {
       const res = await fetch(
@@ -129,8 +127,33 @@ export function useBackups() {
       }
       const blob = await res.blob();
       triggerBlobDownload(blob, filename);
+      appToast.success("Descarga iniciada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al descargar");
+      appToast.error(err instanceof Error ? err.message : "Error al descargar");
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function importFromFile(file: File) {
+    setBusy(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const res = await fetch(apiUrl("/api/backups/import"), {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al importar");
+      await refresh();
+      appToast.success("Base de datos restaurada", {
+        description: `${data.totalRows ?? 0} filas importadas desde ${file.name}`,
+      });
+      return data;
+    } catch (err) {
+      appToast.error(err instanceof Error ? err.message : "Error al importar");
       throw err;
     } finally {
       setBusy(false);
@@ -142,12 +165,11 @@ export function useBackups() {
     stored,
     loading,
     busy,
-    error,
-    setError,
     refresh,
     exportAndDownload,
     saveOnly,
     downloadMain,
     downloadStored,
+    importFromFile,
   };
 }

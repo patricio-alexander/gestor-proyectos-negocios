@@ -1,11 +1,15 @@
 "use client";
 
+import { ListBox, Select } from "@heroui/react";
 import type { LifecycleStatus } from "../types";
 import {
   LIFECYCLE_STATUS_LABELS,
   LIFECYCLE_STATUS_OPTIONS,
   normalizeLifecycleStatus,
 } from "../types";
+import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
+
+const INHERIT_KEY = "__inherit__";
 
 type LifecycleStatusInheritSelectProps = {
   value: LifecycleStatus | null;
@@ -17,6 +21,16 @@ type LifecycleStatusInheritSelectProps = {
   className?: string;
 };
 
+function StatusOptionLabel({ status }: { status: LifecycleStatus }) {
+  const style = LIFECYCLE_STATUS_STYLE[status];
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`size-2 shrink-0 rounded-full ${style.dot}`} />
+      <span>{LIFECYCLE_STATUS_LABELS[status]}</span>
+    </span>
+  );
+}
+
 export function LifecycleStatusInheritSelect({
   value,
   inheritLabel,
@@ -27,28 +41,55 @@ export function LifecycleStatusInheritSelect({
   className = "",
 }: LifecycleStatusInheritSelectProps) {
   const hasOverride = value != null;
-  const selectValue = hasOverride ? normalizeLifecycleStatus(value) : "__inherit__";
+  const selectedKey = hasOverride ? normalizeLifecycleStatus(value) : INHERIT_KEY;
+  const inheritText = `↳ ${inheritLabel}`;
 
   return (
-    <select
-      className={`h-8 min-w-[130px] rounded-lg border px-2 text-xs ${className} ${
-        disabled || busy
-          ? "cursor-not-allowed opacity-50"
-          : hasOverride
-            ? "border-amber-300 bg-amber-50 font-semibold text-amber-900"
-            : "border-[var(--gp-border)] bg-white text-[var(--gp-text-muted)]"
-      }`}
-      value={selectValue}
-      disabled={disabled || busy}
+    <Select
       aria-label={ariaLabel}
-      onChange={(e) => onChange(e.target.value)}
+      selectedKey={selectedKey}
+      onSelectionChange={(key) => {
+        if (key) onChange(String(key));
+      }}
+      isDisabled={disabled || busy}
+      className={`min-w-[130px] [&_[data-slot=trigger]]:h-8 [&_[data-slot=trigger]]:text-xs ${className}`}
     >
-      <option value="__inherit__">↳ {inheritLabel}</option>
-      {LIFECYCLE_STATUS_OPTIONS.map((opt) => (
-        <option key={opt} value={opt}>
-          {LIFECYCLE_STATUS_LABELS[opt]}
-        </option>
-      ))}
-    </select>
+      <Select.Trigger
+        className={
+          disabled || busy
+            ? "opacity-50"
+            : hasOverride
+              ? "border-amber-300 bg-amber-50 font-semibold text-amber-900"
+              : ""
+        }
+      >
+        <Select.Value>
+          {hasOverride ? (
+            <StatusOptionLabel status={normalizeLifecycleStatus(value)} />
+          ) : (
+            <span className="text-[var(--gp-text-muted)]">{inheritText}</span>
+          )}
+        </Select.Value>
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox>
+          <ListBox.Item id={INHERIT_KEY} textValue={inheritText}>
+            {inheritText}
+            <ListBox.ItemIndicator />
+          </ListBox.Item>
+          {LIFECYCLE_STATUS_OPTIONS.map((option) => (
+            <ListBox.Item
+              key={option}
+              id={option}
+              textValue={LIFECYCLE_STATUS_LABELS[option]}
+            >
+              <StatusOptionLabel status={option} />
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
   );
 }

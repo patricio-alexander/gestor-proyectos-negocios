@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Button,
   Modal,
   Spinner,
@@ -16,6 +15,7 @@ import type { Capability, Section } from "../types";
 import { useCapabilities } from "../hooks/useCapabilities";
 import { StatusBadge } from "@/src/shared/components/StatusBadge";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 
 type SectionCapabilitiesPanelProps = {
   section: Section;
@@ -32,7 +32,6 @@ export function SectionCapabilitiesPanel({
 }: SectionCapabilitiesPanelProps) {
   const { create, update, remove } = useCapabilities();
 
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [editingCapability, setEditingCapability] = useState<Capability | null>(
@@ -69,7 +68,6 @@ export function SectionCapabilitiesPanel({
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -80,8 +78,9 @@ export function SectionCapabilitiesPanel({
       });
       appendCapability(cap);
       createState.close();
+      appToast.success("Capacidad creada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +89,6 @@ export function SectionCapabilitiesPanel({
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editingCapability) return;
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -100,21 +98,21 @@ export function SectionCapabilitiesPanel({
       replaceCapability(cap);
       editState.close();
       setEditingCapability(null);
+      appToast.success("Capacidad actualizada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleToggleActive(cap: Capability) {
-    setError("");
     setTogglingId(cap.id);
     try {
       const next = await update(cap.id, { is_active: !cap.is_active });
       replaceCapability(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setTogglingId(null);
     }
@@ -122,15 +120,15 @@ export function SectionCapabilitiesPanel({
 
   async function handleDelete() {
     if (!deletingCapability) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deletingCapability.id);
       dropCapability(deletingCapability.id);
       deleteState.close();
       setDeletingCapability(null);
+      appToast.success("Capacidad eliminada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -160,12 +158,6 @@ export function SectionCapabilitiesPanel({
               </Modal.Header>
 
               <Modal.Body className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
-
                 {capabilities.length === 0 ? (
                   <div className={`${gp.empty} py-8`}>
                     <p className="text-sm font-medium text-[var(--gp-text)]">
@@ -237,7 +229,6 @@ export function SectionCapabilitiesPanel({
                                   aria-label={`Editar ${cap.name}`}
                                   onPress={() => {
                                     setEditingCapability(cap);
-                                    setError("");
                                     editState.open();
                                   }}
                                 >
@@ -250,7 +241,6 @@ export function SectionCapabilitiesPanel({
                                   aria-label={`Eliminar ${cap.name}`}
                                   onPress={() => {
                                     setDeletingCapability(cap);
-                                    setError("");
                                     deleteState.open();
                                   }}
                                 >
@@ -287,11 +277,6 @@ export function SectionCapabilitiesPanel({
                         </Modal.Header>
                         <form onSubmit={handleCreate}>
                           <Modal.Body className="space-y-4">
-                            {error && (
-                              <Alert status="danger">
-                                <Alert.Description>{error}</Alert.Description>
-                              </Alert>
-                            )}
                             <label className={gp.label}>
                               Código
                               <input
@@ -350,11 +335,6 @@ export function SectionCapabilitiesPanel({
               {editingCapability && (
                 <form onSubmit={handleEdit}>
                   <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <label className={gp.label}>
                       Código
                       <input
@@ -397,11 +377,6 @@ export function SectionCapabilitiesPanel({
                 <Modal.Heading>Eliminar capacidad</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar la capacidad{" "}
                   <strong>{deletingCapability?.name}</strong> (

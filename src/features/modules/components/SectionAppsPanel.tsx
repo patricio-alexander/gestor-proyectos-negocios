@@ -6,13 +6,13 @@ import Briefcase from "@gravity-ui/icons/Briefcase";
 import type { LifecycleStatus, LinkedApp } from "../types";
 import {
   LIFECYCLE_STATUS_LABELS,
-  LIFECYCLE_STATUS_OPTIONS,
   normalizeLifecycleStatus,
 } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { effectiveSectionStatusForApp } from "@/src/shared/lib/lifecycle-status-resolve";
 import { gp } from "@/src/shared/ui/theme";
 import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
+import { LifecycleStatusInheritSelect } from "./LifecycleStatusInheritSelect";
 
 type OverrideRow = {
   app_id: number;
@@ -107,7 +107,8 @@ export function SectionAppsPanel({
     setBusyAppId(appId);
     onError?.("");
     try {
-      const clear = value === "" || value === "__global__";
+      const clear =
+        value === "" || value === "__global__" || value === "__inherit__";
       const res = await fetch(apiUrl(`/api/sections/${sectionId}/app-status`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -215,9 +216,6 @@ export function SectionAppsPanel({
                       );
                       const inheritedLabel =
                         LIFECYCLE_STATUS_LABELS[inheritedStatus];
-                      const selectValue = hasOverride
-                        ? normalizeLifecycleStatus(currentStatus)
-                        : "__global__";
                       const busy = busyAppId === app.id;
 
                       return (
@@ -248,28 +246,13 @@ export function SectionAppsPanel({
 
                             <div className="flex shrink-0 flex-col items-end gap-1">
                               {busy ? <Spinner size="sm" /> : null}
-                              <select
-                                className={`h-9 min-w-[140px] rounded-lg border px-2 text-xs ${
-                                  hasOverride
-                                    ? "border-amber-300 bg-amber-50 font-semibold"
-                                    : "border-[var(--gp-border)] bg-white"
-                                }`}
-                                value={selectValue}
-                                disabled={busy}
+                              <LifecycleStatusInheritSelect
+                                value={hasOverride ? currentStatus! : null}
+                                inheritLabel={inheritedLabel}
+                                busy={busy}
                                 aria-label={`Estado de ${sectionName} en ${app.name || "app"}`}
-                                onChange={(e) =>
-                                  void saveStatus(app.id, e.target.value)
-                                }
-                              >
-                                <option value="__global__">
-                                  Hereda · {inheritedLabel}
-                                </option>
-                                {LIFECYCLE_STATUS_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {LIFECYCLE_STATUS_LABELS[opt]}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(v) => void saveStatus(app.id, v)}
+                              />
                             </div>
                           </div>
                         </div>

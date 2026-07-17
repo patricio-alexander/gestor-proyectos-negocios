@@ -3,7 +3,10 @@
 import {
   Alert,
   Button,
+  Label,
+  ListBox,
   Modal,
+  Select,
   Spinner,
   Switch,
   useOverlayState,
@@ -36,6 +39,7 @@ import {
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 
 const PAGE_SIZE = 10;
 
@@ -61,8 +65,6 @@ export default function AppsPage() {
   const { apps, loading, create, update, remove, pushEntitlement, enablePlan, updateModules, refetch } =
     useApps();
   const { plans } = usePlans();
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
@@ -106,8 +108,6 @@ export default function AppsPage() {
   }, [selectedPlan, planApp]);
 
   function openModules(app: App) {
-    setError("");
-    setSuccess("");
     setModulesApp(app);
   }
 
@@ -121,12 +121,10 @@ export default function AppsPage() {
         : result.push_error
           ? ` · sync falló: ${result.push_error}`
           : "";
-    setSuccess(`Módulos actualizados${pushNote}`);
+    appToast.success(`Módulos actualizados${pushNote}`);
   }
 
   function openAssignPlan(app: App) {
-    setError("");
-    setSuccess("");
     setPlanApp(app);
     const forApp = filterPlansForApp(sortedPlans, app.id);
     const defaultPlan =
@@ -143,12 +141,11 @@ export default function AppsPage() {
   async function handleAssignPlan(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!planApp || !planId) {
-      setError("Elegí un plan");
+      appToast.warning("Elegí un plan");
       return;
     }
     const appName = planApp.name || "la app";
     const selectedPlan = plans.find((p) => String(p.id) === planId);
-    setError("");
     setSubmitting(true);
     try {
       const result = await enablePlan({
@@ -164,11 +161,11 @@ export default function AppsPage() {
         : result.push_error
           ? ` · aviso sync: ${result.push_error}`
           : "";
-      setSuccess(
+      appToast.success(
         `Plan ${result.plan_name || selectedPlan?.name || ""} asignado a ${appName}${pushNote}`,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al asignar plan");
+      appToast.error(err instanceof Error ? err.message : "Error al asignar plan");
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +182,6 @@ export default function AppsPage() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -203,9 +199,9 @@ export default function AppsPage() {
         entitlement_secret: createApiKey,
       });
       createState.close();
-      setSuccess("Aplicación creada");
+      appToast.success("Aplicación creada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -214,7 +210,6 @@ export default function AppsPage() {
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editingApp) return;
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -249,9 +244,9 @@ export default function AppsPage() {
                 (updated as { push_error?: string | null }).push_error
               ? ` · aviso sync: ${(updated as { push_error?: string }).push_error}`
               : "";
-      setSuccess(`Aplicación actualizada${pushNote}`);
+      appToast.success(`Aplicación actualizada${pushNote}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -259,16 +254,14 @@ export default function AppsPage() {
 
   async function handleToggleMantenimiento(app: App) {
     setTogglingIds((prev) => new Set(prev).add(app.id));
-    setError("");
-    setSuccess("");
     try {
       const updated = await update(app.id, { maintenance: !app.maintenance });
       const pushErr = (updated as { push_error?: string | null })?.push_error;
       if (pushErr) {
-        setError(`Mantenimiento guardado, pero no se pudo sync: ${pushErr}`);
+        appToast.warning(`Mantenimiento guardado, pero no se pudo sync: ${pushErr}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cambiar estado");
+      appToast.error(err instanceof Error ? err.message : "Error al cambiar estado");
     } finally {
       setTogglingIds((prev) => {
         const next = new Set(prev);
@@ -280,19 +273,17 @@ export default function AppsPage() {
 
   async function handlePush(app: App) {
     setPushingIds((prev) => new Set(prev).add(app.id));
-    setError("");
-    setSuccess("");
     try {
       await pushEntitlement(app.id);
-      setSuccess(`Entitlement enviado a ${app.name || "la app"}`);
+      appToast.success(`Entitlement enviado a ${app.name || "la app"}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al empujar";
       if (/no autorizado|gestor sync/i.test(msg)) {
-        setError(
+        appToast.error(
           `Sync rechazado en ${app.name || "la app"}: la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. Copiá la API Key (Editar app) al .env del backend y reiniciá.`,
         );
       } else {
-        setError(msg);
+        appToast.error(msg);
       }
     } finally {
       setPushingIds((prev) => {
@@ -305,14 +296,14 @@ export default function AppsPage() {
 
   async function handleDelete() {
     if (!deletingApp) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deletingApp.id);
       deleteState.close();
       setDeletingApp(null);
+      appToast.success("Aplicación eliminada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -360,11 +351,6 @@ export default function AppsPage() {
                     className="flex min-h-0 flex-1 flex-col"
                   >
                     <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
-                      {error && (
-                        <Alert status="danger">
-                          <Alert.Description>{error}</Alert.Description>
-                        </Alert>
-                      )}
                       <p className="mb-2 text-[11px] text-[var(--gp-text-muted)]">
                         Solo el <strong>nombre</strong> es obligatorio. El resto es opcional (URL y API Key
                         sirven para conectar el sync).
@@ -510,17 +496,6 @@ export default function AppsPage() {
           </Modal>
         }
       />
-
-      {error ? (
-        <Alert status="danger">
-          <Alert.Description>{error}</Alert.Description>
-        </Alert>
-      ) : null}
-      {success ? (
-        <Alert status="success">
-          <Alert.Description>{success}</Alert.Description>
-        </Alert>
-      ) : null}
 
       <TableSearchBar
         value={search}
@@ -671,8 +646,6 @@ export default function AppsPage() {
                           setEditingApp(app);
                           setEditApiKey("");
                           setCopiedId(null);
-                          setError("");
-                          setSuccess("");
                           editState.open();
                         }}
                       >
@@ -685,7 +658,6 @@ export default function AppsPage() {
                         aria-label={`Eliminar ${app.name || "aplicación"}`}
                         onPress={() => {
                           setDeletingApp(app);
-                          setError("");
                           deleteState.open();
                         }}
                       >
@@ -718,11 +690,6 @@ export default function AppsPage() {
               {editingApp && (
                 <form onSubmit={handleEdit} className="flex min-h-0 flex-1 flex-col">
                   <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       <label className={`${gp.label} col-span-2`}>
                         Nombre
@@ -906,11 +873,6 @@ export default function AppsPage() {
                 <Modal.Heading>Eliminar aplicación</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar <strong>{deletingApp?.name}</strong>?
                   <br />
@@ -947,11 +909,6 @@ export default function AppsPage() {
               </Modal.Header>
               <form onSubmit={handleAssignPlan} className="flex flex-col">
                 <Modal.Body className="space-y-3">
-                  {error && (
-                    <Alert status="danger">
-                      <Alert.Description>{error}</Alert.Description>
-                    </Alert>
-                  )}
                   {planApp?.plan ? (
                     <p className="text-xs text-[var(--gp-text-muted)]">
                       Plan actual: <strong>{planApp.plan.name}</strong>
@@ -973,35 +930,52 @@ export default function AppsPage() {
                     </Alert>
                   ) : (
                     <>
-                      <label className={gp.label}>
-                        Plan
-                        <select
-                          className={gp.input}
-                          value={planId}
-                          required
-                          onChange={(e) => setPlanId(e.target.value)}
-                        >
-                          <option value="">Elegí un plan…</option>
-                          {plansForSelectedApp.map((p) => {
-                            const modCount = getPlanModulesForApp(
-                              p,
-                              planApp!.id,
-                            ).length;
-                            const monthly = p.prices?.find(
-                              (price) => price.period === "MONTHLY",
-                            )?.price;
-                            return (
-                              <option key={p.id} value={p.id}>
-                                {p.name || `Plan #${p.id}`}
-                                {modCount > 0 ? ` · ${modCount} módulos` : ""}
-                                {monthly != null
-                                  ? ` · ${formatPlanPrice(monthly)}/mes`
-                                  : ""}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </label>
+                      <Select
+                        aria-label="Plan"
+                        selectedKey={planId || null}
+                        onSelectionChange={(key) =>
+                          setPlanId(key ? String(key) : "")
+                        }
+                        isRequired
+                      >
+                        <Label>Plan</Label>
+                        <Select.Trigger>
+                          <Select.Value />
+                          <Select.Indicator />
+                        </Select.Trigger>
+                        <Select.Popover>
+                          <ListBox>
+                            {plansForSelectedApp.map((p) => {
+                              const modCount = getPlanModulesForApp(
+                                p,
+                                planApp!.id,
+                              ).length;
+                              const monthly = p.prices?.find(
+                                (price) => price.period === "MONTHLY",
+                              )?.price;
+                              const label = [
+                                p.name || `Plan #${p.id}`,
+                                modCount > 0 ? `${modCount} módulos` : null,
+                                monthly != null
+                                  ? `${formatPlanPrice(monthly)}/mes`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ");
+                              return (
+                                <ListBox.Item
+                                  key={p.id}
+                                  id={String(p.id)}
+                                  textValue={label}
+                                >
+                                  {label}
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              );
+                            })}
+                          </ListBox>
+                        </Select.Popover>
+                      </Select>
 
                       {selectedPlan && selectedPlanModules.length > 0 && (
                         <div
@@ -1026,23 +1000,33 @@ export default function AppsPage() {
                         </div>
                       )}
 
-                      <label className={gp.label}>
-                        Período
-                        <select
-                          className={gp.input}
-                          value={planPeriod}
-                          onChange={(e) =>
-                            setPlanPeriod(
-                              e.target.value === "ANNUALLY"
-                                ? "ANNUALLY"
-                                : "MONTHLY",
-                            )
-                          }
-                        >
-                          <option value="MONTHLY">Mensual</option>
-                          <option value="ANNUALLY">Anual</option>
-                        </select>
-                      </label>
+                      <Select
+                        aria-label="Período"
+                        selectedKey={planPeriod}
+                        onSelectionChange={(key) =>
+                          setPlanPeriod(
+                            key === "ANNUALLY" ? "ANNUALLY" : "MONTHLY",
+                          )
+                        }
+                      >
+                        <Label>Período</Label>
+                        <Select.Trigger>
+                          <Select.Value />
+                          <Select.Indicator />
+                        </Select.Trigger>
+                        <Select.Popover>
+                          <ListBox>
+                            <ListBox.Item id="MONTHLY" textValue="Mensual">
+                              Mensual
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                            <ListBox.Item id="ANNUALLY" textValue="Anual">
+                              Anual
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          </ListBox>
+                        </Select.Popover>
+                      </Select>
                     </>
                   )}
                 </Modal.Body>

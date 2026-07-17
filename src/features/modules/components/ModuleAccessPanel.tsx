@@ -22,6 +22,7 @@ import {
 import { effectiveSectionStatusForApp } from "@/src/shared/lib/lifecycle-status-resolve";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import {
   LifecycleStatusSelect,
@@ -77,7 +78,6 @@ export function ModuleAccessPanel({
 
   const { apps: allApps } = useApps();
   const [tab, setTab] = useState<"global" | "app">(initialTab);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<number | null>(
@@ -147,7 +147,6 @@ export function ModuleAccessPanel({
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const appIdForLoad = initialAppId ?? null;
       const qs =
@@ -170,7 +169,7 @@ export function ModuleAccessPanel({
       );
       setSectionOverrides(overridesMapFromPayload(data.section_overrides));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      appToast.error(err instanceof Error ? err.message : "Error al cargar");
     } finally {
       setLoading(false);
     }
@@ -199,7 +198,6 @@ export function ModuleAccessPanel({
 
   async function toggleAssignment(appId: number, assign: boolean) {
     setBusyKey(`assign-${appId}`);
-    setError("");
     try {
       const res = await fetch(apiUrl(`/api/modules/${module.id}/assign-app`), {
         method: "POST",
@@ -209,13 +207,13 @@ export function ModuleAccessPanel({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al asignar");
       if (data.push_error) {
-        setError(`Guardado, pero sync falló: ${data.push_error}`);
+        appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
       }
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al asignar");
+      appToast.error(err instanceof Error ? err.message : "Error al asignar");
     } finally {
       setBusyKey(null);
     }
@@ -223,7 +221,6 @@ export function ModuleAccessPanel({
 
   async function saveModuleAppStatus(appId: number, value: string) {
     setBusyKey(`mod-${appId}`);
-    setError("");
     try {
       const clear = value === "__inherit__";
       const res = await fetch(apiUrl(`/api/modules/${module.id}/app-status`), {
@@ -235,7 +232,7 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
-      if (data.push_error) setError(`Guardado, pero sync falló: ${data.push_error}`);
+      if (data.push_error) appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       if (selectedAppId === appId) {
@@ -243,7 +240,7 @@ export function ModuleAccessPanel({
       }
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setBusyKey(null);
     }
@@ -255,7 +252,6 @@ export function ModuleAccessPanel({
     value: string,
   ) {
     setBusyKey(`sec-${sectionId}`);
-    setError("");
     try {
       const clear = value === "__inherit__";
       const res = await fetch(apiUrl(`/api/sections/${sectionId}/app-status`), {
@@ -267,11 +263,11 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
-      if (data.push_error) setError(`Guardado, pero sync falló: ${data.push_error}`);
+      if (data.push_error) appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
       await reloadOverrides(appId);
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setBusyKey(null);
     }
@@ -279,7 +275,6 @@ export function ModuleAccessPanel({
 
   async function changeModuleGlobal(status: LifecycleStatus) {
     setBusyKey("global-module");
-    setError("");
     onModuleUpdate({ ...module, status });
     try {
       const res = await fetch(apiUrl(`/api/modules/${module.id}`), {
@@ -291,12 +286,12 @@ export function ModuleAccessPanel({
       if (!res.ok) throw new Error(data.error || "Error al actualizar módulo");
       const { push_error: pushError, ...modData } = data;
       onModuleUpdate({ ...module, ...modData, sections: module.sections });
-      if (pushError) setError(`Guardado, pero sync falló: ${pushError}`);
+      if (pushError) appToast.warning(`Guardado, pero sync falló: ${pushError}`);
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
       onModuleUpdate(module);
     } finally {
       setBusyKey(null);
@@ -305,7 +300,6 @@ export function ModuleAccessPanel({
 
   async function changeSectionGlobal(sec: Section, status: LifecycleStatus) {
     setBusyKey(`global-sec-${sec.id}`);
-    setError("");
     onModuleUpdate({
       ...module,
       sections: module.sections.map((s) =>
@@ -328,10 +322,10 @@ export function ModuleAccessPanel({
           s.id === sec.id ? { ...s, ...sectionData } : s,
         ),
       });
-      if (pushError) setError(`Guardado, pero sync falló: ${pushError}`);
+      if (pushError) appToast.warning(`Guardado, pero sync falló: ${pushError}`);
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      appToast.error(err instanceof Error ? err.message : "Error al guardar");
       onModuleUpdate(module);
     } finally {
       setBusyKey(null);
@@ -361,7 +355,6 @@ export function ModuleAccessPanel({
 
   async function handleCreateSection(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSectionSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -387,8 +380,9 @@ export function ModuleAccessPanel({
       };
       updateSections((sections) => [...sections, section]);
       sectionCreateState.close();
+      appToast.success("Sección creada");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSectionSubmitting(false);
     }
@@ -397,7 +391,6 @@ export function ModuleAccessPanel({
   async function handleEditSection(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editingSection) return;
-    setError("");
     setSectionSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -427,7 +420,7 @@ export function ModuleAccessPanel({
       sectionEditState.close();
       setEditingSection(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSectionSubmitting(false);
     }
@@ -435,7 +428,6 @@ export function ModuleAccessPanel({
 
   async function handleDeleteSection() {
     if (!deletingSection) return;
-    setError("");
     setSectionSubmitting(true);
     try {
       const res = await fetch(apiUrl(`/api/sections/${deletingSection.id}`), {
@@ -451,7 +443,7 @@ export function ModuleAccessPanel({
       sectionDeleteState.close();
       setDeletingSection(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSectionSubmitting(false);
     }
@@ -459,18 +451,15 @@ export function ModuleAccessPanel({
 
   function openCapabilities(sec: Section) {
     setManagingCapabilitiesSection(sec);
-    setError("");
   }
 
   function openEditSection(sec: Section) {
     setEditingSection(sec);
-    setError("");
     sectionEditState.open();
   }
 
   function openDeleteSection(sec: Section) {
     setDeletingSection(sec);
-    setError("");
     sectionDeleteState.open();
   }
 
@@ -498,12 +487,6 @@ export function ModuleAccessPanel({
             </Modal.Header>
 
             <Modal.Body className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-              {error ? (
-                <Alert status="danger">
-                  <Alert.Description>{error}</Alert.Description>
-                </Alert>
-              ) : null}
-
               <div className="flex gap-1 rounded-lg bg-[var(--gp-surface-muted)] p-1">
                 <button
                   type="button"
@@ -593,11 +576,6 @@ export function ModuleAccessPanel({
                       </Modal.Header>
                       <form onSubmit={handleCreateSection} className="flex min-h-0 flex-1 flex-col">
                         <Modal.Body className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                          {error ? (
-                            <Alert status="danger">
-                              <Alert.Description>{error}</Alert.Description>
-                            </Alert>
-                          ) : null}
                           <label className={gp.label}>
                             Nombre
                             <input
@@ -657,11 +635,6 @@ export function ModuleAccessPanel({
             {editingSection && (
               <form onSubmit={handleEditSection} className="flex min-h-0 flex-1 flex-col">
                 <Modal.Body className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                  {error ? (
-                    <Alert status="danger">
-                      <Alert.Description>{error}</Alert.Description>
-                    </Alert>
-                  ) : null}
                   <label className={gp.label}>
                     Nombre
                     <input
@@ -726,11 +699,6 @@ export function ModuleAccessPanel({
               <Modal.Heading>Eliminar sección</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              {error ? (
-                <Alert status="danger">
-                  <Alert.Description>{error}</Alert.Description>
-                </Alert>
-              ) : null}
               <p className={gp.subtitle}>
                 ¿Eliminar la sección <strong>{deletingSection?.name}</strong>?
                 {deletingSection?.max_records_limit != null ? (
@@ -822,7 +790,7 @@ function GlobalTab({
           value={normalizeLifecycleStatus(module.status)}
           onChange={onModuleChange}
           aria-label={`Estado global de ${module.name}`}
-          className={busyKey === "global-module" ? "opacity-60" : ""}
+          busy={busyKey === "global-module"}
         />
       </div>
 
@@ -1138,7 +1106,7 @@ function SectionStatusTable({
                       inheritLabel={row.inheritLabel}
                       busy={busyKey === `sec-${row.id}`}
                       aria-label={`Estado de ${row.name}`}
-                      className="h-7 min-w-[118px] text-[11px]"
+                      className="min-w-[118px]"
                       onChange={(v) => onSectionAppStatus(row.id, appId, v)}
                     />
                   ) : onGlobalChange ? (
@@ -1146,9 +1114,7 @@ function SectionStatusTable({
                       value={row.status}
                       onChange={(s) => onGlobalChange(row.section, s)}
                       aria-label={`Estado global de ${row.name}`}
-                      className={`h-7 min-w-[118px] text-[11px] ${
-                        busyKey === `global-sec-${row.id}` ? "opacity-60" : ""
-                      }`}
+                      busy={busyKey === `global-sec-${row.id}`}
                     />
                   ) : null}
                 </div>

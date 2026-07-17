@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const publicPaths = ["/login"];
+const publicPaths = ["/login", "/"];
 const allowedOrigins = [
   "http://localhost:5173", // EdDeli Vite
   "http://127.0.0.1:5173",

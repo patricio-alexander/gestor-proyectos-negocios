@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Modal, Spinner, useOverlayState } from "@heroui/react";
+import { Alert, Button, Label, ListBox, Modal, Select, Spinner, useOverlayState } from "@heroui/react";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
 import { PlanCard } from "@/src/features/plans/components/PlanCard";
 import { ExportPlansModal } from "@/src/features/plans/components/ExportPlansModal";
@@ -15,6 +15,7 @@ import type { Offer } from "@/src/features/offers/types";
 import type { Subscription } from "@/src/features/subscriptions/types";
 import { useEffect, useMemo, useState } from "react";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 import { ManagerHeader } from "@/src/shared/components/TableSearchBar";
 import FileText from "@gravity-ui/icons/FileText";
 import Plus from "@gravity-ui/icons/Plus";
@@ -30,7 +31,6 @@ type PlanFormApp = {
 
 type PlanFormProps = {
   onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
-  error: string;
   submitting: boolean;
   editing?: Plan | null;
   apps: PlanFormApp[];
@@ -41,7 +41,6 @@ type PlanFormProps = {
 
 function PlanForm({
   onSubmit,
-  error,
   submitting,
   editing,
   apps,
@@ -84,11 +83,6 @@ function PlanForm({
   return (
     <form onSubmit={onSubmit}>
       <Modal.Body className="space-y-4">
-        {error && (
-          <Alert status="danger">
-            <Alert.Description>{error}</Alert.Description>
-          </Alert>
-        )}
         <label className="gp-label">
           Nombre
           <input
@@ -125,22 +119,33 @@ function PlanForm({
             />
           </label>
         </div>
-        <label className="gp-label">
-          Aplicación
-          <select
-            name="app_id"
-            value={selectedAppId}
-            onChange={(e) => setSelectedAppId(e.target.value)}
-            className="gp-input"
-          >
-            <option value="">Seleccioná una app</option>
-            {apps.map((app) => (
-              <option key={app.id} value={app.id}>
-                {app.name || `App ${app.id}`}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          aria-label="Aplicación"
+          selectedKey={selectedAppId || null}
+          onSelectionChange={(key) => setSelectedAppId(key ? String(key) : "")}
+          isRequired
+        >
+          <Label>Aplicación</Label>
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {apps.map((app) => (
+                <ListBox.Item
+                  key={app.id}
+                  id={String(app.id)}
+                  textValue={app.name || `App ${app.id}`}
+                >
+                  {app.name || `App ${app.id}`}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
+        <input type="hidden" name="app_id" value={selectedAppId} />
         <fieldset key={selectedAppId || "no-app"}>
           <legend className="mb-2 text-sm font-medium text-zinc-700">
             Módulos para la app seleccionada
@@ -221,9 +226,9 @@ function getAppIdsFromForm(
   form: HTMLFormElement,
   fallbackAppIds: number[],
 ): number[] {
-  const appIdRaw = form.elements.namedItem("app_id");
-  if (appIdRaw instanceof HTMLSelectElement && appIdRaw.value) {
-    const appId = Number(appIdRaw.value);
+  const appIdRaw = new FormData(form).get("app_id");
+  if (appIdRaw && String(appIdRaw)) {
+    const appId = Number(appIdRaw);
     if (!Number.isNaN(appId)) return [appId];
   }
   return fallbackAppIds;
@@ -253,7 +258,6 @@ export default function PlansPage() {
   const [deleting, setDeleting] = useState<Plan | null>(null);
   const [enabling, setEnabling] = useState<Plan | null>(null);
   const [viewingSubs, setViewingSubs] = useState<Plan | null>(null);
-  const [enableSuccess, setEnableSuccess] = useState<string | null>(null);
   const [enableAppId, setEnableAppId] = useState("");
   const [enablePeriod, setEnablePeriod] = useState<
     "MONTHLY" | "ANNUALLY" | null
@@ -263,7 +267,6 @@ export default function PlansPage() {
     currentPlanName: string | null;
     nextPlanName: string | null;
   } | null>(null);
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const createState = useOverlayState();
@@ -284,7 +287,6 @@ export default function PlansPage() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
@@ -302,9 +304,9 @@ export default function PlansPage() {
         offer_ids: getCheckedIds(form, "offer_ids"),
       });
       createState.close();
-      setError("");
+      appToast.success("Plan creado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -313,7 +315,6 @@ export default function PlansPage() {
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
-    setError("");
     setSubmitting(true);
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
@@ -332,9 +333,9 @@ export default function PlansPage() {
       });
       editState.close();
       setEditing(null);
-      setError("");
+      appToast.success("Plan actualizado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -342,15 +343,14 @@ export default function PlansPage() {
 
   async function handleDelete() {
     if (!deleting) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deleting.id);
       deleteState.close();
       setDeleting(null);
-      setError("");
+      appToast.success("Plan eliminado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -358,30 +358,25 @@ export default function PlansPage() {
 
   function openEdit(plan: Plan) {
     setEditing(plan);
-    setError("");
     editState.open();
   }
 
   function openDelete(plan: Plan) {
     setDeleting(plan);
-    setError("");
     deleteState.open();
   }
 
   function openEnableSubscription(plan: Plan) {
     setEnabling(plan);
-    setEnableSuccess(null);
     setEnablePeriod(null);
     setPendingReplace(null);
     const eligible = filterDeploymentAppsForPlan(deploymentApps, plan);
     setEnableAppId(eligible[0] ? String(eligible[0].id) : "");
-    setError("");
     enableState.open();
   }
 
   function openSubscriptionList(plan: Plan) {
     setViewingSubs(plan);
-    setError("");
     subListState.open();
     void refetchSubscriptions();
   }
@@ -393,19 +388,18 @@ export default function PlansPage() {
     if (!enabling) return;
     const period = opts?.period ?? enablePeriod;
     if (!enableAppId) {
-      setError("Elegí a qué app habilitar este plan");
+      appToast.warning("Elegí a qué app habilitar este plan");
       return;
     }
     if (!enableEligibleApps.some((app) => String(app.id) === enableAppId)) {
-      setError("La app seleccionada no forma parte de este plan");
+      appToast.warning("La app seleccionada no forma parte de este plan");
       return;
     }
     if (!period) {
-      setError("Seleccioná el período");
+      appToast.warning("Seleccioná el período");
       return;
     }
     setEnablePeriod(period);
-    setError("");
     setSubmitting(true);
     try {
       const res = await fetch(apiUrl("/api/subscriptions/enable"), {
@@ -447,12 +441,13 @@ export default function PlansPage() {
       const replaced = data.replaced_subscription_id
         ? " (reemplazó el plan anterior)"
         : "";
-      setEnableSuccess(
+      appToast.success(
         `Suscripción activa en ${data.app_name || "la app"}${replaced}${pushNote}.`,
       );
       await refetchSubscriptions();
+      handleCloseEnable();
     } catch (err) {
-      setError(
+      appToast.error(
         err instanceof Error ? err.message : "Error al habilitar suscripción",
       );
     } finally {
@@ -463,11 +458,9 @@ export default function PlansPage() {
   function handleCloseEnable() {
     enableState.close();
     setEnabling(null);
-    setEnableSuccess(null);
     setEnablePeriod(null);
     setEnableAppId("");
     setPendingReplace(null);
-    setError("");
   }
 
   if (loading) {
@@ -513,7 +506,6 @@ export default function PlansPage() {
                     <PlanForm
                       key="create"
                       onSubmit={handleCreate}
-                      error={error}
                       submitting={submitting}
                       apps={businesses.map((app) => ({
                         id: app.id,
@@ -576,7 +568,6 @@ export default function PlansPage() {
               <PlanForm
                 key={editing?.id ?? "edit"}
                 onSubmit={handleEdit}
-                error={error}
                 submitting={submitting}
                 editing={editing}
                 apps={businesses.map((app) => ({
@@ -604,11 +595,6 @@ export default function PlansPage() {
                 <Modal.Heading>Eliminar plan</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className="gp-subtitle">
                   ¿Estás seguro de que querés eliminar el plan{" "}
                   <strong>{deleting?.name}</strong>?
@@ -638,41 +624,13 @@ export default function PlansPage() {
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
-                  {enableSuccess
-                    ? "Suscripción creada"
-                    : pendingReplace
-                      ? "La app ya tiene un plan"
-                      : "Crear suscripción"}
+                  {pendingReplace
+                    ? "La app ya tiene un plan"
+                    : "Crear suscripción"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
-                {enableSuccess ? (
-                  <div className="flex flex-col items-center gap-3 py-2 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-green-100">
-                      <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-green-600"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                    <p className="text-sm font-medium text-green-700">
-                      {enableSuccess}
-                    </p>
-                  </div>
-                ) : pendingReplace ? (
+                {pendingReplace ? (
                   <div className="space-y-3">
                     <Alert status="warning">
                       <Alert.Description>
@@ -712,21 +670,34 @@ export default function PlansPage() {
                           que forman parte de este plan.
                         </p>
                         <div className="mt-4 space-y-3">
-                          <label className="gp-label">
-                            App
-                            <select
-                              value={enableAppId}
-                              onChange={(e) => setEnableAppId(e.target.value)}
-                              className="gp-select"
-                            >
-                              <option value="">Seleccionar app</option>
-                              {enableEligibleApps.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                          <Select
+                            aria-label="App"
+                            selectedKey={enableAppId || null}
+                            onSelectionChange={(key) =>
+                              setEnableAppId(key ? String(key) : "")
+                            }
+                            isRequired
+                          >
+                            <Label>App</Label>
+                            <Select.Trigger>
+                              <Select.Value />
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                {enableEligibleApps.map((b) => (
+                                  <ListBox.Item
+                                    key={b.id}
+                                    id={String(b.id)}
+                                    textValue={b.name ?? `App ${b.id}`}
+                                  >
+                                    {b.name}
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
                           <p className="text-[11px] text-zinc-500">
                             Tip: la app debe tener URL entitlement + API Key
                             igual a GESTOR_SYNC_SECRET del backend para que el
@@ -792,7 +763,7 @@ export default function PlansPage() {
                   </>
                 ) : (
                   <Button variant="secondary" onPress={handleCloseEnable}>
-                    {enableSuccess ? "Cerrar" : "Cancelar"}
+                    Cancelar
                   </Button>
                 )}
               </Modal.Footer>

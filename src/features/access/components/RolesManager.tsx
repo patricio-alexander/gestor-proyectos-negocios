@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Modal, Spinner, useOverlayState } from "@heroui/react";
+import { Button, Modal, Spinner, useOverlayState } from "@heroui/react";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
 import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
@@ -13,6 +13,7 @@ import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSear
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 
 const PAGE_SIZE = 10;
 const SYSTEM_ROLES = new Set(["programador", "admin", "operator"]);
@@ -29,7 +30,6 @@ export function RolesManager() {
   const { roles, loading, create, update, remove } = useRoles();
   const [editing, setEditing] = useState<RoleRecord | null>(null);
   const [deleting, setDeleting] = useState<RoleRecord | null>(null);
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const createState = useOverlayState();
@@ -54,7 +54,6 @@ export function RolesManager() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -64,8 +63,9 @@ export function RolesManager() {
         description: (form.get("description") as string) || undefined,
       });
       createState.close();
+      appToast.success("Rol creado");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +74,6 @@ export function RolesManager() {
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
-    setError("");
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -86,7 +85,7 @@ export function RolesManager() {
       editState.close();
       setEditing(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -94,14 +93,13 @@ export function RolesManager() {
 
   async function handleDelete() {
     if (!deleting) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deleting.id);
       deleteState.close();
       setDeleting(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -141,11 +139,6 @@ export function RolesManager() {
                   </Modal.Header>
                   <form onSubmit={handleCreate}>
                     <Modal.Body className="space-y-4">
-                      {error && (
-                        <Alert status="danger">
-                          <Alert.Description>{error}</Alert.Description>
-                        </Alert>
-                      )}
                       <label className={gp.label}>
                         Clave
                         <input name="key" required placeholder="support" className={gp.input} />
@@ -225,7 +218,6 @@ export function RolesManager() {
                           aria-label={`Editar ${role.name}`}
                           onPress={() => {
                             setEditing(role);
-                            setError("");
                             editState.open();
                           }}
                         >
@@ -246,7 +238,6 @@ export function RolesManager() {
                             className="text-red-500"
                             onPress={() => {
                               setDeleting(role);
-                              setError("");
                               deleteState.open();
                             }}
                           >
@@ -280,11 +271,6 @@ export function RolesManager() {
               {editing && (
                 <form onSubmit={handleEdit}>
                   <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <label className={gp.label}>
                       Clave
                       <input
@@ -333,11 +319,6 @@ export function RolesManager() {
                 <Modal.Heading>Eliminar rol</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar el rol <strong>{deleting?.name}</strong>?
                 </p>

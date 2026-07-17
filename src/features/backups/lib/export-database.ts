@@ -6,32 +6,88 @@ import { prisma } from "@/src/shared/lib/prisma";
 export const BACKUPS_DIR = path.join(process.cwd(), "backups");
 export const MAIN_BACKUP_PATH = path.join(BACKUPS_DIR, "backup.json");
 
+export type DbClient = typeof prisma;
+
 type Delegate = {
   findMany: (args?: object) => Promise<unknown[]>;
 };
 
-/**
- * Tablas a volcar en el JSON (nombre en archivo → prisma delegate).
- * Orden: primero catálogos / pivotes sin dependencia fuerte de FK en export.
- */
-export const BACKUP_TABLE_ENTRIES: { key: string; get: () => Delegate }[] = [
-  { key: "Role", get: () => prisma.role },
-  { key: "User", get: () => prisma.user },
-  { key: "UserRole", get: () => prisma.userRole },
-  { key: "Apps", get: () => prisma.apps },
-  { key: "Module", get: () => prisma.module },
-  { key: "Section", get: () => prisma.section },
-  { key: "Capability", get: () => prisma.capability },
-  { key: "Offer", get: () => prisma.offer },
-  { key: "OfferModule", get: () => prisma.offerModule },
-  { key: "Plan", get: () => prisma.plan },
-  { key: "PlanAppModule", get: () => prisma.planAppModule },
-  { key: "PlanPrice", get: () => prisma.planPrice },
-  { key: "PlanOffer", get: () => prisma.planOffer },
-  { key: "Subscription", get: () => prisma.subscription },
-  { key: "EventType", get: () => prisma.eventType },
-  { key: "Event", get: () => prisma.event },
-];
+export const BACKUP_TABLE_KEYS = [
+  "Role",
+  "User",
+  "UserRole",
+  "Apps",
+  "Module",
+  "Section",
+  "Capability",
+  "AppModule",
+  "AppSection",
+  "Offer",
+  "OfferModule",
+  "Plan",
+  "PlanAppModule",
+  "PlanPrice",
+  "PlanOffer",
+  "Subscription",
+  "EventType",
+  "Event",
+] as const;
+
+export type BackupTableKey = (typeof BACKUP_TABLE_KEYS)[number];
+
+export function backupTableDelegate(db: DbClient, key: BackupTableKey): Delegate {
+  switch (key) {
+    case "Role":
+      return db.role;
+    case "User":
+      return db.user;
+    case "UserRole":
+      return db.userRole;
+    case "Apps":
+      return db.apps;
+    case "Module":
+      return db.module;
+    case "Section":
+      return db.section;
+    case "Capability":
+      return db.capability;
+    case "AppModule":
+      return db.appModule;
+    case "AppSection":
+      return db.appSection;
+    case "Offer":
+      return db.offer;
+    case "OfferModule":
+      return db.offerModule;
+    case "Plan":
+      return db.plan;
+    case "PlanAppModule":
+      return db.planAppModule;
+    case "PlanPrice":
+      return db.planPrice;
+    case "PlanOffer":
+      return db.planOffer;
+    case "Subscription":
+      return db.subscription;
+    case "EventType":
+      return db.eventType;
+    case "Event":
+      return db.event;
+    default: {
+      const _exhaustive: never = key;
+      throw new Error(`Tabla de backup desconocida: ${_exhaustive}`);
+    }
+  }
+}
+
+/** Tablas a volcar en el JSON (nombre en archivo → prisma delegate). */
+export const BACKUP_TABLE_ENTRIES: {
+  key: BackupTableKey;
+  get: (db?: DbClient) => Delegate;
+}[] = BACKUP_TABLE_KEYS.map((key) => ({
+  key,
+  get: (db: DbClient = prisma) => backupTableDelegate(db, key),
+}));
 
 function serializeValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
@@ -145,7 +201,7 @@ export async function listStoredBackups() {
 
   for (const name of names) {
     if (name === "backup.json" || !name.endsWith(".json")) continue;
-    if (!name.startsWith("backup-gestor-")) continue;
+    if (!name.startsWith("backup-gestor-") && !name.startsWith("backup-gestor-import-")) continue;
     const full = path.join(BACKUPS_DIR, name);
     const st = await fs.stat(full);
     stored.push({
@@ -163,7 +219,8 @@ export async function listStoredBackups() {
 export function isSafeBackupFilename(filename: string) {
   return (
     filename === "backup.json" ||
-    (/^backup-gestor-[\w.-]+\.json$/.test(filename) && !filename.includes(".."))
+    (/^backup-gestor(?:-import)?-[\w.-]+\.json$/.test(filename) &&
+      !filename.includes(".."))
   );
 }
 

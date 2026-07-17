@@ -6,13 +6,13 @@ import Briefcase from "@gravity-ui/icons/Briefcase";
 import type { LifecycleStatus } from "../types";
 import {
   LIFECYCLE_STATUS_LABELS,
-  LIFECYCLE_STATUS_OPTIONS,
   normalizeLifecycleStatus,
 } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { gp } from "@/src/shared/ui/theme";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
+import { LifecycleStatusInheritSelect } from "./LifecycleStatusInheritSelect";
 
 type AssignmentRow = {
   app_id: number;
@@ -99,7 +99,8 @@ export function ModuleAppsPanel({
     setBusyAppId(appId);
     onError?.("");
     try {
-      const clear = value === "" || value === "__global__";
+      const clear =
+        value === "" || value === "__global__" || value === "__inherit__";
       const res = await fetch(apiUrl(`/api/modules/${moduleId}/app-status`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -200,9 +201,6 @@ export function ModuleAppsPanel({
                         const isAssigned = assignedAppIds.has(app.id);
                         const currentStatus = statusByApp.get(app.id);
                         const hasOverride = currentStatus != null;
-                        const selectValue = hasOverride
-                          ? normalizeLifecycleStatus(currentStatus)
-                          : "__global__";
                         const busy = busyAppId === app.id;
 
                         return (
@@ -244,34 +242,14 @@ export function ModuleAppsPanel({
 
                               <div className="flex shrink-0 flex-col items-end gap-1">
                                 {busy ? <Spinner size="sm" /> : null}
-                                <select
-                                  className={`h-9 min-w-[140px] rounded-lg border px-2 text-xs ${
-                                    !isAssigned
-                                      ? "cursor-not-allowed opacity-40"
-                                      : hasOverride
-                                        ? "border-amber-300 bg-amber-50 font-semibold"
-                                        : "border-[var(--gp-border)] bg-white"
-                                  }`}
-                                  value={selectValue}
-                                  disabled={!isAssigned || busy}
-                                  title={
-                                    !isAssigned
-                                      ? "Asigná el módulo primero"
-                                      : "Estado en esta app"
-                                  }
-                                  onChange={(e) =>
-                                    void saveStatus(app.id, e.target.value)
-                                  }
-                                >
-                                  <option value="__global__">
-                                    Hereda · {globalLabel}
-                                  </option>
-                                  {LIFECYCLE_STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                      {LIFECYCLE_STATUS_LABELS[opt]}
-                                    </option>
-                                  ))}
-                                </select>
+                                <LifecycleStatusInheritSelect
+                                  value={hasOverride ? currentStatus : null}
+                                  inheritLabel={globalLabel}
+                                  disabled={!isAssigned}
+                                  busy={busy}
+                                  aria-label={`Estado del módulo en ${app.name || "app"}`}
+                                  onChange={(v) => void saveStatus(app.id, v)}
+                                />
                                 {isAssigned && hasOverride ? (
                                   <span className="text-[10px] font-medium text-amber-700">
                                     Override activo

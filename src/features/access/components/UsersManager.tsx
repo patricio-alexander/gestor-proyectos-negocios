@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Alert, Button, Modal, Spinner, useOverlayState } from "@heroui/react";
+import { Button, Modal, Spinner, useOverlayState } from "@heroui/react";
 import Persons from "@gravity-ui/icons/Persons";
 import Pencil from "@gravity-ui/icons/Pencil";
 import Plus from "@gravity-ui/icons/Plus";
@@ -16,6 +16,7 @@ import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSear
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
+import { appToast } from "@/src/shared/utils/app-toast";
 
 const PAGE_SIZE = 10;
 
@@ -84,7 +85,6 @@ export function UsersManager({
   const { roles } = useRoles();
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const createState = useOverlayState();
@@ -115,7 +115,6 @@ export function UsersManager({
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -130,7 +129,7 @@ export function UsersManager({
       createState.close();
       form.reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +138,6 @@ export function UsersManager({
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editing) return;
-    setError("");
     setSubmitting(true);
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -154,7 +152,7 @@ export function UsersManager({
       editState.close();
       setEditing(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      appToast.error(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setSubmitting(false);
     }
@@ -162,14 +160,13 @@ export function UsersManager({
 
   async function handleDelete() {
     if (!deleting) return;
-    setError("");
     setSubmitting(true);
     try {
       await remove(deleting.id);
       deleteState.close();
       setDeleting(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      appToast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSubmitting(false);
     }
@@ -211,11 +208,6 @@ export function UsersManager({
                   </Modal.Header>
                   <form onSubmit={handleCreate}>
                     <Modal.Body className="space-y-4">
-                      {error && (
-                        <Alert status="danger">
-                          <Alert.Description>{error}</Alert.Description>
-                        </Alert>
-                      )}
                       <label className={gp.label}>
                         Usuario
                         <input name="username" required className={gp.input} />
@@ -312,7 +304,6 @@ export function UsersManager({
                           aria-label={`Editar ${user.username}`}
                           onPress={() => {
                             setEditing(user);
-                            setError("");
                             editState.open();
                           }}
                         >
@@ -333,7 +324,6 @@ export function UsersManager({
                             className="text-red-500"
                             onPress={() => {
                               setDeleting(user);
-                              setError("");
                               deleteState.open();
                             }}
                           >
@@ -367,11 +357,6 @@ export function UsersManager({
               {editing && (
                 <form onSubmit={handleEdit}>
                   <Modal.Body className="space-y-4">
-                    {error && (
-                      <Alert status="danger">
-                        <Alert.Description>{error}</Alert.Description>
-                      </Alert>
-                    )}
                     <label className={gp.label}>
                       Usuario
                       <input
@@ -428,11 +413,6 @@ export function UsersManager({
                 <Modal.Heading>Eliminar {entityLabel}</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert status="danger">
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert>
-                )}
                 <p className={gp.subtitle}>
                   ¿Eliminar a <strong>{deleting?.username}</strong>?
                 </p>

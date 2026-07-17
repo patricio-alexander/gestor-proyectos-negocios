@@ -1,7 +1,15 @@
 "use client";
 
-import { Alert, Button, Spinner } from "@heroui/react";
+import { useRef, useState } from "react";
+import {
+  Alert,
+  Button,
+  Modal,
+  Spinner,
+  useOverlayState,
+} from "@heroui/react";
 import ArrowDownToLine from "@gravity-ui/icons/ArrowDownToLine";
+import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
 import ArrowsRotateLeft from "@gravity-ui/icons/ArrowsRotateLeft";
 import Clock from "@gravity-ui/icons/Clock";
 import Database from "@gravity-ui/icons/Database";
@@ -37,26 +45,52 @@ function summaryLine(counts: Record<string, number> | undefined) {
   return `${users} usuarios · ${apps} apps · ${modules} módulos · ${subs} suscripciones`;
 }
 
+function previewBackupJson(raw: string) {
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("El JSON debe ser un objeto con tablas");
+  }
+  const counts: Record<string, number> = {};
+  let totalRows = 0;
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!Array.isArray(value)) continue;
+    counts[key] = value.length;
+    totalRows += value.length;
+  }
+  if (totalRows === 0) {
+    throw new Error("El JSON no contiene filas para importar");
+  }
+  return { counts, totalRows };
+}
+
 export function BackupsManager() {
   const {
     main,
     stored,
     loading,
     busy,
-    error,
-    setError,
     refresh,
     exportAndDownload,
     saveOnly,
     downloadMain,
     downloadStored,
+    importFromFile,
   } = useBackups();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importState = useOverlayState();
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<{
+    counts: Record<string, number>;
+    totalRows: number;
+  } | null>(null);
+  const [previewError, setPreviewError] = useState("");
 
   async function onExport() {
     try {
       await exportAndDownload();
     } catch {
-      /* error ya en state */
+      /* toast en hook */
     }
   }
 
@@ -64,8 +98,50 @@ export function BackupsManager() {
     try {
       await saveOnly();
     } catch {
-      /* error ya en state */
+      /* toast en hook */
     }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPreviewError("");
+    setPendingFile(file);
+
+    try {
+      const text = await file.text();
+      setPendingPreview(previewBackupJson(text));
+      importState.open();
+    } catch (err) {
+      setPendingFile(null);
+      setPendingPreview(null);
+      setPreviewError(
+        err instanceof Error ? err.message : "No se pudo leer el archivo",
+      );
+      importState.open();
+    }
+  }
+
+  async function confirmImport() {
+    if (!pendingFile) return;
+    try {
+      await importFromFile(pendingFile);
+      importState.close();
+      setPendingFile(null);
+      setPendingPreview(null);
+      setPreviewError("");
+    } catch {
+      /* toast en hook */
+    }
+  }
+
+  function cancelImport() {
+    importState.close();
+    setPendingFile(null);
+    setPendingPreview(null);
+    setPreviewError("");
   }
 
   if (loading) {
@@ -78,15 +154,31 @@ export function BackupsManager() {
 
   return (
     <div className={gp.page}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => void handleFileChange(e)}
+      />
+
       <PageHeader
         title="Backups JSON"
-        description="Exporta la base de datos del gestor a JSON (como EdDeli). Guarda copias en el servidor y descárgalas."
+        description="Exporta, guarda o restaura la base de datos del gestor desde JSON (como EdDeli)."
         Icon={Database}
         action={
           <div className="flex flex-wrap gap-2">
             <Button isDisabled={busy} onPress={() => void refresh()}>
               <ArrowsRotateLeft width={16} height={16} />
               Actualizar
+            </Button>
+            <Button
+              isDisabled={busy}
+              variant="secondary"
+              onPress={() => fileInputRef.current?.click()}
+            >
+              <ArrowUpFromSquare width={16} height={16} />
+              Subir JSON
             </Button>
             <Button isDisabled={busy} onPress={() => void onSave()}>
               <FloppyDisk width={16} height={16} />
@@ -106,15 +198,6 @@ export function BackupsManager() {
           </div>
         }
       />
-
-      {error && (
-        <Alert status="danger">
-          <Alert.Description>{error}</Alert.Description>
-          <Button size="sm" className="mt-2" onPress={() => setError("")}>
-            Cerrar
-          </Button>
-        </Alert>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -147,8 +230,9 @@ export function BackupsManager() {
           <h2 className={gp.titleLg}>backup.json (fijo)</h2>
         </div>
         <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
-          Se actualiza al <strong>Exportar BD</strong> o{" "}
-          <strong>Guardar en servidor</strong>. Queda en la carpeta{" "}
+          Se actualiza al <strong>Exportar BD</strong>,{" "}
+          <strong>Guardar en servidor</strong> o{" "}
+          <strong>Subir JSON</strong>. Queda en la carpeta{" "}
           <code>backups/</code> del proyecto.
         </p>
         {main?.exists ? (
@@ -159,29 +243,41 @@ export function BackupsManager() {
         ) : (
           <Alert status="warning" className="mb-4">
             <Alert.Description>
-              Todavía no hay backup.json. Exporta o guarda desde la BD ahora.
+              Todavía no hay backup.json. Exporta, guarda o sube un JSON.
             </Alert.Description>
           </Alert>
         )}
-        <Button
-          isDisabled={!main?.exists || busy}
-          onPress={() => void downloadMain()}
-        >
-          <ArrowDownToLine width={16} height={16} />
-          Descargar backup.json
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            isDisabled={!main?.exists || busy}
+            onPress={() => void downloadMain()}
+          >
+            <ArrowDownToLine width={16} height={16} />
+            Descargar backup.json
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => fileInputRef.current?.click()}
+          >
+            <ArrowUpFromSquare width={16} height={16} />
+            Restaurar desde JSON
+          </Button>
+        </div>
       </div>
 
       <div className={gp.tableWrap}>
         <div className="border-b border-[var(--gp-border)] px-5 py-3">
           <h2 className={gp.titleLg}>Copias guardadas</h2>
           <p className="text-sm text-[var(--gp-text-muted)]">
-            Cada export genera un archivo fechado en <code>backups/</code>.
+            Cada export o import genera un archivo fechado en{" "}
+            <code>backups/</code>.
           </p>
         </div>
         {stored.length === 0 ? (
           <p className={gp.empty}>
-            No hay copias aún. Usa &quot;Exportar BD (JSON)&quot;.
+            No hay copias aún. Usa &quot;Exportar BD (JSON)&quot; o sube un
+            backup.
           </p>
         ) : (
           <table className={gp.table}>
@@ -214,6 +310,62 @@ export function BackupsManager() {
           </table>
         )}
       </div>
+
+      <Modal state={importState}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="max-w-md">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>Restaurar desde JSON</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="space-y-3">
+                {previewError ? (
+                  <Alert status="danger">
+                    <Alert.Description>{previewError}</Alert.Description>
+                  </Alert>
+                ) : (
+                  <>
+                    <Alert status="warning">
+                      <Alert.Description>
+                        Se borrarán <strong>todos los datos actuales</strong> de
+                        la base de datos y se reemplazarán por el contenido del
+                        archivo. Esta acción no se puede deshacer.
+                      </Alert.Description>
+                    </Alert>
+                    {pendingFile && (
+                      <p className="text-sm text-[var(--gp-text)]">
+                        Archivo:{" "}
+                        <span className="font-mono">{pendingFile.name}</span>
+                        {" · "}
+                        {formatSize(0, pendingFile.size)}
+                      </p>
+                    )}
+                    {pendingPreview && (
+                      <p className="text-sm text-[var(--gp-text-muted)]">
+                        {summaryLine(pendingPreview.counts)} ·{" "}
+                        {pendingPreview.totalRows} filas totales
+                      </p>
+                    )}
+                  </>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onPress={cancelImport}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  isDisabled={busy || !!previewError || !pendingFile}
+                  onPress={() => void confirmImport()}
+                >
+                  {busy ? <Spinner size="sm" /> : "Restaurar y reemplazar"}
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </div>
   );
 }
