@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "Gestor Proyectos",
+      name: "Raptor Solutions",
       script: "npm",
       args: "run start",
       autorestart: true,
