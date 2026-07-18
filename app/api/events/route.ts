@@ -35,14 +35,14 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    await createEvent({
+    const event = await createEvent({
       app_id: apiKey.app_id,
       type_key: body.type_key,
       name: body.name,
       metadata: body.metadata,
     });
     return NextResponse.json(
-      { captured: true, key: body.type_key },
+      { captured: true, key: body.type_key, event_id: event.id, event },
       { status: 201 },
     );
   } catch (err) {

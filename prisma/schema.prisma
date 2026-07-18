@@ -296,6 +296,11 @@ enum Period {
 
 // ─── Event tracking ─────────────────────────────────────────────────────────
 
+enum EventSource {
+  api
+  webhook
+}
+
 model EventType {
   id          Int      @id @default(autoincrement())
   key         String   @unique
@@ -307,17 +312,19 @@ model EventType {
 }
 
 model Event {
-  id         Int        @id @default(autoincrement())
+  id         Int         @id @default(autoincrement())
   app_id     Int
   type_id    Int
   name       String
   metadata   Json?
-  created_at DateTime   @default(now())
-  app        Apps       @relation(fields: [app_id], references: [id])
-  type       EventType  @relation(fields: [type_id], references: [id])
+  source     EventSource @default(api)
+  created_at DateTime    @default(now())
+  app        Apps        @relation(fields: [app_id], references: [id])
+  type       EventType   @relation(fields: [type_id], references: [id])
 
   @@index([app_id])
   @@index([type_id])
+  @@index([source])
   @@index([created_at])
   @@index([app_id, created_at])
 }

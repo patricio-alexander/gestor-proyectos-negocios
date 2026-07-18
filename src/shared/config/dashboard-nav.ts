@@ -20,6 +20,7 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
       { label: "Mi perfil", href: "/dashboard/profile" },
       { label: "Notificaciones", href: "/dashboard/notifications" },
       { label: "Aplicaciones", href: "/dashboard/apps" },
+      { label: "Kanban apps", href: "/dashboard/kanban" },
     ],
   },
   {

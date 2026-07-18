@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateEventInput, EventRecord } from "@/src/features/events/types";
-import { apiUrl } from "@/src/utils/apiUrl";
+import { fetchJson } from "@/src/shared/lib/api-client";
+import { queryKeys } from "@/src/shared/lib/query-keys";
+import { useRealtimeStatus } from "@/src/shared/providers/RealtimeProvider";
 
 type AppStats = {
   app_id: number;
@@ -10,49 +12,68 @@ type AppStats = {
   types: Array<{ type_name: string; count: number }>;
 };
 
+type EventsStatsResponse = {
+  apps?: AppStats[];
+};
+
+async function fetchEvents(range: string): Promise<EventRecord[]> {
+  return fetchJson<EventRecord[]>(`/api/events?range=${encodeURIComponent(range)}`);
+}
+
+async function fetchEventsStats(range: string): Promise<AppStats[]> {
+  const data = await fetchJson<EventsStatsResponse>(
+    `/api/events/stats?range=${encodeURIComponent(range)}`,
+  );
+  return data.apps ?? [];
+}
+
 export function useEvents(range: string = "TODO") {
-  const [events, setEvents] = useState<EventRecord[]>([]);
-  const [apps, setApps] = useState<AppStats[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const realtimeStatus = useRealtimeStatus();
+  const pollFallback = realtimeStatus !== "connected";
 
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const query = `?range=${range}`;
-      const [eventsRes, statsRes] = await Promise.all([
-        fetch(apiUrl(`/api/events${query}`)),
-        fetch(apiUrl(`/api/events/stats${query}`)),
-      ]);
-      if (eventsRes.ok) setEvents(await eventsRes.json());
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setApps(data.apps ?? []);
-      }
-    } catch {
-      console.error("Error fetching events");
-    } finally {
-      setLoading(false);
-    }
-  }, [range]);
+  const eventsQuery = useQuery({
+    queryKey: queryKeys.events.list(undefined, range),
+    queryFn: () => fetchEvents(range),
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+    refetchInterval: pollFallback ? 4_000 : false,
+  });
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  const statsQuery = useQuery({
+    queryKey: queryKeys.events.stats(range),
+    queryFn: () => fetchEventsStats(range),
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+    refetchInterval: pollFallback ? 4_000 : false,
+  });
 
   async function create(input: CreateEventInput) {
-    const res = await fetch(apiUrl("/api/events"), {
+    const event = await fetchJson<EventRecord>("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al crear evento");
-    }
-    const event: EventRecord = await res.json();
-    setEvents((prev) => [event, ...prev]);
+
+    queryClient.setQueryData<EventRecord[]>(
+      queryKeys.events.list(undefined, range),
+      (current) => (current ? [event, ...current] : [event]),
+    );
+    void queryClient.invalidateQueries({ queryKey: queryKeys.events.stats(range) });
+
     return event;
   }
 
-  return { events, apps, loading, create, refetch: fetchEvents };
+  const refetch = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+  };
+
+  return {
+    events: eventsQuery.data ?? [],
+    apps: statsQuery.data ?? [],
+    loading: eventsQuery.isPending || statsQuery.isPending,
+    isFetching: eventsQuery.isFetching || statsQuery.isFetching,
+    create,
+    refetch,
+  };
 }

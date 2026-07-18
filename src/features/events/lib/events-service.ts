@@ -1,8 +1,11 @@
 import { prisma } from "@/src/shared/lib/prisma";
+import type { Prisma } from "@/prisma/generated/prisma/client";
 import type {
   CreateEventInput,
   EventRecord,
+  EventSource,
 } from "@/src/features/events/types";
+import { getOrCreateEventTypeByKey } from "./event-types-service";
 
 function mapEvent(row: {
   id: number;
@@ -10,6 +13,7 @@ function mapEvent(row: {
   type_id: number;
   name: string;
   metadata: unknown;
+  source: EventSource;
   created_at: Date;
   type?: {
     id: number;
@@ -25,6 +29,7 @@ function mapEvent(row: {
     type_id: row.type_id,
     name: row.name,
     metadata: row.metadata as Record<string, unknown> | null,
+    source: row.source,
     created_at: row.created_at.toISOString(),
     ...(row.type
       ? {
@@ -62,22 +67,15 @@ export async function listEvents(appId?: number, range?: string) {
 }
 
 export async function createEvent(input: CreateEventInput) {
-  const type = await prisma.eventType.findUnique({
-    where: { key: input.type_key.trim() },
-    select: { id: true },
-  });
-  if (!type)
-    throw Object.assign(
-      new Error(`EventType "${input.type_key}" no encontrado`),
-      { statusCode: 404 },
-    );
+  const { type } = await getOrCreateEventTypeByKey(input.type_key.trim());
 
   const row = await prisma.event.create({
     data: {
       app_id: input.app_id,
       type_id: type.id,
       name: input.name.trim(),
-      metadata: input.metadata as any,
+      source: input.source ?? "api",
+      metadata: input.metadata as Prisma.InputJsonValue | undefined,
     },
     include: { type: true },
   });

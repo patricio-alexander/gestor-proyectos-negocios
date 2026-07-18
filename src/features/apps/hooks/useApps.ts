@@ -1,119 +1,99 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type { App, CreateAppInput, UpdateAppInput } from "../types";
-import { apiUrl } from "@/src/utils/apiUrl";
+import { fetchJson } from "@/src/shared/lib/api-client";
+import { queryKeys } from "@/src/shared/lib/query-keys";
+
+async function fetchApps(): Promise<App[]> {
+  return fetchJson<App[]>("/api/apps");
+}
 
 export function useApps() {
-  const [apps, setApps] = useState<App[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchApps = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(apiUrl("/api/apps"));
-      if (res.ok) {
-        const data = await res.json();
-        setApps(data);
-      }
-    } catch {
-      console.error("Error fetching apps");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const appsQuery = useQuery({
+    queryKey: queryKeys.apps.list,
+    queryFn: fetchApps,
+  });
 
-  useEffect(() => {
-    fetchApps();
-  }, [fetchApps]);
+  const apps = useMemo(
+    () => (appsQuery.data ?? []).filter((app) => !app.deleted_at),
+    [appsQuery.data],
+  );
+
+  const invalidateApps = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
 
   async function create(input: CreateAppInput) {
-    const res = await fetch(apiUrl("/api/apps"), {
+    const app = await fetchJson<App>("/api/apps", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
 
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al crear aplicación");
-    }
-
-    const app: App = await res.json();
-    setApps((prev) => [app, ...prev]);
+    queryClient.setQueryData<App[]>(queryKeys.apps.list, (current) =>
+      current ? [app, ...current] : [app],
+    );
     return app;
   }
 
   async function update(id: number, input: UpdateAppInput) {
-    const res = await fetch(apiUrl(`/api/apps/${id}`), {
+    const app = await fetchJson<App>(`/api/apps/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
 
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al actualizar aplicación");
-    }
-
-    const app: App = await res.json();
-    setApps((prev) => prev.map((a) => (a.id === id ? app : a)));
+    queryClient.setQueryData<App[]>(queryKeys.apps.list, (current) =>
+      current?.map((item) => (item.id === id ? app : item)) ?? [app],
+    );
     return app;
   }
 
   async function remove(id: number) {
-    const res = await fetch(apiUrl(`/api/apps/${id}`), {
-      method: "DELETE",
-    });
+    await fetchJson(`/api/apps/${id}`, { method: "DELETE" });
 
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Error al eliminar aplicación");
-    }
-
-    setApps((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, deleted_at: new Date().toISOString() } : a,
-      ),
+    queryClient.setQueryData<App[]>(queryKeys.apps.list, (current) =>
+      current?.map((item) =>
+        item.id === id
+          ? { ...item, deleted_at: new Date().toISOString() }
+          : item,
+      ) ?? [],
     );
   }
 
   async function pushEntitlement(id: number) {
-    const res = await fetch(apiUrl(`/api/apps/${id}/push-entitlement`), {
-      method: "POST",
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || data.push_error || "Error al empujar entitlement");
-    }
-    return data as {
+    return fetchJson<{
       push_ok?: boolean;
       push_skipped?: boolean;
       push_error?: string | null;
       ok?: boolean;
       skipped?: boolean;
       error?: string;
-    };
+    }>(`/api/apps/${id}/push-entitlement`, { method: "POST" });
   }
 
   async function updateModules(appId: number, moduleIds: number[]) {
-    const res = await fetch(apiUrl(`/api/apps/${appId}/modules`), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ module_ids: moduleIds }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || "Error al actualizar módulos");
-    }
-    await fetchApps();
-    return data as {
+    const data = await fetchJson<{
       ok?: boolean;
       modules_count?: number;
       push_ok?: boolean;
       push_skipped?: boolean;
       push_error?: string | null;
-    };
+    }>(`/api/apps/${appId}/modules`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ module_ids: moduleIds }),
+    });
+
+    await Promise.all([
+      invalidateApps(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.kanban.all }),
+    ]);
+
+    return data;
   }
 
   async function enablePlan(input: {
@@ -122,7 +102,13 @@ export function useApps() {
     period?: "MONTHLY" | "ANNUALLY";
     replace?: boolean;
   }) {
-    const res = await fetch(apiUrl("/api/subscriptions/enable"), {
+    const data = await fetchJson<{
+      plan_name?: string | null;
+      period?: string;
+      push_ok?: boolean;
+      push_skipped?: boolean;
+      push_error?: string | null;
+    }>("/api/subscriptions/enable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -132,31 +118,21 @@ export function useApps() {
         replace: input.replace ?? true,
       }),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.message || data.error || "Error al asignar el plan");
-    }
-    await fetchApps();
-    return data as {
-      plan_name?: string | null;
-      period?: string;
-      push_ok?: boolean;
-      push_skipped?: boolean;
-      push_error?: string | null;
-    };
+
+    await invalidateApps();
+    return data;
   }
 
-  const activeApps = apps.filter((a) => !a.deleted_at);
-
   return {
-    apps: activeApps,
-    loading,
+    apps,
+    loading: appsQuery.isLoading,
+    isFetching: appsQuery.isFetching,
     create,
     update,
     remove,
     pushEntitlement,
     enablePlan,
     updateModules,
-    refetch: fetchApps,
+    refetch: appsQuery.refetch,
   };
 }

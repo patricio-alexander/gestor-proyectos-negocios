@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import Bell from "@gravity-ui/icons/Bell";
+import LayoutColumns from "@gravity-ui/icons/LayoutColumns";
 import Briefcase from "@gravity-ui/icons/Briefcase";
 import ClockArrowRotateLeft from "@gravity-ui/icons/ClockArrowRotateLeft";
 import CreditCard from "@gravity-ui/icons/CreditCard";
@@ -22,6 +23,7 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/notifications": Bell,
   "/dashboard/accounts": Passport,
   "/dashboard/apps": Briefcase,
+  "/dashboard/kanban": LayoutColumns,
   "/dashboard/plans": FileText,
   "/dashboard/offers": Gift,
   "/dashboard/subscriptions": CreditCard,

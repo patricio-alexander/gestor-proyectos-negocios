@@ -10,6 +10,12 @@ module.exports = {
       },
     },
     {
+      name: "worker-realtime",
+      script: "npm",
+      args: "run worker:realtime",
+      autorestart: true,
+    },
+    {
       name: "worker-usage",
       script: "npm",
       args: "run worker:usage",

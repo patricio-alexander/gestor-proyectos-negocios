@@ -1,5 +1,8 @@
+import { EVENT_TYPES_SEED } from "@/prisma/event-types-seed";
 import { prisma } from "@/src/shared/lib/prisma";
 import type { EventTypeRecord } from "@/src/features/events/types";
+
+const SEED_CATALOG_BY_KEY = new Map(EVENT_TYPES_SEED.map((entry) => [entry.key, entry]));
 
 function mapType(row: {
   id: number;
@@ -55,4 +58,30 @@ export async function deleteEventType(id: number) {
   if (!type) return null;
   await prisma.eventType.delete({ where: { id } });
   return type;
+}
+
+export async function getOrCreateEventTypeByKey(typeKey: string) {
+  const key = typeKey.trim();
+  const existing = await prisma.eventType.findUnique({ where: { key } });
+  if (existing) {
+    return { type: mapType(existing), created: false };
+  }
+
+  const fromSeed = SEED_CATALOG_BY_KEY.get(key);
+  const row = await prisma.eventType.create({
+    data: {
+      key,
+      name:
+        fromSeed?.name ??
+        key
+          .split(/[.:_-]+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" "),
+      description:
+        fromSeed?.description ?? "Registrado automáticamente desde webhook de app",
+    },
+  });
+
+  return { type: mapType(row), created: true };
 }
