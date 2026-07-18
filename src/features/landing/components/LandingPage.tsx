@@ -3,106 +3,17 @@
 import Link from "next/link";
 import { Button } from "@heroui/react";
 import ArrowRight from "@gravity-ui/icons/ArrowRight";
-import Briefcase from "@gravity-ui/icons/Briefcase";
-import ChartLine from "@gravity-ui/icons/ChartLine";
-import CircleDollar from "@gravity-ui/icons/CircleDollar";
-import Code from "@gravity-ui/icons/Code";
-import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
-import Eye from "@gravity-ui/icons/Eye";
-import Layers from "@gravity-ui/icons/Layers";
-import Sliders from "@gravity-ui/icons/Sliders";
-import Shield from "@gravity-ui/icons/Shield";
-import TargetDart from "@gravity-ui/icons/TargetDart";
+import Envelope from "@gravity-ui/icons/Envelope";
+import {
+  APPROACH,
+  LANDING_CONTACT_EMAIL,
+  MISSION_POINTS,
+  OFFERINGS,
+  PILLARS,
+  VALUES,
+} from "../data/content";
 import { useLandingTheme } from "../hooks/useLandingTheme";
 import { RaptorBrand } from "./RaptorBrand";
-
-const PILLARS = [
-  {
-    icon: ChartLine,
-    label: "Rendimiento",
-    hint: "Operaciones más eficientes y equipos que avanzan con claridad",
-  },
-  {
-    icon: CircleDollar,
-    label: "Rentabilidad",
-    hint: "Inversión tecnológica alineada a resultados reales del negocio",
-  },
-  {
-    icon: Shield,
-    label: "Control",
-    hint: "Visibilidad y gobierno sobre las aplicaciones que sostienen tu empresa",
-  },
-] as const;
-
-const VALUES = [
-  { value: "360°", label: "Enfoque integral" },
-  { value: "2", label: "Socio tecnológico" },
-  { value: "24/7", label: "Compromiso continuo" },
-  { value: "100%", label: "Orientados a resultados" },
-] as const;
-
-const OFFERINGS = [
-  {
-    icon: Cubes3Overlap,
-    title: "Apps que prestamos",
-    text: "Ponemos a disposición aplicaciones listas para operar. No partís de cero: activamos lo que tu negocio necesita y la app se ajusta a tu forma de trabajar.",
-  },
-  {
-    icon: Sliders,
-    title: "Configuración a tu medida",
-    text: "Adaptamos módulos, accesos y reglas de negocio para que el software encaje con tu operación real, sin partir de cero.",
-  },
-  {
-    icon: Code,
-    title: "Desarrollo a medida",
-    text: "Cuando tu caso lo requiere, diseñamos y construimos soluciones propias: integraciones, flujos o apps pensadas exclusivamente para tu negocio.",
-  },
-  {
-    icon: Eye,
-    title: "Gobierno de aplicaciones",
-    text: "Supervisamos y coordinamos el ecosistema de apps de tu negocio para que todo funcione alineado a tus objetivos.",
-  },
-  {
-    icon: Layers,
-    title: "Integración de sistemas",
-    text: "Conectamos plataformas dispersas en un entorno coherente, reduciendo fricción entre áreas y herramientas.",
-  },
-  {
-    icon: TargetDart,
-    title: "Consultoría estratégica",
-    text: "Te acompañamos a priorizar, decidir y ejecutar con criterio técnico y visión de negocio.",
-  },
-  {
-    icon: Briefcase,
-    title: "Operación y soporte",
-    text: "Nos hacemos cargo del día a día tecnológico para que tu equipo se enfoque en lo que importa.",
-  },
-] as const;
-
-const APPROACH = [
-  {
-    step: "01",
-    title: "Escuchamos y diagnosticamos",
-    text: "Conocemos tu operación, tus apps y tus cuellos de botella antes de proponer cualquier cambio.",
-  },
-  {
-    step: "02",
-    title: "Diseñamos la solución",
-    text: "Definimos si conviene activar una app existente, configurarla o desarrollar algo a medida — siempre con un plan claro y medible.",
-  },
-  {
-    step: "03",
-    title: "Implementamos y acompañamos",
-    text: "Ejecutamos con rigor y nos quedamos cerca para asegurar que la solución funcione en la práctica.",
-  },
-] as const;
-
-const MISSION_POINTS = [
-  "Apps listas que se adaptan a cada negocio",
-  "Desarrollo a medida cuando el caso lo pide",
-  "Control centralizado de tu operación digital",
-  "Acompañamiento continuo, no un proyecto y chau",
-] as const;
 
 export function LandingPage() {
   useLandingTheme();
@@ -116,7 +27,7 @@ export function LandingPage() {
       <div className="landing-page__noise" aria-hidden />
 
       <header className="landing-page__header relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
-        <RaptorBrand variant="header" />
+        <RaptorBrand variant="header" asLink />
         <Link href="/login" className="inline-flex">
           <Button
             size="sm"
@@ -147,8 +58,8 @@ export function LandingPage() {
         </h1>
 
         <p className="landing-page__tagline mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/62 sm:text-lg">
-          Somos Raptor Solutions: prestamos aplicaciones y tecnología que se
-          ajustan a cada cliente, con el control y la visibilidad que tu negocio
+          Somos Raptor Solutions: prestamos soluciones que se
+          adaptan a cada cliente, con el control y la visibilidad que tu negocio
           necesita para crecer.
         </p>
 
@@ -166,11 +77,11 @@ export function LandingPage() {
           ))}
         </ul>
 
-       
+        
       </section>
 
       <section className="landing-page__stats relative z-10 border-y border-white/8">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-white/6 sm:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-white/6 sm:grid-cols-3">
           {VALUES.map(({ value, label }) => (
             <div key={label} className="landing-page__stat px-6 py-8 text-center">
               <p className="text-2xl font-semibold tracking-tight text-[#FF6B00] sm:text-3xl">
@@ -216,27 +127,29 @@ export function LandingPage() {
             </ol>
           </div>
 
-          <div className="landing-page__preview relative">
-            <div className="landing-page__preview-glow" aria-hidden />
-            <div className="landing-page__preview-card landing-page__preview-card--back" />
-            <div className="landing-page__preview-card landing-page__preview-card--front">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#FF6B00]">
-                Nuestra misión
-              </p>
-              <p className="mb-6 text-lg font-semibold leading-snug text-white">
-                Devolverle a cada cliente el control sobre su operación digital.
-              </p>
-              <ul className="space-y-3">
-                {MISSION_POINTS.map((point) => (
-                  <li
-                    key={point}
-                    className="landing-page__glass-chip flex items-start gap-3 rounded-xl px-3 py-3 text-sm text-white/60"
-                  >
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#FF6B00]" />
-                    {point}
-                  </li>
-                ))}
-              </ul>
+          <div className="landing-page__mission">
+            <div className="landing-page__mission-glow" aria-hidden />
+            <div className="landing-page__mission-stack">
+              <div className="landing-page__mission-card landing-page__mission-card--back" aria-hidden />
+              <article className="landing-page__mission-card landing-page__mission-card--front">
+                <p className="landing-page__mission-eyebrow mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#FF6B00]">
+                  Nuestra misión
+                </p>
+                <h3 className="mb-5 text-lg font-semibold leading-snug text-white sm:text-xl">
+                  Devolverle a cada cliente el control sobre su operación digital.
+                </h3>
+                <ul className="space-y-2.5">
+                  {MISSION_POINTS.map((point) => (
+                    <li
+                      key={point}
+                      className="landing-page__mission-item flex items-start gap-3 rounded-xl px-3 py-2.5 text-sm leading-relaxed text-white/65"
+                    >
+                      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#FF6B00]" aria-hidden />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </article>
             </div>
           </div>
         </div>
@@ -254,7 +167,7 @@ export function LandingPage() {
           <p className="mt-4 text-sm leading-relaxed text-white/55 sm:text-base">
             Raptor Solutions nace para resolver un problema concreto: muchas
             empresas dependen de múltiples aplicaciones y procesos que nadie
-            termina de dominar. Nosotros entramos con software probado, lo
+            termina de dominar. Nosotros entramos con plataformas probadas, las
             configuramos según tu operación y te acompañamos para que todo
             funcione en la práctica.
           </p>
@@ -262,7 +175,7 @@ export function LandingPage() {
 
         <div className="landing-page__about rounded-3xl p-6 sm:p-8">
           <p className="text-sm leading-relaxed text-white/60 sm:text-base">
-            Prestamos apps que ya funcionan y las adaptamos a tus necesidades, y
+            Prestamos aplicaciones que ya funcionan y las adaptamos a tus necesidades, y
             cuando hace falta algo que no existe, también desarrollamos
             soluciones a medida. En ambos casos trabajamos cerca de tu equipo,
             con soporte y visión de largo plazo.
@@ -277,12 +190,12 @@ export function LandingPage() {
               Qué ofrecemos
             </p>
             <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Apps que prestamos, configuramos o desarrollamos para vos
+              Aplicaciones que prestamos, configuramos o desarrollamos para ti
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-white/55 sm:text-base">
-              Apps listas para operar, configuración flexible y desarrollo a
-              medida cuando tu negocio necesita algo que aún no existe. Vos
-              elegís el camino; nosotros lo ejecutamos.
+              Soluciones listas para operar, configuración flexible y desarrollo a
+              medida cuando tu negocio necesita algo que aún no existe. Tú
+              eliges el camino; nosotros lo ejecutamos.
             </p>
           </div>
 
@@ -306,17 +219,26 @@ export function LandingPage() {
             ¿Listo para recuperar el control?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/55 sm:text-base">
-            Si ya sos cliente o parte del equipo Raptor, ingresá al portal. Si
-            querés conocernos, estamos para escuchar tu caso y proponerte un
-            camino concreto.
+            Si ya eres cliente o parte del equipo Raptor, ingresa al portal. Si
+            quieres conocernos, escríbenos y te proponemos un camino concreto.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link href="/login" className="inline-flex">
               <Button size="lg" className="landing-page__cta min-w-[220px] font-semibold">
                 Entrar
                 <ArrowRight width={18} height={18} />
               </Button>
             </Link>
+            <a href={`mailto:${LANDING_CONTACT_EMAIL}`} className="inline-flex">
+              <Button
+                size="lg"
+                variant="secondary"
+                className="landing-page__cta-secondary min-w-[220px] border-white/12 bg-white/6 font-semibold text-white backdrop-blur-md"
+              >
+                <Envelope width={18} height={18} />
+                {LANDING_CONTACT_EMAIL}
+              </Button>
+            </a>
           </div>
         </div>
       </section>
@@ -324,11 +246,11 @@ export function LandingPage() {
       <footer className="landing-page__footer relative z-10 border-t border-white/8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 py-10 text-center sm:flex-row sm:px-10 sm:text-left">
           <RaptorBrand variant="footer" />
-          <p className="max-w-md text-xs leading-relaxed text-white/35">
-            Raptor Solutions — apps y tecnología configurable para empresas que
+          <p className="max-w-md text-xs leading-relaxed text-white/45">
+            Raptor Solutions — aplicaciones y tecnología configurable para empresas que
             quieren operar con orden y control.
           </p>
-          <p className="text-xs text-white/30">
+          <p className="text-xs text-white/40">
             © {new Date().getFullYear()} Raptor Solutions
           </p>
         </div>
