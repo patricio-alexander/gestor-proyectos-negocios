@@ -52,7 +52,6 @@
     "recharts": "^3.9.2",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "subify": "github:patricio-alexander/subify",
     "watcher": "^2.3.1"
   },
   "devDependencies": {
