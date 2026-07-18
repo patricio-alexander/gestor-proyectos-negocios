@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createServer, type IncomingMessage } from "http";
 import { Server, type Socket } from "socket.io";
 import { jwtVerify } from "jose";
+import { socketPath } from "../src/shared/lib/socket-url";
 
 const REALTIME_PORT = Number(process.env.REALTIME_PORT ?? 3003);
 const INTERNAL_SECRET = process.env.REALTIME_INTERNAL_SECRET ?? "";
@@ -70,7 +71,7 @@ const io = new Server(httpServer, {
     origin: CORS_ORIGIN.split(",").map((o) => o.trim()),
     credentials: true,
   },
-  path: "/socket.io",
+  path: socketPath(),
 });
 
 io.use(async (socket, next) => {
@@ -92,7 +93,7 @@ io.on("connection", (socket: Socket) => {
 });
 
 httpServer.listen(REALTIME_PORT, () => {
-  console.log(`[realtime] Socket.IO en puerto ${REALTIME_PORT}`);
+  console.log(`[realtime] Socket.IO en puerto ${REALTIME_PORT} path ${socketPath()}`);
   if (!INTERNAL_SECRET) {
     console.warn("[realtime] REALTIME_INTERNAL_SECRET no definido — emit interno deshabilitado");
   }

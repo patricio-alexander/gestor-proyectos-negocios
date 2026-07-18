@@ -19,7 +19,7 @@ import {
   type DashboardRefreshPayload,
 } from "@/src/shared/lib/realtime-events";
 import { queryKeys } from "@/src/shared/lib/query-keys";
-import { socketUrl } from "@/src/shared/lib/socket-url";
+import { socketPath, socketUrl } from "@/src/shared/lib/socket-url";
 import { apiUrl } from "@/src/utils/apiUrl";
 
 type RealtimeStatus = "connecting" | "connected" | "disconnected";
@@ -81,7 +81,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         const socket = io(socketUrl(), {
           auth: { token },
           transports: ["websocket", "polling"],
-          path: "/socket.io",
+          path: socketPath(),
           reconnection: true,
           reconnectionAttempts: Infinity,
           reconnectionDelay: 1000,
