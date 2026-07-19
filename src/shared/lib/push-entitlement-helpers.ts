@@ -1,8 +1,11 @@
 import { prisma } from "@/src/shared/lib/prisma";
 import {
   pushEntitlementToApp,
+  toBatchPushResponseFields,
   toPushResponseFields,
+  type PushAppResult,
   type PushEntitlementOutcome,
+  type PushResponseFields,
 } from "./push-entitlement";
 import { buildEntitlementForAppHash } from "./entitlement-payload";
 import type { LifecycleStatus } from "../../../prisma/generated/prisma/enums";
@@ -16,8 +19,14 @@ export async function pushEntitlementForAppId(appId: number) {
     where: { id: appId, deleted_at: null },
     select: { hash: true },
   });
-  if (!app) return { ok: false, error: "App no encontrada" } as PushEntitlementOutcome;
-  return pushEntitlementToApp(app.hash);
+  if (!app) {
+    return toPushResponseFields({
+      ok: false,
+      error: "App no encontrada",
+      app_name: `#${appId}`,
+    });
+  }
+  return toPushResponseFields(await pushEntitlementToApp(app.hash));
 }
 
 export async function buildEntitlementForAppId(appId: number) {
@@ -60,36 +69,44 @@ export function moduleSectionsFromEntitlement(
   };
 }
 
+async function pushEntitlementToApps(
+  apps: Array<{ hash: string; name: string | null }>,
+): Promise<PushAppResult[]> {
+  const unique = new Map<string, { hash: string; name: string | null }>();
+  for (const app of apps) {
+    if (!unique.has(app.hash)) unique.set(app.hash, app);
+  }
+
+  const outcomes = await Promise.all(
+    [...unique.values()].map((app) => pushEntitlementToApp(app.hash)),
+  );
+
+  return outcomes.map((outcome) => ({
+    app_name: outcome.app_name ?? "App",
+    ok: outcome.ok,
+    skipped: outcome.skipped,
+    status: outcome.status,
+    error: outcome.error,
+  }));
+}
+
 export async function pushEntitlementForModuleToAllUsers(
   moduleId: number,
-): Promise<ReturnType<typeof toPushResponseFields>> {
+): Promise<PushResponseFields> {
   const appModules = await prisma.appModule.findMany({
     where: { module_id: moduleId },
     select: {
-      app: { select: { hash: true } },
+      app: { select: { hash: true, name: true } },
     },
   });
 
-  const hashes = [...new Set(appModules.map((am) => am.app.hash))];
+  const apps = appModules.map((am) => am.app);
 
-  if (hashes.length === 0) {
-    return { push_ok: false, push_skipped: true, push_error: null };
+  if (apps.length === 0) {
+    return toBatchPushResponseFields([]);
   }
 
-  const results = await Promise.all(hashes.map((h) => pushEntitlementToApp(h)));
-  const failed = results.find((r) => !r.ok && !r.skipped);
-  const allSkipped = results.every((r) => r.skipped);
-  if (failed) {
-    return {
-      push_ok: false,
-      push_skipped: false,
-      push_error: failed.error ?? "Error al empujar a una o más apps",
-    };
-  }
-  if (allSkipped) {
-    return { push_ok: false, push_skipped: true, push_error: null };
-  }
-  return { push_ok: true, push_skipped: false, push_error: null };
+  return toBatchPushResponseFields(await pushEntitlementToApps(apps));
 }
 
 /** @deprecated prefer pushEntitlementForModuleToAllUsers for global status changes */
@@ -103,7 +120,11 @@ export async function pushEntitlementForSectionId(sectionId: number) {
     select: { module_id: true },
   });
   if (!sec) {
-    return { push_ok: false, push_skipped: true, push_error: "Sección no encontrada" };
+    return toPushResponseFields({
+      ok: false,
+      error: "Sección no encontrada",
+      app_name: "—",
+    });
   }
   return pushEntitlementForModuleToAllUsers(sec.module_id);
 }
@@ -225,3 +246,5 @@ export async function applyGlobalSectionStatus(
 
   return pushEntitlementForModuleToAllUsers(sec.module.id);
 }
+
+export type { PushEntitlementOutcome, PushResponseFields };

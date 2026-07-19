@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { pushEntitlementForAppId } from "@/src/shared/lib/push-entitlement-helpers";
-import { toPushResponseFields } from "@/src/shared/lib/push-entitlement";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -66,9 +65,7 @@ export async function POST(request: Request, { params }: Params) {
       });
     }
 
-    const pushFields = toPushResponseFields(
-      await pushEntitlementForAppId(appId),
-    );
+    const pushFields = await pushEntitlementForAppId(appId);
 
     return NextResponse.json({
       ok: true,

@@ -23,6 +23,15 @@ import { effectiveSectionStatusForApp } from "@/src/shared/lib/lifecycle-status-
 import { apiUrl } from "@/src/utils/apiUrl";
 import { gp } from "@/src/shared/ui/theme";
 import { appToast } from "@/src/shared/utils/app-toast";
+import {
+  formatPushSyncToast,
+  type PushSyncPayload,
+} from "@/src/shared/lib/push-sync-message";
+
+function warnPushSync(data: PushSyncPayload) {
+  const msg = formatPushSyncToast(data);
+  if (msg) appToast.warning(msg);
+}
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import {
   LifecycleStatusSelect,
@@ -206,9 +215,7 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al asignar");
-      if (data.push_error) {
-        appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
-      }
+      warnPushSync(data);
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       onChanged?.();
@@ -232,7 +239,7 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
-      if (data.push_error) appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
+      warnPushSync(data);
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       if (selectedAppId === appId) {
@@ -263,7 +270,7 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
-      if (data.push_error) appToast.warning(`Guardado, pero sync falló: ${data.push_error}`);
+      warnPushSync(data);
       await reloadOverrides(appId);
       onChanged?.();
     } catch (err) {
@@ -284,9 +291,9 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al actualizar módulo");
-      const { push_error: pushError, ...modData } = data;
+      const { push_error: _pushError, push_results: _pushResults, ...modData } = data;
       onModuleUpdate({ ...module, ...modData, sections: module.sections });
-      if (pushError) appToast.warning(`Guardado, pero sync falló: ${pushError}`);
+      warnPushSync(data);
       const refreshed = await loadAccessData();
       setAssignments(refreshed.assignments);
       onChanged?.();
@@ -314,7 +321,12 @@ export function ModuleAccessPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al actualizar sección");
-      const { push_error: pushError, module_status, ...sectionData } = data;
+      const {
+        push_error: _pushError,
+        push_results: _pushResults,
+        module_status,
+        ...sectionData
+      } = data;
       onModuleUpdate({
         ...module,
         status: module_status ?? module.status,
@@ -322,7 +334,7 @@ export function ModuleAccessPanel({
           s.id === sec.id ? { ...s, ...sectionData } : s,
         ),
       });
-      if (pushError) appToast.warning(`Guardado, pero sync falló: ${pushError}`);
+      warnPushSync(data);
       onChanged?.();
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al guardar");

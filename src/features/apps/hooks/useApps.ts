@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import type { App, CreateAppInput, UpdateAppInput } from "../types";
+import type { App, CreateAppInput, PushEntitlementResult, UpdateAppInput } from "../types";
 import { fetchJson } from "@/src/shared/lib/api-client";
 import { queryKeys } from "@/src/shared/lib/query-keys";
 
@@ -69,6 +69,7 @@ export function useApps() {
       push_ok?: boolean;
       push_skipped?: boolean;
       push_error?: string | null;
+      push_results?: PushEntitlementResult["push_results"];
       ok?: boolean;
       skipped?: boolean;
       error?: string;
@@ -82,6 +83,7 @@ export function useApps() {
       push_ok?: boolean;
       push_skipped?: boolean;
       push_error?: string | null;
+      push_results?: PushEntitlementResult["push_results"];
     }>(`/api/apps/${appId}/modules`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -108,6 +110,7 @@ export function useApps() {
       push_ok?: boolean;
       push_skipped?: boolean;
       push_error?: string | null;
+      push_results?: PushEntitlementResult["push_results"];
     }>("/api/subscriptions/enable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

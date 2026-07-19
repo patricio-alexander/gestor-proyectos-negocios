@@ -1,21 +1,22 @@
 import { prisma } from "@/src/shared/lib/prisma";
 import { buildEntitlementForAppHash } from "./entitlement-payload";
+import {
+  formatPushError,
+  type PushEntitlementOutcome,
+} from "./push-entitlement-shared";
 
-export type PushEntitlementOutcome = {
-  ok: boolean;
-  skipped?: boolean;
-  error?: string;
-  status?: number;
-};
+export type {
+  PushAppResult,
+  PushEntitlementOutcome,
+  PushResponseFields,
+} from "./push-entitlement-shared";
 
-/** Campos listos para incluir en JSON de respuesta de API. */
-export function toPushResponseFields(result: PushEntitlementOutcome) {
-  return {
-    push_ok: Boolean(result.ok && !result.skipped),
-    push_skipped: Boolean(result.skipped),
-    push_error: result.error ?? null,
-  };
-}
+export {
+  formatPushError,
+  summarizePushResults,
+  toBatchPushResponseFields,
+  toPushResponseFields,
+} from "./push-entitlement-shared";
 
 /**
  * Empuja el entitlement al backend de la app (si tiene entitlement_url configurada).
@@ -33,8 +34,10 @@ export async function pushEntitlementToApp(
     },
   });
 
+  const appName = app?.name?.trim() || appHash.slice(0, 8);
+
   if (!app?.entitlement_url) {
-    return { ok: true, skipped: true };
+    return { ok: true, skipped: true, app_name: appName };
   }
 
   const payload = await buildEntitlementForAppHash(appHash);
@@ -53,17 +56,25 @@ export async function pushEntitlementToApp(
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      const friendly = formatPushError(text || res.statusText, res.status);
       console.error(
-        `[entitlement] push falló (${app.name}): ${res.status} ${text}`,
+        `[entitlement] push falló (${appName}): ${res.status} ${friendly}`,
       );
-      return { ok: false, status: res.status, error: text || res.statusText };
+      return {
+        ok: false,
+        status: res.status,
+        error: friendly,
+        app_name: appName,
+      };
     }
 
-    console.log(`[entitlement] push OK → ${app.name} (${app.entitlement_url})`);
-    return { ok: true };
+    console.log(`[entitlement] push OK → ${appName} (${app.entitlement_url})`);
+    return { ok: true, app_name: appName };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[entitlement] push error (${app.name}):`, message);
-    return { ok: false, error: message };
+    const message = formatPushError(
+      err instanceof Error ? err.message : String(err),
+    );
+    console.error(`[entitlement] push error (${appName}):`, message);
+    return { ok: false, error: message, app_name: appName };
   }
 }

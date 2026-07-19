@@ -39,9 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({
       ok: true,
       modules_count: module_ids.length,
-      push_ok: pushResult.ok,
-      push_skipped: pushResult.skipped,
-      push_error: pushResult.error,
+      ...pushResult,
     });
   } catch (err) {
     console.error("Error updating app modules:", err);

@@ -5,7 +5,7 @@ import {
   Period,
   SubscriptionStatus,
 } from "../../../../prisma/generated/prisma/enums";
-import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
+import { pushEntitlementToApp, toPushResponseFields } from "@/src/shared/lib/push-entitlement";
 import { requireDeploymentAppId } from "@/src/shared/lib/app-kind";
 
 /**
@@ -164,9 +164,7 @@ export async function POST(request: NextRequest) {
         start_at: subscription.start_at?.toISOString() ?? null,
         expires_at: subscription.expires_at?.toISOString() ?? null,
         replaced_subscription_id: existingActive?.id ?? null,
-        push_ok: push.ok,
-        push_skipped: push.skipped ?? false,
-        push_error: push.error ?? null,
+        ...toPushResponseFields(push),
       },
       { status: 201 },
     );

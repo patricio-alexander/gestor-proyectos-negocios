@@ -16,6 +16,13 @@ import {
 } from "../lib/kanban-optimistic";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { appToast } from "@/src/shared/utils/app-toast";
+import { formatPushSyncToast } from "@/src/shared/lib/push-sync-message";
+import type { PushSyncPayload } from "@/src/shared/lib/push-sync-message";
+
+function warnPushSync(body: PushSyncPayload) {
+  const msg = formatPushSyncToast(body);
+  if (msg) appToast.warning(msg);
+}
 
 function findModuleIdForSection(
   data: KanbanBoardData,
@@ -108,9 +115,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al asignar módulo");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: assigned
         ? "Módulo asignado a la aplicación"
@@ -136,9 +141,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al asignar sección");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: assigned
         ? "Sección activada en la aplicación"
@@ -161,9 +164,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al actualizar módulo");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: "Estado global del módulo actualizado",
     });
@@ -184,9 +185,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al actualizar sección");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: "Estado global de la sección actualizado",
     });
@@ -211,9 +210,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al guardar estado");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: clear
         ? "Módulo hereda estado global en esta app"
@@ -250,9 +247,7 @@ export function useKanban() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Error al guardar estado");
-        if (body.push_error) {
-          appToast.warning(`Guardado, pero sync falló: ${body.push_error}`);
-        }
+        warnPushSync(body);
       },
       successMessage: clear
         ? "Sección hereda estado del módulo en esta app"

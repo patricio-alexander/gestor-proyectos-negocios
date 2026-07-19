@@ -6,10 +6,9 @@ import {
   buildEntitlementForAppId,
   moduleSectionsFromEntitlement,
 } from "@/src/shared/lib/push-entitlement-helpers";
-import { toPushResponseFields } from "@/src/shared/lib/push-entitlement";
 
 async function pushWithModulePreview(appId: number, moduleId: number) {
-  const pushFields = toPushResponseFields(await pushEntitlementForAppId(appId));
+  const pushFields = await pushEntitlementForAppId(appId);
   const payload = await buildEntitlementForAppId(appId);
   return {
     ...pushFields,

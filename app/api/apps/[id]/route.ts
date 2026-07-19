@@ -117,6 +117,7 @@ export async function PATCH(request: Request, { params }: Params) {
       push_ok: false,
       push_skipped: true,
       push_error: null as string | null,
+      push_results: [] as import("@/src/shared/lib/push-entitlement-shared").PushAppResult[],
     };
 
     const shouldPush =

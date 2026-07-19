@@ -393,7 +393,6 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 0,
     moduleKeys: [
       "dashboard",
-      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
@@ -409,7 +408,6 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 19,
     moduleKeys: [
       "dashboard",
-      "notificaciones",
       "operacion",
       "administracion",
       "sistema",
@@ -421,7 +419,6 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 39,
     moduleKeys: [
       "dashboard",
-      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
@@ -437,13 +434,12 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 69,
     moduleKeys: [
       "dashboard",
-      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
       "inventario",
       "produccion",
-      "canal_digital",
+      "canal",
       "publicidad",
       "diseno_promocional",
       "administracion",

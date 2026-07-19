@@ -437,7 +437,9 @@ export default function PlansPage() {
           ? " y se envió a la app"
           : unauthorized
             ? " (aviso: sync rechazado — la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. En Aplicaciones → Editar app, copiá la API Key al .env del backend y reiniciá)"
-            : ` (aviso: no se pudo empujar a la app${pushErr ? `: ${pushErr}` : ""})`;
+            : pushErr
+              ? ` (aviso: ${pushErr})`
+              : " (aviso: no se pudo empujar a la app)";
       const replaced = data.replaced_subscription_id
         ? " (reemplazó el plan anterior)"
         : "";

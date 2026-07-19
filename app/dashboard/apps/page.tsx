@@ -40,6 +40,10 @@ import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
 import { appToast } from "@/src/shared/utils/app-toast";
+import {
+  formatPushSyncNote,
+  formatPushSyncToast,
+} from "@/src/shared/lib/push-sync-message";
 
 const PAGE_SIZE = 10;
 
@@ -114,13 +118,7 @@ export default function AppsPage() {
   async function handleSaveAppModules(appId: number, moduleIds: number[]) {
     const result = await updateModules(appId, moduleIds);
     await refetch();
-    const pushNote = result.push_ok
-      ? " · sync enviado"
-      : result.push_skipped
-        ? " · sync omitido (sin URL)"
-        : result.push_error
-          ? ` · sync falló: ${result.push_error}`
-          : "";
+    const pushNote = formatPushSyncNote(result);
     appToast.success(`Módulos actualizados${pushNote}`);
   }
 
@@ -156,11 +154,7 @@ export default function AppsPage() {
       });
       planState.close();
       setPlanApp(null);
-      const pushNote = result.push_ok
-        ? " · sync enviado"
-        : result.push_error
-          ? ` · aviso sync: ${result.push_error}`
-          : "";
+      const pushNote = formatPushSyncNote(result);
       appToast.success(
         `Plan ${result.plan_name || selectedPlan?.name || ""} asignado a ${appName}${pushNote}`,
       );
@@ -231,19 +225,9 @@ export default function AppsPage() {
       setEditingApp(null);
       setEditApiKey("");
       const pushNote =
-        updated &&
-        "push_skipped" in updated &&
-        (updated as { push_skipped?: boolean }).push_skipped
-          ? " (sin URL de sync)"
-          : updated &&
-              "push_ok" in updated &&
-              (updated as { push_ok?: boolean }).push_ok
-            ? " · sync enviado a la app"
-            : updated &&
-                "push_error" in updated &&
-                (updated as { push_error?: string | null }).push_error
-              ? ` · aviso sync: ${(updated as { push_error?: string }).push_error}`
-              : "";
+        updated && "push_ok" in updated
+          ? formatPushSyncNote(updated as Parameters<typeof formatPushSyncNote>[0])
+          : "";
       appToast.success(`Aplicación actualizada${pushNote}`);
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al actualizar");
@@ -256,10 +240,11 @@ export default function AppsPage() {
     setTogglingIds((prev) => new Set(prev).add(app.id));
     try {
       const updated = await update(app.id, { maintenance: !app.maintenance });
-      const pushErr = (updated as { push_error?: string | null })?.push_error;
-      if (pushErr) {
-        appToast.warning(`Mantenimiento guardado, pero no se pudo sync: ${pushErr}`);
-      }
+      const pushMsg = formatPushSyncToast(
+        updated as Parameters<typeof formatPushSyncToast>[0],
+        "Mantenimiento guardado, pero sync incompleto",
+      );
+      if (pushMsg) appToast.warning(pushMsg);
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al cambiar estado");
     } finally {

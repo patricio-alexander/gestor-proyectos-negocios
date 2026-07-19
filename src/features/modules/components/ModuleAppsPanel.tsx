@@ -13,6 +13,12 @@ import { gp } from "@/src/shared/ui/theme";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
 import { LifecycleStatusInheritSelect } from "./LifecycleStatusInheritSelect";
+import { formatPushSyncToast, type PushSyncPayload } from "@/src/shared/lib/push-sync-message";
+
+function warnPushSync(data: PushSyncPayload, onError?: (msg: string) => void) {
+  const msg = formatPushSyncToast(data, "Guardado, pero sync incompleto");
+  if (msg) onError?.(msg);
+}
 
 type AssignmentRow = {
   app_id: number;
@@ -83,9 +89,7 @@ export function ModuleAppsPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al asignar");
-      if (data.push_error) {
-        onError?.(`Guardado, pero sync falló: ${data.push_error}`);
-      }
+      warnPushSync(data, onError);
       await load();
       onChanged?.();
     } catch (err) {
@@ -112,9 +116,7 @@ export function ModuleAppsPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar estado");
-      if (data.push_error) {
-        onError?.(`Estado guardado, pero sync falló: ${data.push_error}`);
-      }
+      warnPushSync(data, onError);
       await load();
       onChanged?.();
     } catch (err) {

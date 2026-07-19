@@ -67,8 +67,17 @@ export type UpdateAppInput = {
   entitlement_secret?: string | null;
 };
 
+export type PushAppResult = {
+  app_name: string;
+  ok: boolean;
+  skipped?: boolean;
+  error?: string;
+  status?: number;
+};
+
 export type PushEntitlementResult = {
   push_ok: boolean;
   push_skipped: boolean;
   push_error: string | null;
+  push_results?: PushAppResult[];
 };

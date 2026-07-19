@@ -60,38 +60,23 @@ export const EDDELI_MENU_ITEMS: CatalogModuleDef[] = [
           { code: "tabla_de_clientes", name: "Tabla de clientes" },
         ],
       },
-      {
-        key: "/inicio",
-        name: "Inicio (alias)",
-        status: "active",
-      },
-      {
-        key: "/backery",
-        name: "Backery (alias)",
-        status: "active",
-      },
     ],
   },
-{
-    key: "notificaciones",
-    name: "Notificaciones",
-    description: "Avisos del sistema y mensajes para el equipo.",
+  {
+    key: "info",
+    name: "Información",
+    description: "Documentación de la app y módulos.",
     status: "active",
     sections: [
       {
-        key: "/notifications",
-        name: "Notificaciones",
+        key: "/info",
+        name: "Información",
         status: "active",
         capabilities: [
-          { code: "pestanas_admin", name: "Pestañas admin" },
-          { code: "filtro_leidas", name: "Filtro leídas" },
-          { code: "menu_por_notificacion", name: "Menú por notificación" },
-          { code: "marcar_todas_leidas", name: "Marcar todas leídas" },
-          { code: "navegacion_por_enlace", name: "Navegación por enlace" },
-          { code: "crud_plantillas", name: "CRUD plantillas" },
-          { code: "programacion_de_envio", name: "Programación de envío" },
-          { code: "destinatarios", name: "Destinatarios" },
-          { code: "enviar_ahora", name: "Enviar ahora" },
+          { code: "pestana_la_app", name: "Pestaña La app" },
+          { code: "pestana_modulos", name: "Pestaña Módulos" },
+          { code: "detalle_de_seccion", name: "Detalle de sección" },
+          { code: "descargar_pdf", name: "Descargar PDF" },
         ],
       },
     ],
@@ -107,7 +92,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/caja",
+        key: "/operacion/caja",
         name: "Caja",
         status: "active",
         capabilities: [
@@ -126,7 +111,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/turno",
+        key: "/operacion/turno",
         name: "Turno",
         status: "active",
         capabilities: [
@@ -142,7 +127,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/tareas",
+        key: "/operacion/tareas",
         name: "Tareas",
         status: "active",
         capabilities: [
@@ -159,7 +144,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/facturacion",
+        key: "/operacion/comprobantes-pos",
         name: "Comprobantes POS",
         status: "active",
         capabilities: [
@@ -170,7 +155,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/turno/supervision",
+        key: "/operacion/supervision-caja",
         name: "Supervisión caja",
         status: "active",
         capabilities: [
@@ -183,7 +168,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/turno/multi-caja",
+        key: "/operacion/turno/multi-caja",
         name: "Apertura multi-caja por local",
         status: "planned",
         capabilities: [
@@ -228,11 +213,18 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       },
       {
         key: "/comprobantes-electronicos/notas-credito",
-        name: "Notas de crédito / débito",
+        name: "Notas de crédito",
         status: "maintenance",
         capabilities: [
-          { code: "notas_de_credito", name: "Notas de crédito" },
-          { code: "notas_de_debito", name: "Notas de débito" },
+          { code: "bandeja_prox", name: "Bandeja (próx.)" },
+        ],
+      },
+      {
+        key: "/comprobantes-electronicos/notas-debito",
+        name: "Notas de débito",
+        status: "maintenance",
+        capabilities: [
+          { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
       },
       {
@@ -267,21 +259,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
       },
-      {
-        key: "/comprobantes",
-        name: "Comprobantes (redir)",
-        status: "maintenance",
-      },
-      {
-        key: "/sistema/facturacion-electronica",
-        name: "Facturación electrónica (atajo)",
-        status: "maintenance",
-      },
-      {
-        key: "/facturacion/sri",
-        name: "Config SRI (atajo)",
-        status: "maintenance",
-      },
     ],
   },
 {
@@ -291,7 +268,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/inventory/orders",
+        key: "/ventas/pedidos",
         name: "Pedidos",
         status: "active",
         capabilities: [
@@ -307,7 +284,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/customers",
+        key: "/ventas/clientes",
         name: "Clientes",
         status: "active",
         capabilities: [
@@ -318,7 +295,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/customers/cuentas",
+        key: "/ventas/clientes/cuentas",
         name: "Clientes con cuenta",
         status: "planned",
         capabilities: [
@@ -336,7 +313,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/inventory/finance",
+        key: "/finanzas/movimientos",
         name: "Finanzas",
         status: "active",
         capabilities: [
@@ -349,7 +326,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/collections",
+        key: "/finanzas/cobranzas",
         name: "Cobranzas",
         status: "active",
         capabilities: [
@@ -362,7 +339,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/prestamos-deudas",
+        key: "/finanzas/prestamos-deudas",
         name: "Préstamos y deudas",
         status: "active",
         capabilities: [
@@ -374,7 +351,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/gastos-recurrentes",
+        key: "/finanzas/gastos-recurrentes",
         name: "Gastos recurrentes",
         status: "maintenance",
         capabilities: [
@@ -395,7 +372,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/inventory/products",
+        key: "/inventario/productos",
         name: "Productos",
         status: "active",
         capabilities: [
@@ -407,7 +384,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/movement",
+        key: "/inventario/movimientos",
         name: "Movimientos",
         status: "active",
         capabilities: [
@@ -420,7 +397,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/categories",
+        key: "/inventario/categorias",
         name: "Categorías",
         status: "active",
         capabilities: [
@@ -431,7 +408,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/tramos",
+        key: "/inventario/tramos",
         name: "Tramos",
         status: "active",
         capabilities: [
@@ -442,7 +419,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/units",
+        key: "/inventario/unidades",
         name: "Unidades",
         status: "active",
         capabilities: [
@@ -451,7 +428,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/bodegas",
+        key: "/inventario/bodegas",
         name: "Bodegas",
         status: "planned",
         capabilities: [
@@ -462,7 +439,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/lotes",
+        key: "/inventario/lotes",
         name: "Lotes y vencimientos",
         status: "planned",
         capabilities: [
@@ -481,7 +458,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/inventory/insumos",
+        key: "/produccion/insumos",
         name: "Insumos y marcas",
         status: "active",
         capabilities: [
@@ -493,7 +470,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/recipes",
+        key: "/produccion/recetas",
         name: "Recetas",
         status: "active",
         capabilities: [
@@ -506,7 +483,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/production",
+        key: "/produccion/fabricacion",
         name: "Producción",
         status: "active",
         capabilities: [
@@ -517,7 +494,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/suppliers",
+        key: "/produccion/proveedores",
         name: "Proveedores",
         status: "active",
         capabilities: [
@@ -526,7 +503,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/suppliers/cuentas",
+        key: "/produccion/proveedores/cuentas",
         name: "Proveedores con cuenta",
         status: "planned",
         capabilities: [
@@ -538,13 +515,13 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     ],
   },
 {
-    key: "canal_digital",
-    name: "Canal digital",
+    key: "canal",
+    name: "Canal",
     description: "Catálogo web y vitrina pública.",
     status: "active",
     sections: [
       {
-        key: "/catalog_manager",
+        key: "/canal/catalogo",
         name: "Catálogo config",
         status: "active",
         capabilities: [
@@ -555,7 +532,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/puntos-venta",
+        key: "/canal/locales",
         name: "Puntos de venta",
         status: "active",
         capabilities: [
@@ -568,7 +545,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/inventory/productos-destacados",
+        key: "/canal/productos-destacados",
         name: "Productos destacados",
         status: "maintenance",
         capabilities: [
@@ -578,7 +555,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/compare_groups",
+        key: "/canal/grupos-comparativos",
         name: "Grupos comparativos",
         status: "maintenance",
         capabilities: [
@@ -588,8 +565,16 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "bootstrap_pasteles", name: "Bootstrap Pasteles" },
         ],
       },
+    ],
+  },
+{
+    key: "publico",
+    name: "Público",
+    description: "Vitrina y locales visibles para clientes.",
+    status: "active",
+    sections: [
       {
-        key: "/catalogo",
+        key: "/publico/catalogo",
         name: "Catálogo público",
         status: "active",
         capabilities: [
@@ -600,8 +585,8 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/punto_venta",
-        name: "Puntos de venta",
+        key: "/publico/locales",
+        name: "Locales",
         status: "active",
         capabilities: [
           { code: "filtro_por_tipo", name: "Filtro por tipo" },
@@ -791,14 +776,9 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         status: "maintenance",
       },
       {
-        key: "/tv",
-        name: "Reproductor TV",
+        key: "/publicidad/campanas/:id",
+        name: "Editar campaña",
         status: "maintenance",
-        capabilities: [
-          { code: "kiosco_pantalla_completa", name: "Kiosco pantalla completa" },
-          { code: "sync_remota", name: "Sync remota" },
-          { code: "fallback_offline", name: "Fallback offline" },
-        ],
       },
     ],
   },
@@ -843,26 +823,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "abrir_en_editor", name: "Abrir en editor" },
         ],
       },
-      {
-        key: "/editor",
-        name: "Editor (atajo)",
-        status: "maintenance",
-      },
-      {
-        key: "/publicity_edit",
-        name: "Edición publicidad (atajo)",
-        status: "maintenance",
-      },
-      {
-        key: "/editorDefault",
-        name: "Editor por defecto",
-        status: "maintenance",
-      },
-      {
-        key: "/templates",
-        name: "Plantillas (atajo)",
-        status: "maintenance",
-      },
     ],
   },
 {
@@ -872,7 +832,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "active",
     sections: [
       {
-        key: "/users",
+        key: "/administracion/usuarios",
         name: "Usuarios",
         status: "active",
         capabilities: [
@@ -882,7 +842,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/cuentas",
+        key: "/administracion/cuentas",
         name: "Cuentas",
         status: "active",
         capabilities: [
@@ -893,7 +853,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/roles",
+        key: "/administracion/roles",
         name: "Roles",
         status: "active",
         capabilities: [
@@ -903,7 +863,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/panel_control",
+        key: "/administracion/panel-control",
         name: "Panel de control",
         status: "active",
         capabilities: [
@@ -914,7 +874,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/notification-programs",
+        key: "/administracion/programas-notificacion",
         name: "Programas de notificación",
         status: "active",
         capabilities: [
@@ -935,11 +895,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "vinculo_con_usuarios", name: "Vinculo con usuarios" },
         ],
       },
-      {
-        key: "/app-settings",
-        name: "Ajustes de app",
-        status: "active",
-      },
     ],
   },
 {
@@ -958,6 +913,18 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "subir_cambiar_logo", name: "Subir / cambiar logo" },
           { code: "zona_horaria", name: "Zona horaria" },
           { code: "firma_sri", name: "Firma SRI" },
+        ],
+      },
+      {
+        key: "/sistema/notificaciones",
+        name: "Notificaciones",
+        status: "active",
+        capabilities: [
+          { code: "pestanas_admin", name: "Pestañas admin" },
+          { code: "filtro_leidas", name: "Filtro leídas" },
+          { code: "menu_por_notificacion", name: "Menú por notificación" },
+          { code: "marcar_todas_leidas", name: "Marcar todas leídas" },
+          { code: "navegacion_por_enlace", name: "Navegación por enlace" },
         ],
       },
       {
@@ -985,7 +952,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/perfil",
+        key: "/sistema/perfil",
         name: "Perfil",
         status: "active",
         capabilities: [
@@ -994,22 +961,11 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/donaciones",
+        key: "/sistema/donaciones",
         name: "Donaciones",
         status: "active",
         capabilities: [
           { code: "informacion_de_apoyo", name: "Información de apoyo" },
-        ],
-      },
-      {
-        key: "/info",
-        name: "Información",
-        status: "active",
-        capabilities: [
-          { code: "pestana_la_app", name: "Pestaña La app" },
-          { code: "pestana_modulos", name: "Pestaña Módulos" },
-          { code: "detalle_de_seccion", name: "Detalle de sección" },
-          { code: "descargar_pdf", name: "Descargar PDF" },
         ],
       },
     ],
@@ -1021,7 +977,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     status: "developer",
     sections: [
       {
-        key: "/img",
+        key: "/desarrollador/imagenes",
         name: "Imágenes",
         status: "active",
         capabilities: [
@@ -1031,7 +987,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/file",
+        key: "/desarrollador/archivos",
         name: "Archivos",
         status: "active",
         capabilities: [
@@ -1042,7 +998,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/logs",
+        key: "/desarrollador/logs",
         name: "Logs",
         status: "active",
         capabilities: [
@@ -1055,7 +1011,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/backups",
+        key: "/desarrollador/backups",
         name: "Backups JSON",
         status: "active",
         capabilities: [
@@ -1066,7 +1022,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/comandos",
+        key: "/desarrollador/comandos",
         name: "Comandos",
         status: "active",
         capabilities: [

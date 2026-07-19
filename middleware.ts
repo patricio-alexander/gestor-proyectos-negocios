@@ -42,7 +42,7 @@ export function middleware(request: NextRequest) {
 
     return response;
   }
-
+  
   if (isApiRoute) {
     return NextResponse.next();
   }

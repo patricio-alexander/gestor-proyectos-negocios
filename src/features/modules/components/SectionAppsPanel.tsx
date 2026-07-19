@@ -13,6 +13,12 @@ import { effectiveSectionStatusForApp } from "@/src/shared/lib/lifecycle-status-
 import { gp } from "@/src/shared/ui/theme";
 import { LIFECYCLE_STATUS_STYLE } from "./LifecycleStatusSelect";
 import { LifecycleStatusInheritSelect } from "./LifecycleStatusInheritSelect";
+import { formatPushSyncToast, type PushSyncPayload } from "@/src/shared/lib/push-sync-message";
+
+function warnPushSync(data: PushSyncPayload, onError?: (msg: string) => void) {
+  const msg = formatPushSyncToast(data, "Estado guardado, pero sync incompleto");
+  if (msg) onError?.(msg);
+}
 
 type OverrideRow = {
   app_id: number;
@@ -120,9 +126,7 @@ export function SectionAppsPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar estado");
-      if (data.push_error) {
-        onError?.(`Estado guardado, pero sync falló: ${data.push_error}`);
-      }
+      warnPushSync(data, onError);
       await load();
       onChanged?.();
     } catch (err) {
