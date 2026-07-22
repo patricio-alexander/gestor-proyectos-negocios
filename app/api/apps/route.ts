@@ -33,13 +33,53 @@ export async function GET() {
             },
           },
         },
+        mobile_app: {
+          select: {
+            id: true,
+            key: true,
+            deleted_at: true,
+            devices: {
+              where: { deleted_at: null },
+              select: {
+                platform: true,
+                last_seen_at: true,
+              },
+            },
+            releases: {
+              where: { deleted_at: null, is_active: true },
+              select: { platform: true },
+            },
+          },
+        },
       },
     });
+
+    const onlineSince = new Date(Date.now() - 15 * 60 * 1000);
 
     return NextResponse.json(
       apps.map((a) => {
         const sub = a.subscriptions[0] ?? null;
         const plan = sub?.plan_price.plan ?? null;
+        const mobileRow =
+          a.mobile_app && !a.mobile_app.deleted_at ? a.mobile_app : null;
+        const devicePlatforms = new Set<"android" | "ios">();
+        let onlineDeviceCount = 0;
+        for (const d of mobileRow?.devices ?? []) {
+          if (d.platform === "android" || d.platform === "ios") {
+            devicePlatforms.add(d.platform);
+          }
+          if (d.last_seen_at >= onlineSince) onlineDeviceCount += 1;
+        }
+        for (const r of mobileRow?.releases ?? []) {
+          if (r.platform === "android" || r.platform === "ios") {
+            devicePlatforms.add(r.platform);
+          }
+        }
+        const platforms = [...devicePlatforms];
+        if (platforms.length === 0 && a.kind === "mobile") {
+          platforms.push("android");
+        }
+
         return {
           id: a.id,
           hash: a.hash,
@@ -58,6 +98,23 @@ export async function GET() {
           entitlement_url: a.entitlement_url,
           entitlement_secret: a.entitlement_secret,
           has_entitlement_secret: Boolean(a.entitlement_secret),
+          mobile: mobileRow
+            ? {
+                mobile_app_id: mobileRow.id,
+                key: mobileRow.key,
+                platforms,
+                device_count: mobileRow.devices.length,
+                online_device_count: onlineDeviceCount,
+              }
+            : a.kind === "mobile"
+              ? {
+                  mobile_app_id: 0,
+                  key: "",
+                  platforms: ["android"] as Array<"android" | "ios">,
+                  device_count: 0,
+                  online_device_count: 0,
+                }
+              : null,
           created_at: a.created_at.toISOString(),
           updated_at: a.updated_at.toISOString(),
           deleted_at: a.deleted_at?.toISOString() ?? null,

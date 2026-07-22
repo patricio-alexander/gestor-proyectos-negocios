@@ -47,7 +47,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (/\.(?:svg|png|jpe?g|gif|webp|ico|woff2?|ttf|eot)$/i.test(pathname)) {
+  // Bundles OTA móviles (descarga sin sesión del dashboard)
+  // Con basePath la ruta llega como /raptorsolutions/bundles/...
+  if (
+    pathname.startsWith("/bundles/") ||
+    pathname.includes("/bundles/mobile/")
+  ) {
+    return NextResponse.next();
+  }
+
+  if (/\.(?:svg|png|jpe?g|gif|webp|ico|woff2?|ttf|eot|bundle)$/i.test(pathname)) {
     return NextResponse.next();
   }
 

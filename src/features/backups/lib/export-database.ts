@@ -31,6 +31,10 @@ export const BACKUP_TABLE_KEYS = [
   "Subscription",
   "EventType",
   "Event",
+  /** OTA / apps móviles (dependen de Apps vía app_id opcional). */
+  "MobileApp",
+  "MobileDevice",
+  "MobileAppRelease",
 ] as const;
 
 export type BackupTableKey = (typeof BACKUP_TABLE_KEYS)[number];
@@ -73,6 +77,12 @@ export function backupTableDelegate(db: DbClient, key: BackupTableKey): Delegate
       return db.eventType;
     case "Event":
       return db.event;
+    case "MobileApp":
+      return db.mobileApp;
+    case "MobileDevice":
+      return db.mobileDevice;
+    case "MobileAppRelease":
+      return db.mobileAppRelease;
     default: {
       const _exhaustive: never = key;
       throw new Error(`Tabla de backup desconocida: ${_exhaustive}`);
@@ -118,7 +128,7 @@ export async function ensureBackupsDir() {
   await fs.mkdir(BACKUPS_DIR, { recursive: true });
 }
 
-/** Vuelca todas las tablas Prisma a un objeto JSON plano. */
+/** Vuelca las tablas del control plane + OTA móvil a un objeto JSON plano. */
 export async function dumpDatabaseToJson(): Promise<Record<string, unknown[]>> {
   const data: Record<string, unknown[]> = {};
 

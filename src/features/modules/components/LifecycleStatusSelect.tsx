@@ -34,6 +34,10 @@ export const LIFECYCLE_STATUS_STYLE: Record<
     chip: "border-sky-200 bg-sky-50 text-sky-900",
     dot: "bg-sky-500",
   },
+  hidden: {
+    chip: "border-violet-200 bg-violet-50 text-violet-900",
+    dot: "bg-violet-500",
+  },
 };
 
 type LifecycleStatusSelectProps = {

@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { Plan, CreatePlanInput, UpdatePlanInput } from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 
-export function usePlans() {
+export function usePlans(channel: "web" | "mobile" = "web") {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/plans"));
+      const res = await fetch(apiUrl(`/api/plans?channel=${channel}`));
       if (res.ok) {
         const data = await res.json();
         setPlans(data);
@@ -21,7 +21,7 @@ export function usePlans() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [channel]);
 
   useEffect(() => {
     fetchPlans();
@@ -31,7 +31,7 @@ export function usePlans() {
     const res = await fetch(apiUrl("/api/plans"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, channel }),
     });
 
     if (!res.ok) {

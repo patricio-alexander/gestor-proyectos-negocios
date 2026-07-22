@@ -14,12 +14,15 @@ enum LifecycleStatus {
   maintenance
   developer
   planned
+  /** No se muestra en la app cliente. */
+  hidden
 }
 
-/** template = catálogo maestro (Raptor); deployment = instancia desplegada (EdDeli, Store…). */
+/** template = catálogo maestro (Raptor); deployment = instancia web; mobile = app móvil (ChilePan…). */
 enum AppKind {
   template
   deployment
+  mobile
 }
 
 // ─── Usuarios del gestor (control plane) ───────────────────────────────────
@@ -101,6 +104,12 @@ model PlanOffer {
   @@index([offer_id])
 }
 
+/** Canal del módulo: web (EdDeli/Store…) o mobile (ChilePan…). */
+enum ModuleChannel {
+  web
+  mobile
+}
+
 // ─── Módulos y secciones ────────────────────────────────────────────────────
 
 model Module {
@@ -109,6 +118,8 @@ model Module {
   name          String
   description      String?       @db.Text
   image_url        String?
+  /** web = catálogo apps web; mobile = catálogo apps móviles. */
+  channel          ModuleChannel @default(web)
   status           LifecycleStatus @default(active)
   is_maintainer    Boolean       @default(false)
   is_trial         Boolean       @default(false)
@@ -125,6 +136,7 @@ model Module {
   @@index([status])
   @@index([deleted_at])
   @@index([deleted_at, name])
+  @@index([channel, deleted_at])
 }
 
 model Section {
@@ -224,6 +236,7 @@ model Apps {
   events                  Event[]
   app_modules             AppModule[]
   app_sections            AppSection[]
+  mobile_app              MobileApp?
 
   @@index([deleted_at])
   @@index([deleted_at, created_at])
@@ -235,6 +248,8 @@ model Plan {
   id           Int          @id @default(autoincrement())
   name         String?
   sort_order   Int          @default(0)
+  /** web = planes SoftEd web; mobile = planes apps móviles (catálogo aparte). */
+  channel      ModuleChannel @default(web)
   created_at   DateTime     @default(now())
   updated_at   DateTime     @updatedAt
   deleted_at   DateTime?
@@ -244,6 +259,7 @@ model Plan {
 
   @@index([deleted_at])
   @@index([deleted_at, sort_order])
+  @@index([channel, deleted_at])
 }
 
 /** Módulos de una app incluidos en un plan (configuración por app). */
@@ -327,4 +343,84 @@ model Event {
   @@index([source])
   @@index([created_at])
   @@index([app_id, created_at])
+}
+
+// ─── Apps móviles / OTA (+ vínculo al control de módulos vía Apps) ───────────
+
+enum MobilePlatform {
+  ios
+  android
+}
+
+/**
+ * App móvil (OTA). Se enlaza a una fila `Apps` (kind=mobile) para reutilizar
+ * AppModule / AppSection / lifecycle igual que las apps web.
+ */
+model MobileApp {
+  id          Int                @id @default(autoincrement())
+  key         String             @unique @db.VarChar(100)
+  name        String             @db.VarChar(200)
+  description String?            @db.Text
+  /** Secreto para GET /api/mobile/app-update (formato: ma_<hex>). */
+  api_key     String             @unique @db.VarChar(255)
+  /** Fila en Apps (kind=mobile) para módulos/secciones/estado. */
+  app_id      Int?               @unique
+  created_at  DateTime           @default(now())
+  updated_at  DateTime           @updatedAt
+  deleted_at  DateTime?
+  releases    MobileAppRelease[]
+  devices     MobileDevice[]
+  app         Apps?              @relation(fields: [app_id], references: [id], onDelete: SetNull)
+
+  @@index([deleted_at])
+  @@index([api_key])
+}
+
+/** Celular/instalación que reporta versión al gestor (OTA / heartbeat). */
+model MobileDevice {
+  id                 Int            @id @default(autoincrement())
+  mobile_app_id      Int
+  /** UUID persistido en la app (único por instalación). */
+  device_id          String         @db.VarChar(64)
+  platform           MobilePlatform
+  /** Versión JS/bundle que reporta el dispositivo. */
+  app_version        String         @db.VarChar(50)
+  /** Última versión OTA activa vista al reportar (snapshot). */
+  latest_version_seen String?       @db.VarChar(50)
+  os_version         String?        @db.VarChar(50)
+  model              String?        @db.VarChar(120)
+  label              String?        @db.VarChar(120)
+  last_seen_at       DateTime       @default(now())
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+  deleted_at         DateTime?
+  mobile_app         MobileApp      @relation(fields: [mobile_app_id], references: [id], onDelete: Cascade)
+
+  @@unique([mobile_app_id, device_id])
+  @@index([mobile_app_id, last_seen_at])
+  @@index([mobile_app_id, platform])
+  @@index([deleted_at])
+}
+
+model MobileAppRelease {
+  id            Int            @id @default(autoincrement())
+  mobile_app_id Int
+  platform      MobilePlatform
+  version       String         @db.VarChar(50)
+  /** Ruta relativa bajo public/, ej. /bundles/mobile/chilepan/ios/1.0.0/index.bundle */
+  bundle_path   String         @db.VarChar(500)
+  mandatory     Boolean        @default(false)
+  release_notes String?        @db.Text
+  /** Solo un release activo por (app, platform). */
+  is_active     Boolean        @default(false)
+  published_at  DateTime?
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  deleted_at    DateTime?
+  mobile_app    MobileApp      @relation(fields: [mobile_app_id], references: [id], onDelete: Cascade)
+
+  @@unique([mobile_app_id, platform, version])
+  @@index([mobile_app_id, platform, is_active])
+  @@index([mobile_app_id, deleted_at])
+  @@index([deleted_at])
 }

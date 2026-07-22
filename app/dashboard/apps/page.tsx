@@ -20,8 +20,12 @@ import CreditCard from "@gravity-ui/icons/CreditCard";
 import Copy from "@gravity-ui/icons/Copy";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
+import ArrowsRotateLeft from "@gravity-ui/icons/ArrowsRotateLeft";
+import Eye from "@gravity-ui/icons/Eye";
+import CircleCheck from "@gravity-ui/icons/CircleCheck";
+import CircleExclamation from "@gravity-ui/icons/CircleExclamation";
 import { AppModulesModal } from "@/src/features/apps/components/AppModulesModal";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
 import { usePlans } from "@/src/features/plans/hooks/usePlans";
@@ -31,7 +35,8 @@ import {
 } from "@/src/features/plans/lib/plan-for-app";
 import { formatPlanPrice } from "@/src/features/plans/lib/format-plan-price";
 import { entitlementSyncSummary } from "@/src/features/apps/lib/entitlementEnv";
-import { isTemplateApp } from "@/src/features/apps/lib/app-kind";
+import { isTemplateApp, isMobileApp } from "@/src/features/apps/lib/app-kind";
+import { useAppsSyncHealth } from "@/src/features/apps/hooks/useAppsSyncHealth";
 import {
   ManagerHeader,
   TableSearchBar,
@@ -60,17 +65,67 @@ function generateApiKey(): string {
 function matchesAppSearch(app: App, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [app.name, app.owner_name, app.ruc, app.email]
+  return [app.name, app.owner_name, app.ruc, app.email, app.kind, app.mobile?.key]
     .filter(Boolean)
     .some((v) => String(v).toLowerCase().includes(q));
+}
+
+function appKindLabel(app: App) {
+  if (isMobileApp(app)) return "Móvil";
+  if (isTemplateApp(app)) return "Plantilla";
+  return "Web";
+}
+
+function appPlatformLabel(app: App) {
+  if (!isMobileApp(app)) return "—";
+  const platforms = app.mobile?.platforms ?? [];
+  if (platforms.length === 0) return "Android";
+  return platforms
+    .map((p) => (p === "ios" ? "iOS" : "Android"))
+    .join(" · ");
+}
+
+function InfoField({
+  label,
+  value,
+  mono = false,
+  wide = false,
+}: {
+  label: string;
+  value: ReactNode;
+  mono?: boolean;
+  wide?: boolean;
+}) {
+  const empty =
+    value == null || value === "" || value === "—";
+  return (
+    <div className={wide ? "col-span-2" : undefined}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--gp-text-faint)]">
+        {label}
+      </p>
+      <p
+        className={`mt-0.5 break-all text-sm ${
+          empty ? "text-[var(--gp-text-muted)]" : "text-[var(--gp-text)]"
+        } ${mono ? "font-mono text-xs" : "font-medium"}`}
+      >
+        {empty ? "—" : value}
+      </p>
+    </div>
+  );
 }
 
 export default function AppsPage() {
   const { apps, loading, create, update, remove, pushEntitlement, enablePlan, updateModules, refetch } =
     useApps();
+  const {
+    liveStateFor,
+    isFetching: syncChecking,
+    refetch: refetchSyncHealth,
+  } = useAppsSyncHealth(!loading);
   const { plans } = usePlans();
   const [submitting, setSubmitting] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
+  const [viewingApp, setViewingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
   const [modulesApp, setModulesApp] = useState<App | null>(null);
   const [planApp, setPlanApp] = useState<App | null>(null);
@@ -84,6 +139,7 @@ export default function AppsPage() {
 
   const createState = useOverlayState();
   const editState = useOverlayState();
+  const viewState = useOverlayState();
   const deleteState = useOverlayState();
   const planState = useOverlayState();
 
@@ -305,8 +361,8 @@ export default function AppsPage() {
   return (
     <div className={gp.page}>
       <ManagerHeader
-        title="Aplicaciones"
-        description="Gestioná las aplicaciones registradas en el sistema"
+        title="Todas"
+        description="Apps web y móvil: email, sync, dispositivos, planes y mantenimiento."
         Icon={Briefcase}
         action={
           <Modal state={createState}>
@@ -495,12 +551,33 @@ export default function AppsPage() {
           <thead>
             <tr>
               <th>Nombre</th>
+              <th>Tipo</th>
+              <th>SO</th>
               <th>Propietario</th>
               <th>Plan</th>
               <th>Módulos</th>
-              <th>Sync</th>
-              <th>Email</th>
-              <th>Mantenimiento</th>
+              <th>
+                <span className="inline-flex items-center gap-1.5">
+                  Sync
+                  <button
+                    type="button"
+                    className="inline-flex rounded p-0.5 text-[var(--gp-text-muted)] hover:bg-[var(--gp-nav-hover)] hover:text-[var(--gp-text)]"
+                    title="Comprobar backends web y refrescar dispositivos móvil"
+                    aria-label="Comprobar sync"
+                    disabled={syncChecking}
+                    onClick={() => {
+                      void refetchSyncHealth();
+                      void refetch();
+                    }}
+                  >
+                    <ArrowsRotateLeft
+                      width={12}
+                      height={12}
+                      className={syncChecking ? "animate-spin" : undefined}
+                    />
+                  </button>
+                </span>
+              </th>
               <th className="text-right">Acciones</th>
             </tr>
           </thead>
@@ -518,15 +595,22 @@ export default function AppsPage() {
             ) : (
               paginatedApps.map((app) => (
                 <tr key={app.id}>
-                  <td className="font-medium">
-                    <span className="flex flex-col gap-0.5">
-                      <span>{app.name || "—"}</span>
-                      <span className="text-[10px] font-normal text-[var(--gp-text-muted)]">
-                        {isTemplateApp(app)
-                          ? "Plantilla (catálogo base)"
-                          : "Despliegue"}
-                      </span>
+                  <td className="font-medium">{app.name || "—"}</td>
+                  <td>
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                        isMobileApp(app)
+                          ? "bg-emerald-50 text-emerald-800"
+                          : isTemplateApp(app)
+                            ? "bg-zinc-100 text-zinc-700"
+                            : "bg-sky-50 text-sky-800"
+                      }`}
+                    >
+                      {appKindLabel(app)}
                     </span>
+                  </td>
+                  <td className="text-xs text-[var(--gp-text-muted)]">
+                    {appPlatformLabel(app)}
                   </td>
                   <td>{app.owner_name || "—"}</td>
                   <td>
@@ -555,99 +639,218 @@ export default function AppsPage() {
                     )}
                   </td>
                   <td>
-                    {(() => {
-                      const sync = entitlementSyncSummary(app);
-                      return (
-                        <div title={sync.title} className="max-w-[11rem]">
-                          <p className={`text-xs font-medium ${sync.toneClass}`}>
-                            {sync.primary}
+                    {isMobileApp(app) ? (
+                      <div className="max-w-[12rem]">
+                        {(app.mobile?.device_count ?? 0) === 0 ? (
+                          <p className="text-xs font-medium text-[var(--gp-text-muted)]">
+                            Sin dispositivos
                           </p>
-                          {sync.secondary ? (
-                            <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
-                              {sync.secondary}
+                        ) : (
+                          <>
+                            <p
+                              className={`text-xs font-medium ${
+                                (app.mobile?.online_device_count ?? 0) > 0
+                                  ? "text-emerald-700"
+                                  : "text-amber-700"
+                              }`}
+                            >
+                              {(app.mobile?.online_device_count ?? 0) > 0
+                                ? `${app.mobile!.online_device_count} en línea`
+                                : "Ninguno en línea"}
                             </p>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td>{app.email || "—"}</td>
-                  <td>
-                    <Switch
-                      size="sm"
-                      isSelected={app.maintenance}
-                      isDisabled={togglingIds.has(app.id)}
-                      onChange={() => handleToggleMantenimiento(app)}
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
+                            <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
+                              {app.mobile!.device_count} dispositivo
+                              {app.mobile!.device_count === 1 ? "" : "s"}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      (() => {
+                        const sync = entitlementSyncSummary(
+                          app,
+                          liveStateFor(app.id),
+                        );
+                        return (
+                          <div title={sync.title} className="max-w-[12rem]">
+                            <p
+                              className={`text-xs font-medium ${sync.toneClass}`}
+                            >
+                              {sync.primary}
+                            </p>
+                            {sync.secondary ? (
+                              <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
+                                {sync.secondary}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })()
+                    )}
                   </td>
                   <td>
                     <div className="gp-table-actions">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Módulos de ${app.name || "aplicación"}`}
-                        isDisabled={isTemplateApp(app)}
-                        onPress={() => openModules(app)}
-                      >
-                        <Cubes3Overlap width={14} height={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Plan de ${app.name || "aplicación"}`}
-                        isDisabled={isTemplateApp(app)}
-                        onPress={() => openAssignPlan(app)}
-                      >
-                        <CreditCard width={14} height={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={
-                          !app.entitlement_url
-                            ? "Sin URL de sync configurada"
-                            : `Empujar entitlement (sync) al backend de ${app.name || "la app"}`
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip={
+                          isMobileApp(app)
+                            ? app.maintenance
+                              ? "Estado: en mantenimiento"
+                              : "Estado: activa"
+                            : app.maintenance
+                              ? "Estado: en mantenimiento — clic para activar"
+                              : "Estado: activa — clic para poner en mantenimiento"
                         }
-                        isDisabled={!app.entitlement_url || pushingIds.has(app.id)}
-                        onPress={() => handlePush(app)}
                       >
-                        {pushingIds.has(app.id) ? (
-                          <Spinner size="sm" />
-                        ) : (
-                          <ArrowUpFromSquare width={14} height={14} />
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Editar ${app.name || "aplicación"}`}
-                        onPress={() => {
-                          setEditingApp(app);
-                          setEditApiKey("");
-                          setCopiedId(null);
-                          editState.open();
-                        }}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={
+                            app.maintenance
+                              ? "Estado: en mantenimiento"
+                              : "Estado: activa"
+                          }
+                          isDisabled={
+                            togglingIds.has(app.id) || isMobileApp(app)
+                          }
+                          className={
+                            togglingIds.has(app.id) || isMobileApp(app)
+                              ? "pointer-events-none"
+                              : undefined
+                          }
+                          onPress={() => handleToggleMantenimiento(app)}
+                        >
+                          {togglingIds.has(app.id) ? (
+                            <Spinner size="sm" />
+                          ) : app.maintenance ? (
+                            <CircleExclamation
+                              width={14}
+                              height={14}
+                              className="text-red-500"
+                            />
+                          ) : (
+                            <CircleCheck
+                              width={14}
+                              height={14}
+                              className="text-emerald-600"
+                            />
+                          )}
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip="Ver información de la app"
                       >
-                        <Pencil width={14} height={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-500"
-                        aria-label={`Eliminar ${app.name || "aplicación"}`}
-                        onPress={() => {
-                          setDeletingApp(app);
-                          deleteState.open();
-                        }}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Ver información de la app"
+                          onPress={() => {
+                            setViewingApp(app);
+                            viewState.open();
+                          }}
+                        >
+                          <Eye width={14} height={14} />
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip="Módulos: asignar o ver módulos de la app"
                       >
-                        <TrashBin width={14} height={14} />
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Módulos: asignar o ver módulos de la app"
+                          isDisabled={isTemplateApp(app)}
+                          className={isTemplateApp(app) ? "pointer-events-none" : undefined}
+                          onPress={() => openModules(app)}
+                        >
+                          <Cubes3Overlap width={14} height={14} />
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip="Plan: asignar o cambiar el plan"
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Plan: asignar o cambiar el plan"
+                          isDisabled={isTemplateApp(app)}
+                          className={isTemplateApp(app) ? "pointer-events-none" : undefined}
+                          onPress={() => openAssignPlan(app)}
+                        >
+                          <CreditCard width={14} height={14} />
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip={
+                          isMobileApp(app)
+                            ? "Sync: solo aplica a apps web"
+                            : !app.entitlement_url
+                              ? "Sync: falta configurar la URL entitlement"
+                              : "Sync: empujar entitlement al backend"
+                        }
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={
+                            isMobileApp(app)
+                              ? "Sync: solo aplica a apps web"
+                              : !app.entitlement_url
+                                ? "Sync: falta configurar la URL entitlement"
+                                : "Sync: empujar entitlement al backend"
+                          }
+                          isDisabled={
+                            isMobileApp(app) ||
+                            !app.entitlement_url ||
+                            pushingIds.has(app.id)
+                          }
+                          className={
+                            isMobileApp(app) || !app.entitlement_url
+                              ? "pointer-events-none"
+                              : undefined
+                          }
+                          onPress={() => handlePush(app)}
+                        >
+                          {pushingIds.has(app.id) ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            <ArrowUpFromSquare width={14} height={14} />
+                          )}
+                        </Button>
+                      </span>
+                      <span className="gp-tip inline-flex" data-tip="Editar aplicación">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Editar aplicación"
+                          onPress={() => {
+                            setEditingApp(app);
+                            setEditApiKey("");
+                            setCopiedId(null);
+                            editState.open();
+                          }}
+                        >
+                          <Pencil width={14} height={14} />
+                        </Button>
+                      </span>
+                      <span className="gp-tip inline-flex" data-tip="Eliminar aplicación">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500"
+                          aria-label="Eliminar aplicación"
+                          onPress={() => {
+                            setDeletingApp(app);
+                            deleteState.open();
+                          }}
+                        >
+                          <TrashBin width={14} height={14} />
+                        </Button>
+                      </span>
                     </div>
                   </td>
                 </tr>
@@ -663,6 +866,172 @@ export default function AppsPage() {
           onPageChange={setPage}
         />
       </div>
+
+      <Modal state={viewState}>
+        <Modal.Backdrop>
+          <Modal.Container size="lg">
+            <Modal.Dialog className="flex max-h-[min(92vh,720px)] flex-col sm:max-w-xl">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>Información de la app</Modal.Heading>
+              </Modal.Header>
+              {viewingApp ? (
+                <>
+                  <Modal.Body className="min-h-0 flex-1 overflow-y-auto">
+                    <div className="mb-5 flex flex-wrap items-start gap-3">
+                      <div
+                        className="flex size-12 shrink-0 items-center justify-center rounded-2xl"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--gp-primary) 16%, transparent)",
+                          color: "var(--gp-primary)",
+                        }}
+                      >
+                        <Briefcase width={22} height={22} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-lg font-semibold tracking-tight text-[var(--gp-text)]">
+                          {viewingApp.name || "Sin nombre"}
+                        </h3>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span
+                            className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                              isMobileApp(viewingApp)
+                                ? "bg-emerald-50 text-emerald-800"
+                                : isTemplateApp(viewingApp)
+                                  ? "bg-zinc-100 text-zinc-700"
+                                  : "bg-sky-50 text-sky-800"
+                            }`}
+                          >
+                            {appKindLabel(viewingApp)}
+                          </span>
+                          {isMobileApp(viewingApp) ? (
+                            <span className="inline-flex rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">
+                              {appPlatformLabel(viewingApp)}
+                            </span>
+                          ) : null}
+                          {viewingApp.maintenance ? (
+                            <span className="inline-flex rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              En mantenimiento
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/40 p-4">
+                      <InfoField label="Propietario" value={viewingApp.owner_name} />
+                      <InfoField label="Email" value={viewingApp.email} />
+                      <InfoField label="Teléfono" value={viewingApp.phone} />
+                      <InfoField label="RUC" value={viewingApp.ruc} />
+                      <InfoField label="Dirección" value={viewingApp.address} wide />
+                      <InfoField
+                        label="Plan"
+                        value={viewingApp.plan?.name ?? "Sin plan"}
+                      />
+                      <InfoField
+                        label="Módulos"
+                        value={
+                          isTemplateApp(viewingApp)
+                            ? "—"
+                            : String(viewingApp.modules?.length ?? 0)
+                        }
+                      />
+                      {isMobileApp(viewingApp) ? (
+                        <>
+                          <InfoField
+                            label="Dispositivos"
+                            value={
+                              viewingApp.mobile
+                                ? `${viewingApp.mobile.device_count} registrados · ${viewingApp.mobile.online_device_count} en línea`
+                                : "Sin dispositivos"
+                            }
+                          />
+                          <InfoField
+                            label="Key móvil"
+                            value={viewingApp.mobile?.key}
+                            mono
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <InfoField
+                            label="Sync"
+                            value={
+                              entitlementSyncSummary(
+                                viewingApp,
+                                liveStateFor(viewingApp.id),
+                              ).primary
+                            }
+                          />
+                          <InfoField
+                            label="Host sync"
+                            value={
+                              entitlementSyncSummary(
+                                viewingApp,
+                                liveStateFor(viewingApp.id),
+                              ).secondary || "—"
+                            }
+                            mono
+                          />
+                        </>
+                      )}
+                      <InfoField
+                        label="URL entitlement"
+                        value={viewingApp.entitlement_url}
+                        mono
+                        wide
+                      />
+                      <InfoField
+                        label="Path media"
+                        value={viewingApp.path}
+                        mono
+                      />
+                      <InfoField
+                        label="Base de datos"
+                        value={viewingApp.database_name}
+                        mono
+                      />
+                      <InfoField
+                        label="Hash"
+                        value={viewingApp.hash}
+                        mono
+                        wide
+                      />
+                    </div>
+                  </Modal.Body>
+                  <Modal.Footer>
+                    <Button
+                      variant="secondary"
+                      onPress={() => {
+                        viewState.close();
+                        setViewingApp(null);
+                      }}
+                    >
+                      Cerrar
+                    </Button>
+                    <Button
+                      onPress={() => {
+                        viewState.close();
+                        setEditingApp(viewingApp);
+                        setEditApiKey("");
+                        setCopiedId(null);
+                        editState.open();
+                      }}
+                      style={{
+                        backgroundColor: "var(--gp-primary)",
+                        color: "var(--gp-primary-text)",
+                      }}
+                    >
+                      Editar
+                    </Button>
+                  </Modal.Footer>
+                </>
+              ) : null}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
 
       <Modal state={editState}>
         <Modal.Backdrop>
@@ -765,7 +1134,10 @@ export default function AppsPage() {
                           />
 
                           {(() => {
-                            const sync = entitlementSyncSummary(editingApp);
+                            const sync = entitlementSyncSummary(
+                              editingApp,
+                              liveStateFor(editingApp.id),
+                            );
                             return (
                               <span
                                 className={`mt-1 block text-[11px] font-medium ${sync.toneClass}`}

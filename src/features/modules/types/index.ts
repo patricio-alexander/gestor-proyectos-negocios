@@ -3,7 +3,8 @@ export type LifecycleStatus =
   | "development"
   | "maintenance"
   | "developer"
-  | "planned";
+  | "planned"
+  | "hidden";
 
 export type NormalizedLifecycleStatus = Exclude<LifecycleStatus, "development">;
 
@@ -35,7 +36,10 @@ export type LinkedApp = {
   id: number;
   name: string | null;
   hash: string;
+  kind?: string | null;
 };
+
+export type ModuleChannel = "web" | "mobile";
 
 export type Module = {
   id: number;
@@ -43,6 +47,7 @@ export type Module = {
   key: string;
   description: string | null;
   image_url: string | null;
+  channel: ModuleChannel;
   status: LifecycleStatus;
   is_maintainer: boolean;
   is_trial: boolean;
@@ -62,6 +67,7 @@ export type CreateModuleInput = {
   description?: string | null;
   image_url?: string | null;
   status?: LifecycleStatus;
+  channel?: ModuleChannel;
 };
 
 export type UpdateModuleInput = {
@@ -74,6 +80,7 @@ export type UpdateModuleInput = {
   limit_days_trial?: number | null;
   start_trial?: string | null;
   end_trial?: string | null;
+  channel?: ModuleChannel;
 };
 
 export type CreateSectionInput = {
@@ -109,14 +116,16 @@ export const LIFECYCLE_STATUS_LABELS: Record<LifecycleStatus, string> = {
   maintenance: "Mantenimiento",
   developer: "Solo desarrollador",
   planned: "Próximamente",
+  hidden: "Oculto",
 };
 
-/** Opciones editables (4 estados). */
+/** Opciones editables. */
 export const LIFECYCLE_STATUS_OPTIONS = [
   "active",
   "maintenance",
   "planned",
   "developer",
+  "hidden",
 ] as const satisfies readonly LifecycleStatus[];
 
 /** Normaliza legacy: development → maintenance. */

@@ -107,8 +107,13 @@ export function ModuleAccessPanel({
   const sectionDeleteState = useOverlayState();
 
   const deploymentApps = useMemo(
-    () => allApps.filter((a) => a.kind !== "template"),
-    [allApps],
+    () =>
+      allApps.filter((a) => {
+        if (a.kind === "template") return false;
+        if ((module.channel ?? "web") === "mobile") return a.kind === "mobile";
+        return a.kind === "deployment" || a.kind == null;
+      }),
+    [allApps, module.channel],
   );
 
   const assignedIds = useMemo(
@@ -930,6 +935,11 @@ function AppTab({
                 >
                   <p className="truncate text-xs font-semibold text-[var(--gp-text)]">
                     {app.name || `App #${app.id}`}
+                    {app.kind === "mobile" ? (
+                      <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-bold uppercase text-emerald-800">
+                        Móvil
+                      </span>
+                    ) : null}
                   </p>
                   <p className="text-[10px] text-[var(--gp-text-muted)]">
                     {assigned ? "Asignado" : "Sin asignar"}

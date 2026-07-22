@@ -9,7 +9,8 @@ export function normalizeLifecycleStatus(
     status === "active" ||
     status === "maintenance" ||
     status === "developer" ||
-    status === "planned"
+    status === "planned" ||
+    status === "hidden"
   ) {
     return status;
   }
@@ -68,6 +69,12 @@ export function deriveModuleStatusFromSections(
     sections.every((s) => normalizeLifecycleStatus(s.status) === "maintenance")
   ) {
     return "maintenance";
+  }
+  if (
+    sections.length > 0 &&
+    sections.every((s) => normalizeLifecycleStatus(s.status) === "hidden")
+  ) {
+    return "hidden";
   }
   return normalizeLifecycleStatus(fallback);
 }

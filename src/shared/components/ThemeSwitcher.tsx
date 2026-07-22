@@ -4,29 +4,33 @@ import { Dropdown } from "@heroui/react";
 import Moon from "@gravity-ui/icons/Moon";
 import Sun from "@gravity-ui/icons/Sun";
 import StarFill from "@gravity-ui/icons/StarFill";
-import Flame from "@gravity-ui/icons/Flame";
+import LayoutColumns from "@gravity-ui/icons/LayoutColumns";
 import Check from "@gravity-ui/icons/Check";
 import { useThemeMode, type ThemeMode } from "@/src/shared/providers/ThemeProvider";
 import { gp } from "@/src/shared/ui/theme";
 
 const OPTIONS: { value: ThemeMode; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "Hielo azul", Icon: Sun },
-  { value: "orange", label: "Naranja", Icon: Flame },
-  { value: "dark", label: "Espacio", Icon: Moon },
-  { value: "neo", label: "Eléctrico", Icon: StarFill },
+  { value: "light", label: "Claro", Icon: Sun },
+  { value: "dark", label: "Oscuro", Icon: Moon },
+  { value: "neo", label: "Neon", Icon: StarFill },
+  { value: "system", label: "Sistema", Icon: LayoutColumns },
 ];
 
 function ThemeIcon({ mode }: { mode: ThemeMode }) {
-  if (mode === "dark") return <Moon width={18} height={18} />;
+  if (mode === "dark") {
+    return <Moon width={18} height={18} style={{ color: "var(--gp-primary)" }} />;
+  }
   if (mode === "neo") {
     return (
       <StarFill width={18} height={18} style={{ color: "var(--gp-accent-cyan)" }} />
     );
   }
-  if (mode === "orange") {
-    return <Flame width={18} height={18} style={{ color: "var(--gp-primary)" }} />;
+  if (mode === "system") {
+    return (
+      <LayoutColumns width={18} height={18} style={{ color: "var(--gp-primary)" }} />
+    );
   }
-  return <Sun width={18} height={18} />;
+  return <Sun width={18} height={18} style={{ color: "var(--gp-primary)" }} />;
 }
 
 export function ThemeSwitcher() {

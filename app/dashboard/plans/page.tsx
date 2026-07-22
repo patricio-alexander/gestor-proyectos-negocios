@@ -477,7 +477,7 @@ export default function PlansPage() {
     <div className={gp.page}>
       <ManagerHeader
         title="Planes"
-        description="Definí precios y módulos por app. Desde cada plan podés crear una suscripción en una app desplegada."
+        description="Definí precios y módulos por app web. Los planes de apps móvil están en Apps móvil."
         Icon={FileText}
         action={
           <div className="flex items-center gap-2">

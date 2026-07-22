@@ -15,12 +15,11 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     items: [{ label: "Resumen general", href: "/dashboard" }],
   },
   {
-    title: "General",
+    title: "Aplicaciones",
     items: [
-      { label: "Mi perfil", href: "/dashboard/profile" },
-      { label: "Notificaciones", href: "/dashboard/notifications" },
-      { label: "Aplicaciones", href: "/dashboard/apps" },
-      { label: "Kanban apps", href: "/dashboard/kanban" },
+      { label: "Todas", href: "/dashboard/apps" },
+      { label: "Apps web", href: "/dashboard/kanban" },
+      { label: "Apps móvil", href: "/dashboard/mobile-apps" },
     ],
   },
   {
@@ -31,7 +30,7 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
     ],
   },
   {
-    title: "Planes y Subscripciones",
+    title: "Planes y suscripciones",
     items: [
       { label: "Ofertas", href: "/dashboard/offers" },
       { label: "Planes", href: "/dashboard/plans" },

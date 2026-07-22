@@ -22,12 +22,14 @@ export async function buildEntitlementForAppHash(
 ): Promise<EntitlementPayload> {
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
-    select: { id: true, maintenance: true },
+    select: { id: true, maintenance: true, kind: true },
   });
 
   if (!app) {
     return { maintenance: false, subscribed: false, subscription: null };
   }
+
+  const moduleChannel = app.kind === "mobile" ? "mobile" : "web";
 
   const subscription = await prisma.subscription.findFirst({
     where: { app_hash: appHash },
@@ -39,6 +41,7 @@ export async function buildEntitlementForAppHash(
           plan: {
             select: {
               name: true,
+              channel: true,
               planOffers: {
                 select: {
                   offer: {
@@ -66,7 +69,10 @@ export async function buildEntitlementForAppHash(
   });
 
   const appModules = await prisma.appModule.findMany({
-    where: { app_id: app.id },
+    where: {
+      app_id: app.id,
+      module: { deleted_at: null, channel: moduleChannel },
+    },
     select: {
       module_id: true,
       status: true,
@@ -76,6 +82,7 @@ export async function buildEntitlementForAppHash(
           key: true,
           name: true,
           status: true,
+          channel: true,
           is_maintainer: true,
           is_trial: true,
           limit_days_trial: true,

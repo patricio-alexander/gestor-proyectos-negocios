@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 
-/** light = hielo azul · dark = espacio · neo = eléctrico · orange = naranja */
-export type ThemeMode = "light" | "dark" | "neo" | "orange";
+/** light = Claro (naranja) · dark = Oscuro (naranja) · neo = Neon · system = Sistema (azul oscuro) */
+export type ThemeMode = "light" | "dark" | "neo" | "system";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -22,11 +22,13 @@ const STORAGE_KEY = "gestor-theme-mode";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function normalizeStoredTheme(value: string | null): ThemeMode {
-  if (value === "light" || value === "dark" || value === "neo" || value === "orange") {
+  if (value === "light" || value === "dark" || value === "neo" || value === "system") {
     return value;
   }
   if (value === "neon") return "neo";
-  return "orange";
+  // Legacy: naranja claro → Claro
+  if (value === "orange") return "light";
+  return "light";
 }
 
 export function applyTheme(mode: ThemeMode) {
@@ -34,7 +36,7 @@ export function applyTheme(mode: ThemeMode) {
   root.classList.remove("dark", "neon");
   root.setAttribute("data-theme", mode);
 
-  if (mode === "dark" || mode === "neo") {
+  if (mode === "dark" || mode === "neo" || mode === "system") {
     root.classList.add("dark");
   }
   if (mode === "neo") {
@@ -56,7 +58,7 @@ export function applyLandingTheme() {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("orange");
+  const [mode, setModeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);

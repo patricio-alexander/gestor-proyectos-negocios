@@ -75,10 +75,13 @@ export function classifyEntitlementEnv(url: string | null | undefined): Entitlem
   return { kind: "unknown", label: "Desconocido", host: hostPort };
 }
 
-export function entitlementSyncSummary(opts: {
-  entitlement_url?: string | null;
-  has_entitlement_secret?: boolean;
-}): {
+export function entitlementSyncSummary(
+  opts: {
+    entitlement_url?: string | null;
+    has_entitlement_secret?: boolean;
+  },
+  live?: "checking" | "online" | "offline" | "no_secret" | "not_configured" | null,
+): {
   env: EntitlementEnvInfo;
   ready: boolean;
   /** Línea principal en la tabla Sync. */
@@ -101,36 +104,60 @@ export function entitlementSyncSummary(opts: {
   }
 
   const hasSecret = Boolean(opts.has_entitlement_secret);
-  const ready = Boolean(opts.entitlement_url) && hasSecret;
+  const configured = Boolean(opts.entitlement_url) && hasSecret;
 
-  const toneClass =
-    env.kind === "production"
-      ? ready
+  const liveState =
+    live ??
+    (!opts.entitlement_url
+      ? "not_configured"
+      : !hasSecret
+        ? "no_secret"
+        : null);
+
+  let statusLabel: string;
+  let toneClass: string;
+  let titleExtra = "";
+
+  if (liveState === "checking") {
+    statusLabel = "Comprobando…";
+    toneClass = "text-[var(--gp-text-muted)]";
+    titleExtra = "Verificando si el backend responde";
+  } else if (liveState === "online") {
+    statusLabel = "En línea";
+    toneClass =
+      env.kind === "production"
         ? "text-emerald-700"
-        : "text-amber-700"
-      : env.kind === "development"
-        ? ready
+        : env.kind === "development"
           ? "text-sky-700"
-          : "text-amber-700"
-        : env.kind === "staging"
-          ? ready
+          : env.kind === "staging"
             ? "text-violet-700"
-            : "text-amber-700"
-          : "text-amber-700";
-
-  const status = !opts.entitlement_url
-    ? "Sin URL"
-    : !hasSecret
-      ? "Sin secreto"
-      : "Conectado";
+            : "text-emerald-700";
+    titleExtra = "Backend responde (hay comunicación)";
+  } else if (liveState === "offline") {
+    statusLabel = "Sin comunicación";
+    toneClass = "text-red-600";
+    titleExtra = "No responde: backend apagado o URL inalcanzable";
+  } else if (liveState === "no_secret" || !hasSecret) {
+    statusLabel = "Sin secreto";
+    toneClass = "text-amber-700";
+    titleExtra = "Falta API Key del gestor";
+  } else if (liveState === "not_configured") {
+    statusLabel = "Sin URL";
+    toneClass = "text-[var(--gp-text-muted)]";
+    titleExtra = "Sin URL entitlement";
+  } else {
+    statusLabel = "Sin verificar";
+    toneClass = "text-amber-700";
+    titleExtra = "Todavía no se comprobó el backend";
+  }
 
   return {
     env,
-    ready,
-    primary: `${env.label} · ${status}`,
+    ready: configured && liveState === "online",
+    primary: `${env.label} · ${statusLabel}`,
     secondary: env.host,
     title: opts.entitlement_url
-      ? `${env.label}: ${opts.entitlement_url}${hasSecret ? "" : " (falta API Key)"}`
+      ? `${env.label}: ${opts.entitlement_url}${titleExtra ? ` — ${titleExtra}` : ""}`
       : "Sin URL entitlement",
     toneClass,
   };

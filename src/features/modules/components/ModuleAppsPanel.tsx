@@ -30,6 +30,8 @@ type ModuleAppsPanelProps = {
   moduleId: number;
   moduleName: string;
   globalStatus: LifecycleStatus;
+  /** Canal del módulo: filtra apps web vs móvil. Default web. */
+  channel?: "web" | "mobile";
   onChanged?: () => void;
   onError?: (message: string) => void;
 };
@@ -38,6 +40,7 @@ export function ModuleAppsPanel({
   moduleId,
   moduleName,
   globalStatus,
+  channel = "web",
   onChanged,
   onError,
 }: ModuleAppsPanelProps) {
@@ -48,8 +51,13 @@ export function ModuleAppsPanel({
   const modal = useOverlayState();
 
   const deploymentApps = useMemo(
-    () => allApps.filter((a) => a.kind !== "template"),
-    [allApps],
+    () =>
+      allApps.filter((a) => {
+        if (a.kind === "template") return false;
+        if (channel === "mobile") return a.kind === "mobile";
+        return a.kind === "deployment" || a.kind == null;
+      }),
+    [allApps, channel],
   );
 
   const assignedAppIds = useMemo(
@@ -232,6 +240,11 @@ export function ModuleAppsPanel({
                                     </div>
                                     <p className="truncate text-sm font-semibold text-[var(--gp-text)]">
                                       {app.name || `App #${app.id}`}
+                                      {app.kind === "mobile" ? (
+                                        <span className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
+                                          Móvil
+                                        </span>
+                                      ) : null}
                                     </p>
                                   </div>
                                   <p className="mt-0.5 text-xs text-[var(--gp-text-muted)]">

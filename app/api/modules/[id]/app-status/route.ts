@@ -12,6 +12,7 @@ const STATUSES = new Set([
   "maintenance",
   "developer",
   "planned",
+  "hidden",
 ]);
 
 export async function GET(_request: Request, { params }: Params) {
@@ -99,7 +100,8 @@ export async function POST(request: Request, { params }: Params) {
           | "development"
           | "maintenance"
           | "developer"
-          | "planned",
+          | "planned"
+          | "hidden",
       },
     });
 

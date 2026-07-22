@@ -1,27 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { Module, CreateModuleInput, UpdateModuleInput } from "../types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  Module,
+  CreateModuleInput,
+  UpdateModuleInput,
+  ModuleChannel,
+} from "../types";
 import { apiUrl } from "@/src/utils/apiUrl";
 
-export function useModules() {
+export function useModules(channel: ModuleChannel = "web") {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchModules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/modules"));
+      const res = await fetch(
+        apiUrl(`/api/modules?channel=${encodeURIComponent(channel)}`),
+      );
       if (res.ok) {
         const data = await res.json();
-        setModules(data);
+        setModules(Array.isArray(data) ? data : []);
       }
     } catch {
       console.error("Error fetching modules");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [channel]);
 
   useEffect(() => {
     fetchModules();
@@ -31,7 +38,7 @@ export function useModules() {
     const res = await fetch(apiUrl("/api/modules"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, channel: input.channel ?? channel }),
     });
 
     if (!res.ok) {
@@ -73,12 +80,15 @@ export function useModules() {
 
     setModules((prev) =>
       prev.map((m) =>
-        m.id === id ? { ...m, deleted_at: new Date().toISOString() } : m
-      )
+        m.id === id ? { ...m, deleted_at: new Date().toISOString() } : m,
+      ),
     );
   }
 
-  const activeModules = modules.filter((m) => !m.deleted_at);
+  const activeModules = useMemo(
+    () => modules.filter((m) => !m.deleted_at),
+    [modules],
+  );
 
   function patchModule(id: number, updater: (module: Module) => Module) {
     setModules((prev) =>
@@ -94,5 +104,6 @@ export function useModules() {
     remove,
     patchModule,
     refetch: fetchModules,
+    channel,
   };
 }

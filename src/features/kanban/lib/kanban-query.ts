@@ -117,7 +117,7 @@ function mapModuleCatalog(module: ModuleRow): KanbanModule {
 export async function getKanbanBoardData(): Promise<KanbanBoardData> {
   const [apps, allModules] = await Promise.all([
     prisma.apps.findMany({
-      where: { deleted_at: null },
+      where: { deleted_at: null, kind: { not: "mobile" } },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -125,7 +125,7 @@ export async function getKanbanBoardData(): Promise<KanbanBoardData> {
         kind: true,
         app_modules: {
           where: {
-            module: { deleted_at: null },
+            module: { deleted_at: null, channel: "web" },
           },
           select: {
             status: true,
@@ -155,7 +155,7 @@ export async function getKanbanBoardData(): Promise<KanbanBoardData> {
       },
     }),
     prisma.module.findMany({
-      where: { deleted_at: null },
+      where: { deleted_at: null, channel: "web" },
       orderBy: { name: "asc" },
       select: {
         id: true,

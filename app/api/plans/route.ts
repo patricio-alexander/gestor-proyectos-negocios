@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { requireAppId } from "@/src/shared/lib/app-kind";
@@ -9,15 +9,20 @@ import {
   planInclude,
 } from "@/src/features/plans/lib/plan-query";
 import { syncPlanAppModules } from "@/src/features/plans/lib/plan-app-modules";
+import { isMobileChannel } from "@/src/features/modules/lib/module-channel";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;
 
   try {
+    const channelParam = request.nextUrl.searchParams.get("channel");
+    const channel = isMobileChannel(channelParam) ? "mobile" : "web";
+
     const plans = await prisma.plan.findMany({
       where: {
         deleted_at: null,
+        channel,
       },
       include: planInclude,
       orderBy: [{ sort_order: "asc" }, { id: "asc" }],
@@ -44,6 +49,7 @@ export async function POST(request: Request) {
       price_annual,
       module_ids,
       offer_ids,
+      channel: channelRaw,
     } = await request.json();
 
     if (!name || !name.trim()) {
@@ -52,6 +58,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const channel = isMobileChannel(channelRaw) ? "mobile" : "web";
 
     const appIds = Array.isArray(app_ids)
       ? app_ids
@@ -80,6 +88,7 @@ export async function POST(request: Request) {
     const plan = await prisma.plan.create({
       data: {
         name: name.trim(),
+        channel,
         prices: { create: pricesData },
         planOffers: offer_ids?.length
           ? { create: offer_ids.map((offer_id: number) => ({ offer_id })) }

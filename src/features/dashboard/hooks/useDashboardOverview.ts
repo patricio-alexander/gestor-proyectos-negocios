@@ -56,7 +56,7 @@ const EMPTY: DashboardOverview = {
 async function fetchDashboardOverview(): Promise<DashboardOverview> {
   const [apps, plans, modules, subscriptions, offers] = await Promise.all([
     fetchJson<App[]>("/api/apps"),
-    fetchJson<Plan[]>("/api/plans"),
+    fetchJson<Plan[]>("/api/plans?channel=web"),
     fetchJson<{ deleted_at: string | null }[]>("/api/modules"),
     fetchJson<Subscription[]>("/api/subscriptions"),
     fetchJson<Offer[]>("/api/offers"),

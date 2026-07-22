@@ -1,56 +1,18 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *, [data-theme="neo"], [data-theme="neo"] *));
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *, [data-theme="neo"], [data-theme="neo"] *, [data-theme="system"], [data-theme="system"] *));
 @custom-variant neon (&:where(.neon, .neon *, [data-theme="neo"], [data-theme="neo"] *));
 
 /*
  * HeroUI — variables por tema (data-theme)
+ * Claro/Oscuro = naranja · Sistema = azul oscuro · Neon = eléctrico
  * @see https://heroui.com/docs/react/getting-started/theming
  */
 
 [data-theme="light"],
 .light,
 .default {
-  color-scheme: light;
-  --accent: oklch(55.5% 0.162 252);
-  --accent-foreground: oklch(99% 0.004 252);
-  --background: oklch(97.2% 0.014 252);
-  --border: oklch(90% 0.018 252);
-  --danger: oklch(65.32% 0.2347 25);
-  --danger-foreground: oklch(99.11% 0 0);
-  --default: oklch(94% 0.012 252);
-  --default-foreground: oklch(21% 0.02 252);
-  --field-background: oklch(99.5% 0.008 252);
-  --field-border: transparent;
-  --field-foreground: oklch(21% 0.02 252);
-  --field-placeholder: oklch(55% 0.02 252);
-  --focus: oklch(55.5% 0.162 252);
-  --foreground: oklch(21% 0.02 252);
-  --muted: oklch(55% 0.02 252);
-  --overlay: oklch(99.5% 0.006 252);
-  --overlay-foreground: oklch(21% 0.02 252);
-  --scrollbar: oklch(87% 0.012 252);
-  --segment: oklch(99% 0.008 252);
-  --segment-foreground: oklch(21% 0.02 252);
-  --separator: oklch(92% 0.012 252);
-  --success: oklch(73.29% 0.1951 145);
-  --success-foreground: oklch(21% 0.02 145);
-  --surface: oklch(99.5% 0.008 252);
-  --surface-foreground: oklch(21% 0.02 252);
-  --surface-secondary: oklch(95.5% 0.012 252);
-  --surface-secondary-foreground: oklch(21% 0.02 252);
-  --surface-tertiary: oklch(94% 0.012 252);
-  --surface-tertiary-foreground: oklch(21% 0.02 252);
-  --warning: oklch(78% 0.16 85);
-  --warning-foreground: oklch(21% 0.02 85);
-  --radius: 0.5rem;
-  --field-radius: 0.75rem;
-  --font-sans: var(--font-geist-sans);
-}
-
-[data-theme="orange"],
-.orange {
   color-scheme: light;
   --accent: oklch(70.23% 0.2004 45.1);
   --accent-foreground: oklch(15% 0.03 45.1);
@@ -88,8 +50,44 @@
   --font-sans: var(--font-geist-sans);
 }
 
-[data-theme="dark"],
-.dark:not(.neon) {
+/* Oscuro naranja (no confundir con .dark genérico de Tailwind/HeroUI) */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: oklch(72% 0.19 45);
+  --accent-foreground: oklch(14% 0.03 45);
+  --background: oklch(14% 0.02 45);
+  --border: oklch(28% 0.03 45);
+  --danger: oklch(59.4% 0.1983 25);
+  --danger-foreground: oklch(99.11% 0 0);
+  --default: oklch(26% 0.03 45);
+  --default-foreground: oklch(96% 0.01 45);
+  --field-background: oklch(18% 0.025 45);
+  --field-border: transparent;
+  --field-foreground: oklch(96% 0.01 45);
+  --field-placeholder: oklch(68% 0.02 45);
+  --focus: oklch(72% 0.19 45);
+  --foreground: oklch(96% 0.012 45);
+  --muted: oklch(68% 0.02 45);
+  --overlay: oklch(18% 0.025 45);
+  --overlay-foreground: oklch(96% 0.01 45);
+  --scrollbar: oklch(68% 0.015 45);
+  --segment: oklch(34% 0.035 45);
+  --segment-foreground: oklch(96% 0.01 45);
+  --separator: oklch(24% 0.028 45);
+  --success: oklch(73.29% 0.1951 145);
+  --success-foreground: oklch(21% 0.02 145);
+  --surface: oklch(18% 0.025 45);
+  --surface-foreground: oklch(96% 0.01 45);
+  --surface-secondary: oklch(22% 0.03 45);
+  --surface-secondary-foreground: oklch(96% 0.01 45);
+  --surface-tertiary: oklch(24% 0.03 45);
+  --surface-tertiary-foreground: oklch(96% 0.01 45);
+  --warning: oklch(82% 0.14 85);
+  --warning-foreground: oklch(21% 0.02 85);
+}
+
+/* Sistema: azul oscuro (antes "Espacio") */
+[data-theme="system"] {
   color-scheme: dark;
   --accent: oklch(62% 0.17 252);
   --accent-foreground: oklch(99% 0.004 252);
@@ -184,61 +182,13 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TOKENS — Hielo azul (data-theme="light")
+   TOKENS — Claro naranja (data-theme="light")
    ═══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
-  --gp-bg: #c8daf5;
-  --gp-bg-gradient:
-    linear-gradient(155deg, #e8f2fc 0%, #d0e4f8 40%, #b8d4f5 100%),
-    radial-gradient(900px 480px at 0% 0%, rgba(62, 106, 225, 0.18), transparent 55%),
-    radial-gradient(700px 420px at 100% 100%, rgba(0, 180, 255, 0.12), transparent 50%);
-  --gp-surface: rgba(232, 242, 252, 0.88);
-  --gp-surface-muted: rgba(200, 220, 245, 0.75);
-  --gp-surface-hover: rgba(184, 212, 245, 0.65);
-  --gp-border: rgba(62, 106, 225, 0.18);
-  --gp-border-strong: rgba(62, 106, 225, 0.42);
-  --gp-text: #0a1838;
-  --gp-text-muted: #1a3066;
-  --gp-text-faint: #3e5a8a;
-  --gp-topbar: rgba(214, 232, 252, 0.9);
-  --gp-topbar-border: rgba(62, 106, 225, 0.22);
-  --gp-sidebar: rgba(220, 236, 252, 0.94);
-  --gp-sidebar-accent: rgba(62, 106, 225, 0.28);
-  --gp-nav-hover: rgba(62, 106, 225, 0.1);
-  --gp-nav-active-bg: #3e6ae1;
-  --gp-nav-active-text: #ffffff;
-  --gp-nav-active-ring: #5b9cff;
-  --gp-card-bg: rgba(240, 248, 255, 0.82);
-  --gp-card-border: rgba(62, 106, 225, 0.2);
-  --gp-card-shadow: 0 4px 24px rgba(62, 106, 225, 0.1), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  --gp-input-bg: rgba(248, 252, 255, 0.95);
-  --gp-input-border: rgba(62, 106, 225, 0.28);
-  --gp-input-focus: #3e6ae1;
-  --gp-trigger-hover: rgba(62, 106, 225, 0.12);
-  --gp-primary: #3e6ae1;
-  --gp-primary-text: #ffffff;
-  --gp-accent-platinum: #1a3066;
-  --gp-accent-gold: var(--gp-accent-platinum);
-  --gp-accent-cyan: #0088cc;
-  --gp-badge-bg: rgba(62, 106, 225, 0.14);
-  --gp-badge-text: #2a5099;
-  --gp-icon-box: rgba(62, 106, 225, 0.12);
-  --gp-icon-box-text: #3e6ae1;
-  --gp-avatar-bg: #3e6ae1;
-  --gp-overlay: rgba(232, 242, 252, 0.98);
-  --gp-table-head: rgba(184, 212, 245, 0.45);
-  --gp-danger: #e82127;
-  --gp-glow: rgba(62, 106, 225, 0.2);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TOKENS — Naranja / claro cálido (data-theme="orange")
-   ═══════════════════════════════════════════════════════════════════════════ */
-[data-theme="orange"] {
   --gp-bg: #fdebd6;
   --gp-bg-gradient:
     linear-gradient(155deg, #fff7ed 0%, #ffedd5 42%, #fed7aa 100%),
-    radial-gradient(900px 480px at 0% 0%, rgba(234, 88, 12, 0.14), transparent 55%),
+    radial-gradient(900px 480px at 0% 0%, rgba(255, 107, 0, 0.16), transparent 55%),
     radial-gradient(700px 420px at 100% 100%, rgba(251, 146, 60, 0.12), transparent 50%);
   --gp-surface: rgba(255, 247, 237, 0.9);
   --gp-surface-muted: rgba(254, 215, 170, 0.55);
@@ -251,39 +201,87 @@
   --gp-topbar: rgba(255, 237, 213, 0.92);
   --gp-topbar-border: rgba(234, 88, 12, 0.2);
   --gp-sidebar: rgba(255, 241, 230, 0.95);
-  --gp-sidebar-accent: rgba(234, 88, 12, 0.22);
+  --gp-sidebar-accent: rgba(255, 107, 0, 0.22);
   --gp-nav-hover: rgba(234, 88, 12, 0.1);
-  --gp-nav-active-bg: #ea580c;
+  --gp-nav-active-bg: #ff6b00;
   --gp-nav-active-text: #ffffff;
   --gp-nav-active-ring: #fb923c;
   --gp-card-bg: rgba(255, 250, 245, 0.88);
   --gp-card-border: rgba(234, 88, 12, 0.18);
-  --gp-card-shadow: 0 4px 24px rgba(234, 88, 12, 0.1), 0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  --gp-card-shadow: 0 4px 24px rgba(255, 107, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.65) inset;
   --gp-input-bg: rgba(255, 252, 248, 0.96);
   --gp-input-border: rgba(234, 88, 12, 0.24);
-  --gp-input-focus: #ea580c;
+  --gp-input-focus: #ff6b00;
   --gp-trigger-hover: rgba(234, 88, 12, 0.12);
-  --gp-primary: #ea580c;
+  --gp-primary: #ff6b00;
   --gp-primary-text: #ffffff;
   --gp-accent-platinum: #7c2d12;
   --gp-accent-gold: var(--gp-accent-platinum);
   --gp-accent-cyan: #c2410c;
-  --gp-badge-bg: rgba(234, 88, 12, 0.14);
+  --gp-badge-bg: rgba(255, 107, 0, 0.14);
   --gp-badge-text: #9a3412;
-  --gp-icon-box: rgba(234, 88, 12, 0.12);
-  --gp-icon-box-text: #ea580c;
-  --gp-avatar-bg: #ea580c;
+  --gp-icon-box: rgba(255, 107, 0, 0.12);
+  --gp-icon-box-text: #ff6b00;
+  --gp-avatar-bg: #ff6b00;
   --gp-overlay: rgba(255, 247, 237, 0.98);
   --gp-table-head: rgba(254, 215, 170, 0.45);
   --gp-danger: #dc2626;
-  --gp-glow: rgba(234, 88, 12, 0.18);
+  --gp-glow: rgba(255, 107, 0, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TOKENS — Espacio azul (data-theme="dark")
+   TOKENS — Oscuro naranja (data-theme="dark")
    ═══════════════════════════════════════════════════════════════════════════ */
-[data-theme="dark"],
-.dark:not(.neon) {
+[data-theme="dark"] {
+  --gp-bg: #0a0604;
+  --gp-bg-gradient:
+    linear-gradient(180deg, #1a0c04 0%, #100804 45%, #080402 100%),
+    radial-gradient(900px 520px at 50% -8%, rgba(255, 107, 0, 0.32), transparent 55%),
+    radial-gradient(700px 440px at 92% 5%, rgba(234, 88, 12, 0.14), transparent 50%),
+    radial-gradient(600px 320px at 50% 100%, rgba(251, 146, 60, 0.08), transparent 60%);
+  --gp-surface: rgba(28, 14, 8, 0.92);
+  --gp-surface-muted: rgba(18, 10, 6, 0.95);
+  --gp-surface-hover: rgba(60, 28, 10, 0.55);
+  --gp-border: rgba(255, 140, 40, 0.22);
+  --gp-border-strong: rgba(255, 107, 0, 0.5);
+  --gp-text: #fff4eb;
+  --gp-text-muted: rgba(255, 214, 180, 0.75);
+  --gp-text-faint: rgba(255, 186, 130, 0.52);
+  --gp-topbar: rgba(12, 6, 4, 0.94);
+  --gp-topbar-border: rgba(255, 107, 0, 0.28);
+  --gp-sidebar: rgba(10, 5, 3, 0.97);
+  --gp-sidebar-accent: rgba(255, 107, 0, 0.4);
+  --gp-nav-hover: rgba(255, 107, 0, 0.14);
+  --gp-nav-active-bg: #ff6b00;
+  --gp-nav-active-text: #ffffff;
+  --gp-nav-active-ring: #fb923c;
+  --gp-card-bg: rgba(28, 14, 8, 0.78);
+  --gp-card-border: rgba(255, 140, 40, 0.24);
+  --gp-card-shadow: 0 8px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 107, 0, 0.08);
+  --gp-input-bg: rgba(14, 8, 4, 0.9);
+  --gp-input-border: rgba(255, 140, 40, 0.24);
+  --gp-input-focus: #ff6b00;
+  --gp-trigger-hover: rgba(255, 107, 0, 0.18);
+  --gp-primary: #ff6b00;
+  --gp-primary-text: #ffffff;
+  --gp-accent-platinum: #ffd6b4;
+  --gp-accent-gold: var(--gp-accent-platinum);
+  --gp-accent-cyan: #fb923c;
+  --gp-badge-bg: rgba(255, 107, 0, 0.2);
+  --gp-badge-text: #fdba74;
+  --gp-icon-box: rgba(255, 107, 0, 0.18);
+  --gp-icon-box-text: #fb923c;
+  --gp-avatar-bg: #ff6b00;
+  --gp-overlay: rgba(14, 8, 4, 0.98);
+  --gp-table-head: rgba(255, 107, 0, 0.1);
+  --gp-danger: #ff4444;
+  --gp-glow: rgba(255, 107, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS — Sistema / azul oscuro (data-theme="system")
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="system"] {
   --gp-bg: #040818;
   --gp-bg-gradient:
     linear-gradient(180deg, #0a1838 0%, #06102a 45%, #030818 100%),
@@ -517,6 +515,19 @@ body {
 .gp-nav-group-title {
   color: var(--gp-text-faint);
   letter-spacing: 0.06em;
+}
+
+.gp-nav-accordion-trigger {
+  color: var(--gp-text-faint);
+}
+
+.gp-nav-accordion-trigger:hover {
+  color: var(--gp-text);
+  background-color: var(--gp-nav-hover);
+}
+
+.gp-nav-accordion-trigger-active {
+  color: var(--gp-text-muted);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -805,12 +816,43 @@ body {
   gap: 0.25rem;
 }
 
+/* Tooltip inmediato al hover (data-tip) */
+.gp-tip {
+  position: relative;
+}
+
+.gp-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.4rem;
+  background: var(--gp-text);
+  color: var(--gp-bg);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.gp-tip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    HEROUI — overrides por tema
    ═══════════════════════════════════════════════════════════════════════════ */
-:is([data-theme="dark"], [data-theme="neo"], .dark) [data-slot="popover"],
-:is([data-theme="dark"], [data-theme="neo"], .dark) [data-slot="dropdown-popover"],
-:is([data-theme="dark"], [data-theme="neo"], .dark) [data-slot="modal-dialog"] {
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="popover"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="dropdown-popover"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="modal-dialog"] {
   background-color: var(--gp-overlay) !important;
   border: 1px solid var(--gp-border) !important;
   color: var(--gp-text) !important;
@@ -823,18 +865,16 @@ body {
   box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.12), 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 40px var(--gp-glow) !important;
 }
 
-:is([data-theme="dark"], [data-theme="neo"], .dark) .button[data-variant="primary"],
-:is([data-theme="dark"], [data-theme="neo"], .dark) [data-slot="button"][data-variant="primary"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) .button[data-variant="primary"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="button"][data-variant="primary"],
 [data-theme="light"] .button[data-variant="primary"],
-[data-theme="light"] [data-slot="button"][data-variant="primary"],
-[data-theme="orange"] .button[data-variant="primary"],
-[data-theme="orange"] [data-slot="button"][data-variant="primary"] {
+[data-theme="light"] [data-slot="button"][data-variant="primary"] {
   background-color: var(--gp-primary) !important;
   color: var(--gp-primary-text) !important;
 }
 
-:is([data-theme="dark"], [data-theme="neo"], .dark) [data-slot="input"],
-:is([data-theme="dark"], [data-theme="neo"], .dark) .gp-input {
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="input"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) .gp-input {
   background-color: var(--gp-input-bg) !important;
   border-color: var(--gp-input-border) !important;
   color: var(--gp-text) !important;
@@ -857,11 +897,8 @@ body {
 }
 
 .gp-login-brand {
-  background-color: var(--gp-blue-deep);
-  background-image:
-    linear-gradient(160deg, rgba(10, 24, 56, 0.95) 0%, rgba(3, 8, 24, 0.98) 100%),
-    radial-gradient(900px 520px at 15% -10%, rgba(62, 106, 225, 0.35), transparent 55%),
-    radial-gradient(650px 420px at 90% 85%, rgba(0, 212, 255, 0.18), transparent 50%);
+  background-color: var(--gp-bg);
+  background-image: var(--gp-bg-gradient);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -33,6 +33,7 @@ type PlanRow = {
   id: number;
   name: string | null;
   sort_order: number;
+  channel?: "web" | "mobile";
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -108,6 +109,7 @@ export function mapPlan(plan: PlanRow, appsUsing: PlanAppUsage[] = []) {
   return {
     id: plan.id,
     name: plan.name,
+    channel: plan.channel ?? "web",
     app_ids: appIds,
     catalog_app_names: catalogAppNames,
     sort_order: plan.sort_order,

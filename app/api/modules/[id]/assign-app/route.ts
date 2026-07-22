@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { pushEntitlementForAppId } from "@/src/shared/lib/push-entitlement-helpers";
+import { appKindMatchesChannel } from "@/src/features/modules/lib/module-channel";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const mod = await prisma.module.findFirst({
       where: { id: moduleId, deleted_at: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, channel: true },
     });
     if (!mod) {
       return NextResponse.json({ error: "Módulo no encontrado" }, { status: 404 });
@@ -34,6 +35,18 @@ export async function POST(request: Request, { params }: Params) {
     });
     if (!app) {
       return NextResponse.json({ error: "App no encontrada" }, { status: 404 });
+    }
+
+    if (!appKindMatchesChannel(app.kind, mod.channel)) {
+      return NextResponse.json(
+        {
+          error:
+            mod.channel === "mobile"
+              ? "Este módulo móvil solo se asigna a apps móviles"
+              : "Este módulo web solo se asigna a apps web",
+        },
+        { status: 400 },
+      );
     }
 
     if (assigned) {
