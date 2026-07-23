@@ -57,10 +57,10 @@ export function LifecycleStatusInheritSelect({
       <Select.Trigger
         className={
           disabled || busy
-            ? "opacity-50"
+            ? "gp-status-select-trigger opacity-50"
             : hasOverride
-              ? "border-amber-300 bg-amber-50 font-semibold text-amber-900"
-              : ""
+              ? `gp-status-select-trigger border font-semibold ${LIFECYCLE_STATUS_STYLE[normalizeLifecycleStatus(value)].chip}`
+              : "border border-[var(--gp-input-border)] bg-[var(--gp-input-bg)]"
         }
       >
         <Select.Value>

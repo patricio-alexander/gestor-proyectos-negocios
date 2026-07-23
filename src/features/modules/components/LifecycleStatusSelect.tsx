@@ -15,27 +15,27 @@ export const LIFECYCLE_STATUS_STYLE: Record<
   { chip: string; dot: string }
 > = {
   active: {
-    chip: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    chip: "border-emerald-500/30 !bg-emerald-500/15 text-emerald-800 dark:border-emerald-400/35 dark:!bg-emerald-500/20 dark:text-emerald-200",
     dot: "bg-emerald-500",
   },
   development: {
-    chip: "border-red-200 bg-red-50 text-red-800",
+    chip: "border-red-500/30 !bg-red-500/15 text-red-800 dark:border-red-400/35 dark:!bg-red-500/20 dark:text-red-200",
     dot: "bg-red-500",
   },
   maintenance: {
-    chip: "border-red-200 bg-red-50 text-red-800",
+    chip: "border-red-500/30 !bg-red-500/15 text-red-800 dark:border-red-400/35 dark:!bg-red-500/20 dark:text-red-200",
     dot: "bg-red-500",
   },
   planned: {
-    chip: "border-amber-200 bg-amber-50 text-amber-900",
+    chip: "border-amber-500/35 !bg-amber-500/15 text-amber-900 dark:border-amber-400/40 dark:!bg-amber-500/20 dark:text-amber-100",
     dot: "bg-amber-500",
   },
   developer: {
-    chip: "border-sky-200 bg-sky-50 text-sky-900",
+    chip: "border-sky-500/30 !bg-sky-500/15 text-sky-900 dark:border-sky-400/35 dark:!bg-sky-500/20 dark:text-sky-200",
     dot: "bg-sky-500",
   },
   hidden: {
-    chip: "border-violet-200 bg-violet-50 text-violet-900",
+    chip: "border-violet-500/30 !bg-violet-500/15 text-violet-900 dark:border-violet-400/35 dark:!bg-violet-500/20 dark:text-violet-200",
     dot: "bg-violet-500",
   },
 };
@@ -81,7 +81,7 @@ export function LifecycleStatusSelect({
       className={`min-w-[118px] ${size === "sm" ? "[&_[data-slot=trigger]]:h-8 [&_[data-slot=trigger]]:text-xs" : ""} ${className}`}
     >
       <Select.Trigger
-        className={`border font-medium ${style.chip} ${busy ? "opacity-60" : ""}`}
+        className={`gp-status-select-trigger border font-medium ${style.chip} ${busy ? "opacity-60" : ""}`}
       >
         <Select.Value>
           <StatusOptionLabel status={status} />

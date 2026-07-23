@@ -193,10 +193,10 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                       <span
                         className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
                           globalStatus === "planned"
-                            ? "border-amber-200 bg-amber-50 text-amber-900"
+                            ? "border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-100"
                             : globalStatus === "active"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : "border-[var(--gp-border)] bg-[var(--gp-card)] text-[var(--gp-text-muted)]"
+                              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
+                              : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
                         }`}
                       >
                         {globalLabel}
@@ -259,10 +259,10 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                           <span
                             className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
                               st === "planned"
-                                ? "border-amber-200 bg-amber-50 text-amber-900"
+                                ? "border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-100"
                                 : st === "active"
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                  : "border-[var(--gp-border)]"
+                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
+                                  : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
                             }`}
                           >
                             {LIFECYCLE_STATUS_LABELS[st]}

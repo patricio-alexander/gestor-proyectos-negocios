@@ -880,6 +880,22 @@ body {
   color: var(--gp-text) !important;
 }
 
+/* Select / triggers HeroUI: evitar fondo blanco en oscuro (excepto chips de estado) */
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark)
+  [data-slot="trigger"]:not(.gp-status-select-trigger),
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark)
+  button[data-slot="trigger"]:not(.gp-status-select-trigger) {
+  background-color: var(--gp-input-bg) !important;
+  border-color: var(--gp-input-border) !important;
+  color: var(--gp-text) !important;
+}
+
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="listbox"],
+:is([data-theme="dark"], [data-theme="neo"], [data-theme="system"], .dark) [data-slot="list-box"] {
+  background-color: var(--gp-overlay) !important;
+  color: var(--gp-text) !important;
+}
+
 /* Login */
 .gp-login-panel {
   background: transparent;
