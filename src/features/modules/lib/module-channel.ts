@@ -1,4 +1,4 @@
-import type { ModuleChannel } from "../../../prisma/generated/prisma/enums";
+import type { ModuleChannel } from "../../../../prisma/generated/prisma/enums";
 
 export function isWebChannel(
   channel: ModuleChannel | string | null | undefined,

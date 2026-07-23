@@ -33,6 +33,7 @@ function warnPushSync(data: PushSyncPayload) {
   if (msg) appToast.warning(msg);
 }
 import { useApps } from "@/src/features/apps/hooks/useApps";
+import type { AppKind } from "@/src/features/apps/types";
 import {
   LifecycleStatusSelect,
   LIFECYCLE_STATUS_STYLE,
@@ -856,10 +857,10 @@ function AppTab({
   onEditSection,
   onDeleteSection,
 }: {
-  deploymentApps: Array<{ id: number; name: string | null }>;
+  deploymentApps: Array<{ id: number; name: string | null; kind?: AppKind | null }>;
   assignedIds: Set<number>;
   selectedAppId: number | null;
-  selectedApp?: { id: number; name: string | null };
+  selectedApp?: { id: number; name: string | null; kind?: AppKind | null };
   selectedAssigned: boolean;
   module: Module;
   moduleAppOverride: LifecycleStatus | null;
