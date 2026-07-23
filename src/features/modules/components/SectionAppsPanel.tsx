@@ -227,7 +227,7 @@ export function SectionAppsPanel({
                           key={app.id}
                           className={`rounded-xl border p-3 ${
                             hasOverride
-                              ? "border-amber-200 bg-amber-50/40"
+                              ? "border-amber-500/40 bg-amber-500/15 dark:border-amber-400/40"
                               : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/30"
                           }`}
                         >

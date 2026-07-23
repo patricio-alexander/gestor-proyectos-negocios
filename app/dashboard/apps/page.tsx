@@ -600,10 +600,10 @@ export default function AppsPage() {
                     <span
                       className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
                         isMobileApp(app)
-                          ? "bg-emerald-50 text-emerald-800"
+                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
                           : isTemplateApp(app)
-                            ? "bg-zinc-100 text-zinc-700"
-                            : "bg-sky-50 text-sky-800"
+                            ? "bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
+                            : "bg-sky-500/15 text-sky-800 dark:text-sky-200"
                       }`}
                     >
                       {appKindLabel(app)}
@@ -897,21 +897,21 @@ export default function AppsPage() {
                           <span
                             className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
                               isMobileApp(viewingApp)
-                                ? "bg-emerald-50 text-emerald-800"
+                                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
                                 : isTemplateApp(viewingApp)
-                                  ? "bg-zinc-100 text-zinc-700"
-                                  : "bg-sky-50 text-sky-800"
+                                  ? "bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
+                                  : "bg-sky-500/15 text-sky-800 dark:text-sky-200"
                             }`}
                           >
                             {appKindLabel(viewingApp)}
                           </span>
                           {isMobileApp(viewingApp) ? (
-                            <span className="inline-flex rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">
+                            <span className="inline-flex rounded-md bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-800 dark:text-violet-200">
                               {appPlatformLabel(viewingApp)}
                             </span>
                           ) : null}
                           {viewingApp.maintenance ? (
-                            <span className="inline-flex rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                            <span className="inline-flex rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-100">
                               En mantenimiento
                             </span>
                           ) : null}

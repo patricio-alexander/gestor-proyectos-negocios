@@ -510,7 +510,7 @@ export function ModuleAccessPanel({
                   type="button"
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition ${
                     tab === "global"
-                      ? "bg-white text-[var(--gp-text)] shadow-sm"
+                      ? "bg-[var(--gp-card-bg)] text-[var(--gp-text)] shadow-sm ring-1 ring-[var(--gp-border)]"
                       : "text-[var(--gp-text-muted)] hover:text-[var(--gp-text)]"
                   }`}
                   onClick={() => setTab("global")}
@@ -522,7 +522,7 @@ export function ModuleAccessPanel({
                   type="button"
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition ${
                     tab === "app"
-                      ? "bg-white text-[var(--gp-text)] shadow-sm"
+                      ? "bg-[var(--gp-card-bg)] text-[var(--gp-text)] shadow-sm ring-1 ring-[var(--gp-border)]"
                       : "text-[var(--gp-text-muted)] hover:text-[var(--gp-text)]"
                   }`}
                   onClick={() => setTab("app")}
