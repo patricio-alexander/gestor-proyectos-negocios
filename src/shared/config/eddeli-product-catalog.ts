@@ -4,7 +4,8 @@ export type LifecycleStatus =
   | "development"
   | "maintenance"
   | "developer"
-  | "planned";
+  | "planned"
+  | "hidden";
 
 export type CatalogCapabilityDef = {
   /** Identificador estable para el cliente (ej. export_pdf, export_excel). */

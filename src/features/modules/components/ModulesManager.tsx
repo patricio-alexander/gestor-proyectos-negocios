@@ -70,10 +70,17 @@ export function ModulesManager() {
       maintenance: 0,
       planned: 0,
       developer: 0,
+      hidden: 0,
     };
     for (const mod of modules) {
       const status = normalizeLifecycleStatus(mod.status);
-      if (status === "active" || status === "maintenance" || status === "planned" || status === "developer") {
+      if (
+        status === "active" ||
+        status === "maintenance" ||
+        status === "planned" ||
+        status === "developer" ||
+        status === "hidden"
+      ) {
         counts[status] += 1;
       }
     }
@@ -203,7 +210,7 @@ export function ModulesManager() {
     <div className={gp.page}>
       <ManagerHeader
         title="Módulos"
-        description="Catálogo SoftEd general. Cada módulo se vincula a apps (hoy EdDeli); mismas secciones, distinta activación por plan."
+        description="Catálogo web SoftEd. No incluye módulos móviles (esos viven en Apps móvil)."
         Icon={Cubes3Overlap}
         action={
           <Modal state={moduleCreateState}>

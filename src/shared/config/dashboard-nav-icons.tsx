@@ -13,6 +13,7 @@ import Passport from "@gravity-ui/icons/Passport";
 import Person from "@gravity-ui/icons/Person";
 import Persons from "@gravity-ui/icons/Persons";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
+import Smartphone from "@gravity-ui/icons/Smartphone";
 
 type IconProps = { width?: number; height?: number; className?: string };
 
@@ -24,6 +25,7 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/accounts": Passport,
   "/dashboard/apps": Briefcase,
   "/dashboard/kanban": LayoutColumns,
+  "/dashboard/mobile-apps": Smartphone,
   "/dashboard/plans": FileText,
   "/dashboard/offers": Gift,
   "/dashboard/subscriptions": CreditCard,

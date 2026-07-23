@@ -1,4 +1,14 @@
-export type AppKind = "template" | "deployment";
+export type AppKind = "template" | "deployment" | "mobile";
+
+export type AppMobileSummary = {
+  mobile_app_id: number;
+  key: string;
+  /** Plataformas vistas en dispositivos o releases activos. */
+  platforms: Array<"android" | "ios">;
+  device_count: number;
+  /** Vistos en los últimos 15 minutos. */
+  online_device_count: number;
+};
 
 export type App = {
   id: number;
@@ -18,6 +28,7 @@ export type App = {
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
+  mobile?: AppMobileSummary | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

@@ -8,6 +8,10 @@ import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
 import Key from "@gravity-ui/icons/Key";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
+import { assetUrl } from "@/src/utils/assetUrl";
+
+const EYE_LOGO = assetUrl("/eye-logo-raptor-solutions.svg");
+const WORDMARK = assetUrl("/raptor-solutions.svg");
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,32 +55,38 @@ export default function LoginPage() {
         <div className="pointer-events-none absolute inset-0">
           <div
             className="absolute -left-24 -top-24 h-80 w-80 rounded-full blur-3xl"
-            style={{ background: "rgba(62,106,225,0.35)" }}
+            style={{ background: "rgba(255,107,0,0.28)" }}
           />
           <div
             className="absolute bottom-0 right-0 h-96 w-96 rounded-full blur-3xl"
-            style={{ background: "rgba(0,212,255,0.2)" }}
+            style={{ background: "rgba(251,146,60,0.16)" }}
           />
         </div>
 
         <div className="relative z-10 p-10">
-          <div>
+          <div className="flex items-center gap-3">
             <img
-              src="/logo-raptor.svg"
-              alt="GestorPro"
-              className="h-8 object-contain object-left"
+              src={EYE_LOGO}
+              alt=""
+              aria-hidden
+              className="h-9 w-auto object-contain"
             />
-            <p className="mt-1 text-sm" style={{ color: "var(--gp-text-faint)" }}>
-              Control de licencias EdDeli
-            </p>
+            <img
+              src={WORDMARK}
+              alt="Raptor Solutions"
+              className="h-7 w-auto object-contain object-left"
+            />
           </div>
+          <p className="mt-2 text-sm" style={{ color: "var(--gp-text-faint)" }}>
+            Control de licencias EdDeli
+          </p>
         </div>
 
         <div className="relative z-10 space-y-8 px-10 pb-12">
           <div>
             <h1
               className="max-w-md text-3xl font-semibold leading-tight tracking-tight"
-              style={{ color: "var(--gp-blue-frost)" }}
+              style={{ color: "var(--gp-text)" }}
             >
               Licencias, aplicaciones y acceso en un solo lugar
             </h1>
@@ -104,13 +114,13 @@ export default function LoginPage() {
               <li
                 key={text}
                 className="flex items-center gap-3 text-sm"
-                style={{ color: "var(--gp-platinum)" }}
+                style={{ color: "var(--gp-text-muted)" }}
               >
                 <span
                   className="gp-icon-box-sm"
                   style={{
-                    border: "1px solid rgba(91,156,255,0.3)",
-                    boxShadow: "0 0 12px rgba(62,106,225,0.2)",
+                    border: "1px solid color-mix(in srgb, var(--gp-primary) 35%, transparent)",
+                    boxShadow: "0 0 12px var(--gp-glow)",
                   }}
                 >
                   <Icon width={16} height={16} />
@@ -122,34 +132,28 @@ export default function LoginPage() {
         </div>
 
         <p
-          className="relative z-10 px-10 pb-8 text-xs"
+          className="relative z-10 flex items-center gap-2 px-10 pb-8 text-xs"
           style={{ color: "var(--gp-text-faint)" }}
         >
-          © {new Date().getFullYear()} Softed · GestorPro
+          <img src={EYE_LOGO} alt="" aria-hidden className="h-4 w-auto opacity-80" />
+          © {new Date().getFullYear()} Raptor Solutions
         </p>
       </div>
 
       {/* Panel derecho — formulario */}
       <div className="gp-login-panel flex flex-1 flex-col items-center justify-center px-6 py-12">
-        <div className="mb-8 flex items-center gap-2 lg:hidden">
-          <div
-            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl"
-            style={{
-              backgroundColor: "var(--gp-nav-active-bg)",
-            }}
-          >
-            <img
-              src="/logo-raptor.svg"
-              alt="GestorPro"
-              className="size-full object-cover object-left"
-            />
-          </div>
-          <span
-            className="text-lg font-semibold"
-            style={{ color: "var(--gp-text)" }}
-          >
-            GestorPro
-          </span>
+        <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+          <img
+            src={EYE_LOGO}
+            alt=""
+            aria-hidden
+            className="h-9 w-auto object-contain"
+          />
+          <img
+            src={WORDMARK}
+            alt="Raptor Solutions"
+            className="h-6 w-auto object-contain"
+          />
         </div>
 
         <div className="w-full max-w-100">

@@ -243,9 +243,10 @@ async function seedSectionCapabilities(
 /** UI SoftEd: development legado → maintenance. */
 function catalogStatus(
   status: CatalogModuleDef["status"] | undefined,
-): "active" | "maintenance" | "developer" | "planned" {
+): "active" | "maintenance" | "developer" | "planned" | "hidden" {
   if (status === "development" || status === "maintenance")
     return "maintenance";
+  if (status === "hidden") return "hidden";
   if (status === "developer" || status === "planned") return status;
   return "active";
 }
@@ -380,7 +381,8 @@ async function seedEventTypes() {
   return types;
 }
 
-/** Módulos por plan comercial EdDeli (System → Planes). */
+/** Planes comerciales EdDeli (System → Planes). Por ahora todos con los mismos módulos. */
+/** Planes comerciales EdDeli (System → Planes web). Distintos de los planes mobile. */
 const EDDELI_PLAN_DEFS: {
   name: string;
   sortOrder: number;
@@ -393,6 +395,7 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 0,
     moduleKeys: [
       "dashboard",
+      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
@@ -408,6 +411,7 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 19,
     moduleKeys: [
       "dashboard",
+      "notificaciones",
       "operacion",
       "administracion",
       "sistema",
@@ -419,6 +423,7 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 39,
     moduleKeys: [
       "dashboard",
+      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
@@ -434,12 +439,13 @@ const EDDELI_PLAN_DEFS: {
     monthlyPrice: 69,
     moduleKeys: [
       "dashboard",
+      "notificaciones",
       "operacion",
       "ventas",
       "finanzas",
       "inventario",
       "produccion",
-      "canal",
+      "canal_digital",
       "publicidad",
       "diseno_promocional",
       "administracion",
@@ -508,13 +514,21 @@ async function syncPlanAppModulesForApp(
   }
 }
 
-/** Los 6 planes comerciales de EdDeli + precios mensuales + módulos. */
+/** Los planes comerciales de EdDeli + precios + módulos (mismos para todos por ahora). */
 async function seedEdDeliCommercialPlans(appId: number) {
   const allModules = await prisma.module.findMany({
-    where: { deleted_at: null },
+    where: { deleted_at: null, channel: "web" },
     select: { id: true, key: true },
   });
-  const byKey = new Map(allModules.map((m) => [m.key, m.id]));
+  // Fallback si aún no hay channel en módulos
+  const modules =
+    allModules.length > 0
+      ? allModules
+      : await prisma.module.findMany({
+          where: { deleted_at: null },
+          select: { id: true, key: true },
+        });
+  const byKey = new Map(modules.map((m) => [m.key, m.id]));
 
   const created: { id: number; name: string; modules: number }[] = [];
 
@@ -523,13 +537,23 @@ async function seedEdDeliCommercialPlans(appId: number) {
       where: {
         name: def.name,
         deleted_at: null,
+        channel: "web",
       },
     });
+
+    // Incluye soft-deleted web (p. ej. restaurar Básico/Medio tras un seed erróneo)
+    if (!plan) {
+      plan = await prisma.plan.findFirst({
+        where: { name: def.name, channel: "web" },
+        orderBy: { id: "asc" },
+      });
+    }
 
     // Renombrar el plan "Socios" suelto (seed previo) a "Plan Socios"
     if (!plan && def.name === "Plan Socios") {
       plan = await prisma.plan.findFirst({
         where: {
+          channel: "web",
           OR: [{ name: "Socios" }, { name: "Local Dev" }],
           deleted_at: null,
         },
@@ -537,7 +561,25 @@ async function seedEdDeliCommercialPlans(appId: number) {
       if (plan) {
         plan = await prisma.plan.update({
           where: { id: plan.id },
-          data: { name: "Plan Socios", deleted_at: null },
+          data: { name: "Plan Socios", deleted_at: null, channel: "web" },
+        });
+      }
+    }
+
+    // "Plan Gratis" mal creado en web → volver a Plan Prueba
+    if (!plan && def.name === "Plan Prueba") {
+      plan = await prisma.plan.findFirst({
+        where: { name: "Plan Gratis", channel: "web", deleted_at: null },
+      });
+      if (plan) {
+        plan = await prisma.plan.update({
+          where: { id: plan.id },
+          data: {
+            name: "Plan Prueba",
+            deleted_at: null,
+            channel: "web",
+            sort_order: def.sortOrder,
+          },
         });
       }
     }
@@ -547,6 +589,7 @@ async function seedEdDeliCommercialPlans(appId: number) {
         data: {
           name: def.name,
           sort_order: def.sortOrder,
+          channel: "web",
         },
       });
     } else {
@@ -556,13 +599,14 @@ async function seedEdDeliCommercialPlans(appId: number) {
           name: def.name,
           deleted_at: null,
           sort_order: def.sortOrder,
+          channel: "web",
         },
       });
     }
 
     const moduleIds =
       def.moduleKeys === "ALL"
-        ? allModules.map((m) => m.id)
+        ? modules.map((m) => m.id)
         : def.moduleKeys
             .map((k) => byKey.get(k))
             .filter((id): id is number => typeof id === "number");
@@ -587,7 +631,6 @@ async function seedEdDeliCommercialPlans(appId: number) {
       });
     }
 
-    // Precio anual opcional (~10 meses)
     let annual = await prisma.planPrice.findFirst({
       where: { plan_id: plan.id, period: "ANNUALLY" },
     });
@@ -618,12 +661,13 @@ async function seedEdDeliLocalSubscription(appHash: string) {
   const plan = await prisma.plan.findFirst({
     where: {
       name: "Plan Socios",
+      channel: "web",
       deleted_at: null,
     },
   });
   if (!plan) {
     throw new Error(
-      "Plan Socios no encontrado; corre seedEdDeliCommercialPlans antes",
+      "Plan Socios (web) no encontrado; corre seedEdDeliCommercialPlans antes",
     );
   }
 

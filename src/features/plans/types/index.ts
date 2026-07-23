@@ -27,6 +27,7 @@ export type PlanAppUsing = {
 export type Plan = {
   id: number;
   name: string | null;
+  channel?: "web" | "mobile";
   app_ids: number[];
   catalog_app_names: string[];
   sort_order?: number;
@@ -48,6 +49,7 @@ export type CreatePlanInput = {
   price_annual?: number | null;
   module_ids?: number[];
   offer_ids?: number[];
+  channel?: "web" | "mobile";
 };
 
 export type UpdatePlanInput = {

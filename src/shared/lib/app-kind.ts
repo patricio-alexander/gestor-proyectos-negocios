@@ -48,6 +48,14 @@ export async function requireDeploymentAppId(appId: number) {
         "No podés asignar suscripciones a una app plantilla; elegí una app desplegada.",
     };
   }
+  if (app.kind === "mobile") {
+    return {
+      ok: false as const,
+      status: 400,
+      error:
+        "Las apps móviles no usan suscripciones web; gestioná módulos desde Módulos.",
+    };
+  }
   return { ok: true as const, app };
 }
 

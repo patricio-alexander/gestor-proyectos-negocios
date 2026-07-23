@@ -61,7 +61,8 @@ export async function PATCH(request: Request, { params }: Params) {
             | "development"
             | "maintenance"
             | "developer"
-            | "planned")
+            | "planned"
+            | "hidden")
         : undefined;
 
     const mod = await prisma.module.update({

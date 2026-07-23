@@ -157,8 +157,8 @@ export function AppsKanbanManager() {
   return (
     <div className={`${gp.page} ${gp.pageGap8}`}>
       <ManagerHeader
-        title="Kanban de aplicaciones"
-        description="Asigná módulos y secciones por app; configurá estados globales u overrides."
+        title="Apps web"
+        description="Tablero de módulos y secciones por app web; estados globales u overrides."
       />
       <KanbanHintLegend />
 

@@ -47,7 +47,7 @@ export function SubscriptionsManager() {
   const { subscriptions, loading, create, cancel, update } = useSubscriptions();
   const { apps } = useApps();
   const deploymentApps = useMemo(
-    () => apps.filter((a) => a.kind !== "template"),
+    () => apps.filter((a) => a.kind === "deployment" || a.kind == null),
     [apps],
   );
   const { plans } = usePlans();

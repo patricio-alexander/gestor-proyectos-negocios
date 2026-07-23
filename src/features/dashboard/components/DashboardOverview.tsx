@@ -26,7 +26,9 @@ function formatMB(mb: number | null): string {
 }
 
 const QUICK_LINKS = [
-  { href: "/dashboard/apps", label: "Aplicaciones" },
+  { href: "/dashboard/apps", label: "Todas" },
+  { href: "/dashboard/kanban", label: "Apps web" },
+  { href: "/dashboard/mobile-apps", label: "Apps móvil" },
   { href: "/dashboard/plans", label: "Planes" },
   { href: "/dashboard/modules", label: "Módulos" },
   { href: "/dashboard/offers", label: "Ofertas" },
