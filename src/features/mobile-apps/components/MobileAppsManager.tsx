@@ -447,7 +447,9 @@ function AppDetail({
                               )
                           }
                         >
-                          {r.mandatory ? "Hacer opcional" : "Hacer obligatorio"}
+                          {r.mandatory
+                            ? "Quitar forzada"
+                            : "Marcar forzada"}
                         </Button>
                         <Button
                           size="sm"
@@ -523,13 +525,21 @@ function AppDetail({
                   rows={3}
                 />
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
+                  className="mt-1"
                   checked={mandatory}
                   onChange={(e) => setMandatoryFlag(e.target.checked)}
                 />
-                Actualización obligatoria
+                <span>
+                  <span className="font-semibold">Actualización forzada</span>
+                  <span className="mt-0.5 block text-xs opacity-70">
+                    El usuario ve un aviso obligatorio y debe instalar esta
+                    versión para seguir usando la app (no puede cerrar el
+                    diálogo).
+                  </span>
+                </span>
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input

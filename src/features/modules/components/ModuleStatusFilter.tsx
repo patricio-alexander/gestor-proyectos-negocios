@@ -58,7 +58,7 @@ export function ModuleStatusFilter({
             <span
               className={`rounded-full px-1.5 py-px text-[10px] tabular-nums ${
                 selected
-                  ? "bg-white/55 text-inherit"
+                  ? "bg-[var(--gp-surface)]/80 text-inherit"
                   : "bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
               }`}
             >
