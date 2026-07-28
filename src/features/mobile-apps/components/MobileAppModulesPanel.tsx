@@ -275,7 +275,7 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                                 ? "border-emerald-500/30 bg-emerald-500/10"
                                 : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)]"
                           }`}
-                          title={sec.key}
+                          title={sec.key ?? undefined}
                         >
                           {sec.name}
                           <span className="ml-1 opacity-50">
