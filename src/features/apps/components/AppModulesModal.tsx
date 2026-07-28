@@ -107,7 +107,7 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
                       key={mod.id}
                       className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition-colors ${
                         selectedIds.has(mod.id)
-                          ? "border-indigo-200 bg-indigo-50/50"
+                          ? "border-[var(--gp-primary)]/40 bg-[color-mix(in_srgb,var(--gp-primary)_12%,transparent)]"
                           : "border-[var(--gp-border)] hover:bg-[var(--gp-surface-muted)]/50"
                       }`}
                     >
@@ -115,7 +115,7 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
                         type="checkbox"
                         checked={selectedIds.has(mod.id)}
                         onChange={() => toggleModule(mod.id)}
-                        className="size-4 rounded border-zinc-300"
+                        className="size-4 rounded border-[var(--gp-input-border)]"
                       />
                       <div className={gp.iconBoxSm}>
                         <Cubes3Overlap width={14} height={14} />
@@ -125,7 +125,7 @@ export function AppModulesModal({ app, onClose, onSave }: AppModulesModalProps) 
                           {mod.name}
                         </p>
                         {mod.is_trial ? (
-                          <p className="text-[10px] font-medium text-sky-700">
+                          <p className="text-[10px] font-medium text-sky-600 dark:text-sky-300">
                             Trial disponible
                           </p>
                         ) : null}

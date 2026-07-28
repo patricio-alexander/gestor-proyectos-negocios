@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   Input,
@@ -40,6 +40,7 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
 
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [accessModule, setAccessModule] = useState<Module | null>(null);
+  const addState = useOverlayState();
   const createState = useOverlayState();
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -78,6 +79,16 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
     void refreshPerModule();
   }, [refreshPerModule]);
 
+  const assignedModules = useMemo(
+    () => modules.filter((m) => assignedModuleIds.has(m.id)),
+    [modules, assignedModuleIds],
+  );
+
+  const availableModules = useMemo(
+    () => modules.filter((m) => !assignedModuleIds.has(m.id)),
+    [modules, assignedModuleIds],
+  );
+
   async function toggleAssign(moduleId: number, assign: boolean) {
     setBusyKey(`assign-${moduleId}`);
     try {
@@ -88,7 +99,7 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al asignar");
-      appToast.success(assign ? "Módulo asignado" : "Módulo quitado");
+      appToast.success(assign ? "Módulo añadido" : "Módulo quitado");
       await refreshPerModule();
       await refetch();
     } catch (err) {
@@ -139,7 +150,8 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
       setNewName("");
       setNewDesc("");
       createState.close();
-      appToast.success("Módulo móvil creado y asignado");
+      addState.close();
+      appToast.success("Módulo creado y añadido");
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al crear");
     } finally {
@@ -149,17 +161,21 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
 
   return (
     <div className={`${gp.card} flex flex-col`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--gp-border)] px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--gp-border)] px-4 py-2.5">
         <div>
-          <h3 className="text-sm font-semibold">Módulos móviles</h3>
+          <h3 className="text-sm font-semibold">
+            Módulos de {appName}
+            <span className="ml-2 text-xs font-normal opacity-60">
+              {assignedModules.length}
+            </span>
+          </h3>
           <p className="text-xs opacity-60">
-            Definí módulos y secciones acá en el gestor. Lo no programado en la
-            app va como «Próximamente». No afecta módulos web.
+            Solo los incluidos en esta app. Añadí más desde el catálogo móvil.
           </p>
         </div>
-        <Button size="sm" onPress={createState.open}>
+        <Button size="sm" onPress={addState.open}>
           <Plus width={14} height={14} />
-          Nuevo módulo
+          Añadir módulo
         </Button>
       </div>
 
@@ -167,29 +183,30 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
         <div className="flex justify-center py-10">
           <Spinner />
         </div>
-      ) : modules.length === 0 ? (
-        <p className={gp.empty}>
-          Aún no hay módulos móviles. Creá Impresión, Ventas, Inventario,
-          Finanzas…
-        </p>
+      ) : assignedModules.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm opacity-70">
+            Esta app no tiene módulos asignados.
+          </p>
+          <Button size="sm" className="mt-3" onPress={addState.open}>
+            <Plus width={14} height={14} />
+            Añadir el primero
+          </Button>
+        </div>
       ) : (
         <ul className="divide-y divide-[var(--gp-border)]">
-          {modules.map((mod) => {
-            const assigned = assignedModuleIds.has(mod.id);
+          {assignedModules.map((mod) => {
             const override = statusByModule.get(mod.id) ?? null;
             const globalStatus = normalizeLifecycleStatus(mod.status);
             const globalLabel = LIFECYCLE_STATUS_LABELS[globalStatus];
             const busy = busyKey?.endsWith(String(mod.id));
             const sections = (mod.sections ?? []).filter((s) => !s.deleted_at);
             return (
-              <li key={mod.id} className="flex flex-col gap-3 px-5 py-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <li key={mod.id} className="flex flex-col gap-2 px-4 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-semibold text-[var(--gp-text)]">
                       {mod.name}
-                      <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
-                        Móvil
-                      </span>
                       <span
                         className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
                           globalStatus === "planned"
@@ -202,34 +219,18 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                         {globalLabel}
                       </span>
                     </p>
-                    <p className="text-xs text-[var(--gp-text-muted)]">
+                    <p className="truncate text-xs text-[var(--gp-text-muted)]">
                       {mod.key}
-                      {mod.description ? ` · ${mod.description}` : ""}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-                      {assigned
-                        ? override
-                          ? `Override app: ${LIFECYCLE_STATUS_LABELS[normalizeLifecycleStatus(override)]}`
-                          : "Usa estado global"
-                        : "No asignado a esta app"}
+                      {override
+                        ? ` · override: ${LIFECYCLE_STATUS_LABELS[normalizeLifecycleStatus(override)]}`
+                        : " · estado global"}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={assigned}
-                        disabled={!!busy}
-                        onChange={(e) =>
-                          void toggleAssign(mod.id, e.target.checked)
-                        }
-                      />
-                      Incluir en {appName}
-                    </label>
                     <LifecycleStatusInheritSelect
-                      value={assigned ? override : null}
+                      value={override}
                       inheritLabel={globalLabel}
-                      disabled={!assigned || !!busy}
+                      disabled={!!busy}
                       busy={busyKey === `status-${mod.id}`}
                       aria-label={`Estado de ${mod.name}`}
                       onChange={(v) => void saveStatus(mod.id, v)}
@@ -241,30 +242,43 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                     >
                       Secciones
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      isDisabled={!!busy}
+                      onPress={() => {
+                        if (
+                          !confirm(
+                            `¿Quitar «${mod.name}» de ${appName}? No se elimina del catálogo.`,
+                          )
+                        ) {
+                          return;
+                        }
+                        void toggleAssign(mod.id, false);
+                      }}
+                    >
+                      Quitar
+                    </Button>
                   </div>
                 </div>
                 {sections.length > 0 ? (
-                  <ul className="ml-1 space-y-1 border-l-2 border-[var(--gp-border)] pl-3">
+                  <ul className="ml-1 flex flex-wrap gap-1.5">
                     {sections.map((sec) => {
                       const st = normalizeLifecycleStatus(sec.status);
                       return (
                         <li
                           key={sec.id}
-                          className="flex flex-wrap items-center gap-2 text-xs text-[var(--gp-text-muted)]"
+                          className={`rounded border px-2 py-0.5 text-[11px] ${
+                            st === "planned"
+                              ? "border-amber-500/30 bg-amber-500/10"
+                              : st === "active"
+                                ? "border-emerald-500/30 bg-emerald-500/10"
+                                : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)]"
+                          }`}
+                          title={sec.key}
                         >
-                          <span className="text-[var(--gp-text)]">
-                            {sec.name}
-                          </span>
-                          <span className="opacity-50">{sec.key}</span>
-                          <span
-                            className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
-                              st === "planned"
-                                ? "border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-100"
-                                : st === "active"
-                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
-                                  : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
-                            }`}
-                          >
+                          {sec.name}
+                          <span className="ml-1 opacity-50">
                             {LIFECYCLE_STATUS_LABELS[st]}
                           </span>
                         </li>
@@ -272,13 +286,75 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                     })}
                   </ul>
                 ) : (
-                  <p className="text-xs opacity-50">Sin secciones aún</p>
+                  <p className="text-xs opacity-50">Sin secciones</p>
                 )}
               </li>
             );
           })}
         </ul>
       )}
+
+      {/* Añadir desde catálogo (no asignados) */}
+      <Modal.Backdrop isOpen={addState.isOpen} onOpenChange={addState.setOpen}>
+        <Modal.Container>
+          <Modal.Dialog className="max-w-lg">
+            <Modal.Header>
+              <Modal.Heading>Añadir módulo a {appName}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col gap-3">
+              {availableModules.length === 0 ? (
+                <p className="text-sm opacity-70">
+                  No hay módulos móviles disponibles fuera de esta app. Creá uno
+                  nuevo.
+                </p>
+              ) : (
+                <ul className="max-h-64 divide-y divide-[var(--gp-border)] overflow-y-auto rounded-lg border border-[var(--gp-border)]">
+                  {availableModules.map((mod) => {
+                    const st = normalizeLifecycleStatus(mod.status);
+                    const busy = busyKey === `assign-${mod.id}`;
+                    return (
+                      <li
+                        key={mod.id}
+                        className="flex items-center justify-between gap-2 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {mod.name}
+                          </p>
+                          <p className="truncate text-xs opacity-60">
+                            {mod.key} · {LIFECYCLE_STATUS_LABELS[st]}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          isDisabled={!!busy}
+                          onPress={() => void toggleAssign(mod.id, true)}
+                        >
+                          Incluir
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  createState.open();
+                }}
+              >
+                <Plus width={14} height={14} />
+                Crear módulo nuevo
+              </Button>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onPress={addState.close}>
+                Cerrar
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
 
       <Modal.Backdrop
         isOpen={createState.isOpen}
@@ -295,7 +371,7 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Impresión / Archivos…"
+                  placeholder="Pantalla / Impresión…"
                 />
               </label>
               <label className={gp.label}>
@@ -315,7 +391,7 @@ export function MobileAppModulesPanel({ controlAppId, appName }: Props) {
                 onPress={() => void onCreateModule()}
                 isDisabled={creating}
               >
-                Crear y asignar
+                Crear y añadir
               </Button>
             </Modal.Footer>
           </Modal.Dialog>

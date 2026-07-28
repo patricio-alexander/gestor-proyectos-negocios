@@ -530,7 +530,7 @@ export function ModuleAccessPanel({
                   <Briefcase width={14} height={14} />
                   Por app
                   {assignments.length > 0 ? (
-                    <span className="rounded-full bg-indigo-100 px-1.5 text-[10px] text-indigo-700">
+                    <span className="rounded-full bg-[var(--gp-badge-bg)] px-1.5 text-[10px] text-[var(--gp-badge-text)]">
                       {assignments.length}
                     </span>
                   ) : null}
@@ -925,7 +925,7 @@ function AppTab({
                 key={app.id}
                 className={`rounded-lg border transition ${
                   active
-                    ? "border-indigo-300 bg-indigo-50"
+                    ? "border-[var(--gp-primary)]/45 bg-[color-mix(in_srgb,var(--gp-primary)_16%,transparent)]"
                     : "border-transparent hover:bg-[var(--gp-surface-muted)]"
                 }`}
               >
@@ -937,7 +937,7 @@ function AppTab({
                   <p className="truncate text-xs font-semibold text-[var(--gp-text)]">
                     {app.name || `App #${app.id}`}
                     {app.kind === "mobile" ? (
-                      <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-bold uppercase text-emerald-800">
+                      <span className="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] font-bold uppercase text-emerald-700 dark:text-emerald-300">
                         Móvil
                       </span>
                     ) : null}
@@ -946,7 +946,10 @@ function AppTab({
                     {assigned ? "Asignado" : "Sin asignar"}
                   </p>
                 </button>
-                <label className="flex cursor-pointer items-center gap-2 border-t px-2 py-1.5 text-[10px] text-[var(--gp-text-muted)]">
+                <label
+                  className="flex cursor-pointer items-center gap-2 border-t px-2 py-1.5 text-[10px] text-[var(--gp-text-muted)]"
+                  style={{ borderColor: "var(--gp-border)" }}
+                >
                   <input
                     type="checkbox"
                     checked={assigned}
@@ -984,11 +987,11 @@ function AppTab({
         ) : (
           <>
             <div
-              className="flex flex-col gap-3 rounded-xl border bg-indigo-50/40 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4"
+              className="flex flex-col gap-3 rounded-xl border bg-[color-mix(in_srgb,var(--gp-primary)_10%,transparent)] px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4"
               style={{ borderColor: "var(--gp-border)" }}
             >
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold uppercase tracking-wide text-indigo-800">
+                <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--gp-primary)]">
                   Módulo · {selectedApp.name}
                 </p>
                 <p className="text-[11px] text-[var(--gp-text-muted)]">
@@ -1096,7 +1099,7 @@ function SectionStatusTable({
                 key={row.id}
                 className={`grid ${gridCols} items-center gap-x-2 border-b px-2.5 py-2 last:border-b-0 ${
                   index % 2 === 1 ? "bg-[var(--gp-surface-muted)]/25" : ""
-                } hover:bg-indigo-50/40`}
+                } hover:bg-[color-mix(in_srgb,var(--gp-primary)_8%,transparent)]`}
                 style={{ borderColor: "var(--gp-border)" }}
               >
                 <div className="min-w-[140px]">

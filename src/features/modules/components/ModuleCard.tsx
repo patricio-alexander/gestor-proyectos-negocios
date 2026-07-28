@@ -61,7 +61,7 @@ export function ModuleCard({
       <Card className="gp-card gp-card-interactive flex h-full flex-col overflow-hidden p-0">
         <div className="flex flex-1 flex-col gap-2.5 p-3.5">
           <div className="flex items-start gap-3">
-            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
+            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-[var(--gp-surface-muted)]">
               {mod.image_url ? (
                 <img
                   src={apiUrl(mod.image_url)}
@@ -70,7 +70,7 @@ export function ModuleCard({
                 />
               ) : (
                 <div className="flex size-full items-center justify-center">
-                  <Cubes3Overlap width={18} height={18} className="text-zinc-300" />
+                  <Cubes3Overlap width={18} height={18} className="text-[var(--gp-text-faint)]" />
                 </div>
               )}
             </div>
@@ -91,7 +91,7 @@ export function ModuleCard({
                   <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--gp-text-muted)]">
                     {mod.description || "Sin descripción"}
                     {statusDiffers ? (
-                      <span className="ml-1 text-amber-700">
+                      <span className="ml-1 text-amber-700 dark:text-amber-300">
                         · Catálogo: {LIFECYCLE_STATUS_LABELS[storedStatus]}
                       </span>
                     ) : null}
@@ -130,14 +130,14 @@ export function ModuleCard({
             <Briefcase width={14} height={14} />
             Acceso y estados
             {appsCount > 0 ? (
-              <span className="rounded-full bg-indigo-100 px-1.5 py-px text-[10px] text-indigo-700">
+              <span className="rounded-full bg-[var(--gp-badge-bg)] px-1.5 py-px text-[10px] text-[var(--gp-badge-text)]">
                 {appsCount} {appsCount === 1 ? "app" : "apps"}
               </span>
             ) : null}
           </Button>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--gp-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--gp-text-muted)]">
               <Layers width={11} height={11} />
               {mod.sections.length} secc.
               {activeSections > 0
@@ -145,7 +145,7 @@ export function ModuleCard({
                 : ""}
             </span>
             {maintenanceCount > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-300">
                 <span className="size-1.5 rounded-full bg-red-500" />
                 {maintenanceCount} en mant.
               </span>
@@ -153,13 +153,13 @@ export function ModuleCard({
             <button
               type="button"
               onClick={() => appsModal.open()}
-              className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition-colors hover:bg-zinc-200"
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--gp-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--gp-text-muted)] transition-colors hover:bg-[var(--gp-surface-hover)]"
             >
               <Persons width={11} height={11} />
               {appsCount} {appsCount === 1 ? "app" : "apps"}
             </button>
             {mod.is_trial ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
                 Trial {mod.limit_days_trial ? `(${mod.limit_days_trial}d)` : null}
               </span>
             ) : null}
@@ -197,7 +197,7 @@ export function ModuleCard({
                       <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
                       Módulo: {LIFECYCLE_STATUS_LABELS[badgeStatus]}
                     </span>
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
+                    <span className="rounded-full bg-[var(--gp-surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--gp-text-muted)]">
                       {mod.sections.length} secciones
                     </span>
                   </div>

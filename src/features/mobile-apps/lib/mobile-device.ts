@@ -1,21 +1,25 @@
 import type { MobilePlatform } from "@/src/features/mobile-apps/types";
 import { prisma } from "@/src/shared/lib/prisma";
 
-function parseVersionParts(version: string): [number, number, number] {
-  const m = String(version || "0.0.0")
+function parseVersionParts(version: string): number[] {
+  const parts = String(version || "0.0.0")
     .trim()
-    .match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
-  return [0, 0, 0];
+    .split(/[.-]/)
+    .filter((p) => /^\d+$/.test(p))
+    .map(Number);
+  return parts.length ? parts : [0, 0, 0];
 }
 
 /** 1 si a>b, -1 si a<b, 0 iguales */
 export function compareAppVersions(a: string, b: string): number {
   const pa = parseVersionParts(a);
   const pb = parseVersionParts(b);
-  for (let i = 0; i < 3; i++) {
-    if (pa[i] > pb[i]) return 1;
-    if (pa[i] < pb[i]) return -1;
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x > y) return 1;
+    if (x < y) return -1;
   }
   return 0;
 }

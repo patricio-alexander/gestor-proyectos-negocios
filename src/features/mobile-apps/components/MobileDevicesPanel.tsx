@@ -126,15 +126,15 @@ export function MobileDevicesPanel({ mobileAppId }: Props) {
                   </td>
                   <td className="px-2 py-2.5">
                     {d.up_to_date === null ? (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-[var(--gp-surface-muted)] px-2 py-0.5 text-xs text-[var(--gp-text-muted)]">
                         Sin release
                       </span>
                     ) : d.up_to_date ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300">
                         Al día
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
+                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-200">
                         Desactualizado
                       </span>
                     )}

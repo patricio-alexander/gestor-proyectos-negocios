@@ -378,7 +378,7 @@ export function ModulesManager() {
                           alt={editingModule.name}
                           className="size-12 rounded-lg object-cover"
                         />
-                        <span className="text-xs text-zinc-500">Imagen actual</span>
+                        <span className="text-xs text-[var(--gp-text-muted)]">Imagen actual</span>
                       </div>
                     )}
                     <label className={gp.label}>
@@ -392,7 +392,7 @@ export function ModulesManager() {
                     </label>
 
                     <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                      <span className="text-sm font-medium text-zinc-700">
+                      <span className="text-sm font-medium text-[var(--gp-text)]">
                         Periodo de prueba (trial)
                       </span>
                       <Switch

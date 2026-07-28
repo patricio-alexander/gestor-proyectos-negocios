@@ -161,7 +161,7 @@ export function SectionAppsPanel({
         <Briefcase width={13} height={13} />
         Apps
         {overrideCount > 0 ? (
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+          <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-200">
             {overrideCount}
           </span>
         ) : null}

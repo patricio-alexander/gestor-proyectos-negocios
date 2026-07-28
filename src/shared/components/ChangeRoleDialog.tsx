@@ -39,7 +39,7 @@ export function ChangeRoleDialog({
             </Modal.Header>
             <Modal.Body className="space-y-2">
               {roles.length === 0 ? (
-                <p className="text-sm text-zinc-500">No hay roles disponibles.</p>
+                <p className="text-sm text-[var(--gp-text-muted)]">No hay roles disponibles.</p>
               ) : (
                 roles.map((role) => {
                   const active = role.id === activeRoleId;

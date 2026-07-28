@@ -98,7 +98,7 @@ export function CatalogManager() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <LayoutCells width={24} height={24} className="text-zinc-700" />
+            <LayoutCells width={24} height={24} className="text-[var(--gp-text-muted)]" />
             <h1 className="gp-title">Módulos</h1>
           </div>
           <p className="gp-subtitle mt-1">
@@ -146,7 +146,7 @@ export function CatalogManager() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-zinc-900">{mod.name}</h2>
+                  <h2 className="font-semibold text-[var(--gp-text)]">{mod.name}</h2>
                 </div>
               </div>
               <div className="flex shrink-0 gap-1">

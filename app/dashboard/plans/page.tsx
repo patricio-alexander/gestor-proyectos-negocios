@@ -147,7 +147,7 @@ function PlanForm({
         </Select>
         <input type="hidden" name="app_id" value={selectedAppId} />
         <fieldset key={selectedAppId || "no-app"}>
-          <legend className="mb-2 text-sm font-medium text-zinc-700">
+          <legend className="mb-2 text-sm font-medium text-[var(--gp-text)]">
             Módulos para la app seleccionada
           </legend>
           {!planAppId ? (
@@ -157,22 +157,22 @@ function PlanForm({
           ) : availableModules.length === 0 ? (
             <p className="gp-subtitle">No hay módulos asignados a esta app</p>
           ) : (
-            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
+            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/30 p-3">
               {availableModules.map((mod) => (
                 <label
                   key={mod.id}
-                  className="flex items-center gap-2 text-sm font-medium text-zinc-800"
+                  className="flex items-center gap-2 text-sm font-medium text-[var(--gp-text)]"
                 >
                   <input
                     type="checkbox"
                     name="module_ids"
                     value={mod.id}
                     defaultChecked={selectedModuleIds.has(mod.id)}
-                    className="size-4 rounded border-zinc-300"
+                    className="size-4 rounded border-[var(--gp-input-border)]"
                   />
                   {mod.name}
                   {mod.is_trial && (
-                    <span className="rounded bg-amber-200 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-amber-800">
+                    <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-amber-800 dark:text-amber-200">
                       Trial
                     </span>
                   )}
@@ -182,10 +182,10 @@ function PlanForm({
           )}
         </fieldset>
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-zinc-700">
+          <legend className="mb-2 text-sm font-medium text-[var(--gp-text)]">
             Ofertas
           </legend>
-          <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-zinc-200 p-3">
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/30 p-3">
             {!planAppId ? (
               <p className="gp-subtitle">Seleccioná una app para ver ofertas</p>
             ) : filteredOffers.length === 0 ? (
@@ -194,14 +194,14 @@ function PlanForm({
               filteredOffers.map((off) => (
                 <label
                   key={off.id}
-                  className="flex items-center gap-2 text-sm font-medium text-zinc-800"
+                  className="flex items-center gap-2 text-sm font-medium text-[var(--gp-text)]"
                 >
                   <input
                     type="checkbox"
                     name="offer_ids"
                     value={off.id}
                     defaultChecked={selectedOfferIds.has(off.id)}
-                    className="size-4 rounded border-zinc-300"
+                    className="size-4 rounded border-[var(--gp-input-border)]"
                   />
                   {off.name}
                 </label>
@@ -639,17 +639,17 @@ export default function PlansPage() {
                         {pendingReplace.message}
                       </Alert.Description>
                     </Alert>
-                    <p className="text-sm text-zinc-700">
+                    <p className="text-sm text-[var(--gp-text)]">
                       Plan actual:{" "}
                       <strong>{pendingReplace.currentPlanName || "—"}</strong>
                     </p>
-                    <p className="text-sm text-zinc-700">
+                    <p className="text-sm text-[var(--gp-text)]">
                       Nuevo plan:{" "}
                       <strong>
                         {pendingReplace.nextPlanName || enabling?.name}
                       </strong>
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-[var(--gp-text-muted)]">
                       Si confirmás, se cancela el plan activo y se habilita este
                       (mejora / cambio de plan).
                     </p>
@@ -700,12 +700,12 @@ export default function PlansPage() {
                               </ListBox>
                             </Select.Popover>
                           </Select>
-                          <p className="text-[11px] text-zinc-500">
+                          <p className="text-[11px] text-[var(--gp-text-muted)]">
                             Tip: la app debe tener URL entitlement + API Key
                             igual a GESTOR_SYNC_SECRET del backend para que el
                             sync llegue.
                           </p>
-                          <p className="text-xs font-medium text-zinc-500">
+                          <p className="text-xs font-medium text-[var(--gp-text-muted)]">
                             Período
                           </p>
                           <div className="flex flex-col gap-3">
@@ -798,10 +798,10 @@ export default function PlansPage() {
                         className="flex items-center justify-between rounded-lg border p-3"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-zinc-900">
+                          <p className="truncate text-sm font-medium text-[var(--gp-text)]">
                             {sub.app_name || sub.app_hash}
                           </p>
-                          <p className="mt-0.5 text-xs text-zinc-500">
+                          <p className="mt-0.5 text-xs text-[var(--gp-text-muted)]">
                             {sub.period === "MONTHLY" ? "Mensual" : "Anual"}
                             {sub.start_at
                               ? ` · desde ${formatDate(sub.start_at)}`
@@ -814,10 +814,10 @@ export default function PlansPage() {
                         <span
                           className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                             sub.status === "ACTIVE"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                               : sub.status === "EXPIRED"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-zinc-100 text-zinc-600"
+                                ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
+                                : "bg-[var(--gp-surface-muted)] text-[var(--gp-text-muted)]"
                           }`}
                         >
                           {sub.status === "ACTIVE"

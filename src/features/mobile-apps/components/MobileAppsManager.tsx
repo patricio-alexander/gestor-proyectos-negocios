@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Input,
@@ -27,13 +27,35 @@ import { MobileDevicesPanel } from "./MobileDevicesPanel";
 import type { MobileApp, MobilePlatform } from "../types";
 import { useMobileApps, useMobileReleases } from "../hooks/useMobileApps";
 
+type AppTab = "resumen" | "modulos" | "dispositivos" | "planes" | "releases";
+
+const APP_TABS: { id: AppTab; label: string }[] = [
+  { id: "resumen", label: "Resumen" },
+  { id: "modulos", label: "Módulos" },
+  { id: "dispositivos", label: "Dispositivos" },
+  { id: "releases", label: "Releases" },
+  { id: "planes", label: "Planes" },
+];
+
 export function MobileAppsManager() {
   const { apps, loading, create, update, remove, refresh } = useMobileApps();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [tab, setTab] = useState<AppTab>("resumen");
   const selected = useMemo(
     () => apps.find((a) => a.id === selectedId) ?? null,
     [apps, selectedId],
   );
+
+  useEffect(() => {
+    if (loading) return;
+    if (apps.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (selectedId == null || !apps.some((a) => a.id === selectedId)) {
+      setSelectedId(apps[0].id);
+    }
+  }, [apps, loading, selectedId]);
 
   const createState = useOverlayState();
   const [newKey, setNewKey] = useState("chilepan");
@@ -51,6 +73,7 @@ export function MobileAppsManager() {
       });
       appToast.success("App móvil creada");
       setSelectedId(app.id);
+      setTab("resumen");
       createState.close();
       setNewKey("");
       setNewName("");
@@ -91,11 +114,16 @@ export function MobileAppsManager() {
     appToast.success(`${label} copiada`);
   }
 
+  function selectApp(id: number) {
+    setSelectedId(id);
+    setTab("resumen");
+  }
+
   return (
     <div className={gp.pageGap8}>
       <PageHeader
         title="Apps móvil"
-        description="OTA, módulos y dispositivos del canal móvil (separados de la web)."
+        description="OTA, módulos y dispositivos del canal móvil."
         Icon={Smartphone}
         action={
           <Button onPress={createState.open}>
@@ -109,48 +137,77 @@ export function MobileAppsManager() {
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
+      ) : apps.length === 0 ? (
+        <div className={`${gp.card} px-5 py-10 text-center text-sm opacity-70`}>
+          Aún no hay apps móviles. Creá una para empezar.
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <aside className={`${gp.card} p-3`}>
-            {apps.length === 0 ? (
-              <p className={gp.empty}>Aún no hay apps móviles. Crea ChilePan.</p>
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {apps.map((app) => (
-                  <li key={app.id}>
+        <div className="flex flex-col gap-3">
+          {/* Selector de apps — horizontal arriba */}
+          <div className={`${gp.card} flex flex-wrap items-center gap-1.5 p-2`}>
+            {apps.map((app) => {
+              const active = selectedId === app.id;
+              return (
+                <button
+                  key={app.id}
+                  type="button"
+                  onClick={() => selectApp(app.id)}
+                  className={
+                    active
+                      ? "rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface-muted)] px-3 py-1.5 text-sm font-semibold text-[var(--gp-text)] shadow-sm"
+                      : "rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium text-[var(--gp-text-muted)] hover:bg-[var(--gp-surface-muted)] hover:text-[var(--gp-text)]"
+                  }
+                  title={app.key}
+                >
+                  {app.name}
+                  <span
+                    className={
+                      active
+                        ? "ml-1.5 text-[10px] font-normal opacity-80"
+                        : "ml-1.5 text-[10px] font-normal opacity-50"
+                    }
+                  >
+                    {app.key}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {selected ? (
+            <>
+              {/* Pestañas de la app */}
+              <div className="flex flex-wrap items-center gap-1 border-b border-[var(--gp-border)]">
+                {APP_TABS.map((t) => {
+                  const active = tab === t.id;
+                  return (
                     <button
+                      key={t.id}
                       type="button"
-                      onClick={() => setSelectedId(app.id)}
+                      onClick={() => setTab(t.id)}
                       className={
-                        selectedId === app.id
-                          ? gp.navItemActive + " w-full text-left"
-                          : gp.navItem + " w-full text-left"
+                        active
+                          ? "-mb-px border-b-2 border-[var(--gp-text)] px-3 py-2 text-sm font-semibold text-[var(--gp-text)]"
+                          : "px-3 py-2 text-sm font-medium text-[var(--gp-text-muted)] hover:text-[var(--gp-text)]"
                       }
                     >
-                      <span className="min-w-0 flex-1 truncate">{app.name}</span>
-                      <span className="text-xs opacity-60">{app.key}</span>
+                      {t.label}
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </aside>
-
-          <section className="min-w-0">
-            {!selected ? (
-              <div className={`${gp.card} px-5 py-10 text-center text-sm opacity-70`}>
-                Selecciona o crea una app móvil para gestionar releases.
+                  );
+                })}
               </div>
-            ) : (
+
               <AppDetail
                 app={selected}
+                tab={tab}
                 onCopy={copyText}
                 onRegenerateKey={() => void onRegenerateKey(selected)}
                 onDelete={() => void onDeleteApp(selected)}
                 onReleasesChanged={() => void refresh()}
+                onOpenUpload={() => setTab("releases")}
               />
-            )}
-          </section>
+            </>
+          ) : null}
         </div>
       )}
 
@@ -203,16 +260,20 @@ export function MobileAppsManager() {
 
 function AppDetail({
   app,
+  tab,
   onCopy,
   onRegenerateKey,
   onDelete,
   onReleasesChanged,
+  onOpenUpload,
 }: {
   app: MobileApp;
+  tab: AppTab;
   onCopy: (label: string, value: string) => void;
   onRegenerateKey: () => void;
   onDelete: () => void;
   onReleasesChanged: () => void;
+  onOpenUpload: () => void;
 }) {
   const {
     releases,
@@ -262,162 +323,199 @@ function AppDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className={`${gp.cardPadded} flex flex-col gap-3`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className={gp.titleLg}>{app.name}</h2>
-            <p className={gp.subtitle}>key: {app.key}</p>
-            {app.description && (
-              <p className="mt-2 text-sm opacity-80">{app.description}</p>
+    <div className="flex flex-col gap-3">
+      {tab === "resumen" ? (
+        <div className={`${gp.cardPadded} flex flex-col gap-3`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className={gp.titleLg}>{app.name}</h2>
+              <p className={gp.subtitle}>key: {app.key}</p>
+              {app.description ? (
+                <p className="mt-1 text-sm opacity-80">{app.description}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => {
+                  onOpenUpload();
+                  uploadState.open();
+                }}
+              >
+                <ArrowUpFromSquare width={14} height={14} />
+                Subir release
+              </Button>
+              <Button size="sm" variant="secondary" onPress={onRegenerateKey}>
+                <ArrowsRotateLeft width={14} height={14} />
+                Regenerar key
+              </Button>
+              <Button size="sm" variant="danger" onPress={onDelete}>
+                Eliminar
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface-2,transparent)] p-3">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide opacity-60">
+              API key (Bearer)
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="break-all text-xs sm:text-sm">{app.api_key}</code>
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => onCopy("API key", app.api_key)}
+              >
+                <Copy width={14} height={14} />
+                Copiar
+              </Button>
+            </div>
+            {app.app_id != null ? (
+              <p className="mt-2 text-xs opacity-70">
+                Control plane: Apps #{app.app_id}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-amber-700">
+                Sin vínculo al control de módulos. Recarga la lista.
+              </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onPress={uploadState.open}>
-              <ArrowUpFromSquare width={16} height={16} />
-              Subir release
-            </Button>
-            <Button variant="secondary" onPress={onRegenerateKey}>
-              <ArrowsRotateLeft width={16} height={16} />
-              Regenerar key
-            </Button>
-            <Button variant="danger" onPress={onDelete}>
-              Eliminar
-            </Button>
-          </div>
-        </div>
 
-        <div className="rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface-2,transparent)] p-3">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide opacity-60">
-            API key (Bearer)
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="break-all text-sm">{app.api_key}</code>
-            <Button
-              size="sm"
-              variant="secondary"
-              onPress={() => onCopy("API key", app.api_key)}
-            >
-              <Copy width={14} height={14} />
-              Copiar
-            </Button>
-          </div>
-          <p className="mt-2 text-xs opacity-60">
-            Check OTA:{" "}
-            <code>
-              GET /raptorsolutions/api/mobile/app-update?platform=android|ios
-            </code>
-          </p>
-          {app.app_id != null ? (
-            <p className="mt-2 text-xs opacity-80">
-              Control plane: Apps #{app.app_id} (móvil). Los módulos se gestionan
-              abajo (catálogo mobile), no en Módulos web.
-            </p>
+          {app.active_releases && app.active_releases.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {app.active_releases.map((r) => (
+                <span key={r.platform} className={gp.badge}>
+                  {r.platform}: {r.version}
+                  {r.mandatory ? " · obligatorio" : " · opcional"}
+                </span>
+              ))}
+            </div>
           ) : (
-            <p className="mt-2 text-xs text-amber-700">
-              Sin vínculo al control de módulos. Recarga la lista para crearlo.
-            </p>
+            <p className="text-xs opacity-60">Sin release activo aún.</p>
           )}
         </div>
-
-        {app.active_releases && app.active_releases.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {app.active_releases.map((r) => (
-              <span key={r.platform} className={gp.badge}>
-                {r.platform}: {r.version}
-                {r.mandatory ? " · obligatorio" : " · opcional"}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className={gp.card}>
-        <div className="border-b border-[var(--gp-border)] px-5 py-3">
-          <h3 className="text-sm font-semibold">Dispositivos</h3>
-          <p className="text-xs opacity-60">
-            Versión reportada por cada celular vs release OTA activo
-          </p>
-        </div>
-        <div className="p-5">
-          <MobileDevicesPanel mobileAppId={app.id} />
-        </div>
-      </div>
-
-      {app.app_id != null ? (
-        <MobileAppModulesPanel
-          controlAppId={app.app_id}
-          appName={app.name}
-        />
       ) : null}
 
-      <div className={gp.card}>
-        <div className="border-b border-[var(--gp-border)] px-5 py-3">
-          <h3 className="text-sm font-semibold">Planes móviles</h3>
-          <p className="text-xs opacity-60">
-            Catálogo channel=mobile — Gratis, Pro y Socios (crear / editar /
-            eliminar)
-          </p>
-        </div>
-        <div className="p-5">
-          <MobilePlansCatalogPanel />
-        </div>
-      </div>
-
-      <div className={gp.card}>
-        <div className="border-b border-[var(--gp-border)] px-5 py-3">
-          <h3 className="text-sm font-semibold">Historial de releases</h3>
-        </div>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Spinner />
+      {tab === "dispositivos" ? (
+        <div className={gp.card}>
+          <div className="border-b border-[var(--gp-border)] px-4 py-2.5">
+            <h3 className="text-sm font-semibold">Dispositivos</h3>
           </div>
-        ) : releases.length === 0 ? (
-          <p className={gp.empty}>
-            Sin releases. Sube el primer bundle (Android o iOS).
-          </p>
+          <div className="p-4">
+            <MobileDevicesPanel mobileAppId={app.id} />
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "modulos" ? (
+        app.app_id != null ? (
+          <MobileAppModulesPanel
+            controlAppId={app.app_id}
+            appName={app.name}
+          />
         ) : (
-          <div className={gp.tableWrap}>
-            <table className={gp.table}>
-              <thead>
-                <tr>
-                  <th>Plataforma</th>
-                  <th>Versión</th>
-                  <th>Estado</th>
-                  <th>Tipo</th>
-                  <th>Bundle</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {releases.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.platform}</td>
-                    <td>{r.version}</td>
-                    <td>{r.is_active ? "Activo" : "Inactivo"}</td>
-                    <td>{r.mandatory ? "Obligatorio" : "Opcional"}</td>
-                    <td>
-                      <a
-                        className="text-sm underline opacity-80"
-                        href={assetUrl(r.bundle_path)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {r.bundle_path.split("/").pop()}
-                      </a>
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap justify-end gap-1">
-                        {!r.is_active && (
+          <div className={`${gp.card} px-5 py-8 text-center text-sm opacity-70`}>
+            Esta app aún no tiene control plane. Recargá la lista.
+          </div>
+        )
+      ) : null}
+
+      {tab === "planes" ? (
+        <div className={gp.card}>
+          <div className="border-b border-[var(--gp-border)] px-4 py-2.5">
+            <h3 className="text-sm font-semibold">Planes móviles</h3>
+            <p className="text-xs opacity-60">
+              Catálogo channel=mobile (compartido entre apps móviles)
+            </p>
+          </div>
+          <div className="p-4">
+            <MobilePlansCatalogPanel />
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "releases" ? (
+        <div className={gp.card}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--gp-border)] px-4 py-2.5">
+            <h3 className="text-sm font-semibold">Historial de releases</h3>
+            <Button size="sm" onPress={uploadState.open}>
+              <ArrowUpFromSquare width={14} height={14} />
+              Subir release
+            </Button>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Spinner />
+            </div>
+          ) : releases.length === 0 ? (
+            <p className={gp.empty}>
+              Sin releases. Subí el primer bundle (Android o iOS).
+            </p>
+          ) : (
+            <div className={gp.tableWrap}>
+              <table className={gp.table}>
+                <thead>
+                  <tr>
+                    <th>Plataforma</th>
+                    <th>Versión</th>
+                    <th>Estado</th>
+                    <th>Tipo</th>
+                    <th>Bundle</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {releases.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.platform}</td>
+                      <td>{r.version}</td>
+                      <td>{r.is_active ? "Activo" : "Inactivo"}</td>
+                      <td>{r.mandatory ? "Obligatorio" : "Opcional"}</td>
+                      <td>
+                        <a
+                          className="text-sm underline opacity-80"
+                          href={assetUrl(r.bundle_path)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {r.bundle_path.split("/").pop()}
+                        </a>
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {!r.is_active && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onPress={() =>
+                                void activate(r.id)
+                                  .then(() => {
+                                    onReleasesChanged();
+                                    appToast.success("Release activado");
+                                  })
+                                  .catch((e) =>
+                                    appToast.error(
+                                      e instanceof Error ? e.message : "Error",
+                                    ),
+                                  )
+                              }
+                            >
+                              Activar
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="secondary"
                             onPress={() =>
-                              void activate(r.id)
-                                .then(() => {
-                                  onReleasesChanged();
-                                  appToast.success("Release activado");
-                                })
+                              void setMandatory(r.id, !r.mandatory)
+                                .then(() =>
+                                  appToast.success(
+                                    !r.mandatory
+                                      ? "Marcado obligatorio"
+                                      : "Marcado opcional",
+                                  ),
+                                )
                                 .catch((e) =>
                                   appToast.error(
                                     e instanceof Error ? e.message : "Error",
@@ -425,57 +523,34 @@ function AppDetail({
                                 )
                             }
                           >
-                            Activar
+                            {r.mandatory ? "Quitar forzada" : "Marcar forzada"}
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onPress={() =>
-                            void setMandatory(r.id, !r.mandatory)
-                              .then(() =>
-                                appToast.success(
-                                  !r.mandatory
-                                    ? "Marcado obligatorio"
-                                    : "Marcado opcional",
-                                ),
-                              )
-                              .catch((e) =>
-                                appToast.error(
-                                  e instanceof Error ? e.message : "Error",
-                                ),
-                              )
-                          }
-                        >
-                          {r.mandatory
-                            ? "Quitar forzada"
-                            : "Marcar forzada"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onPress={() => {
-                            if (!confirm("¿Eliminar este release?")) return;
-                            void remove(r.id)
-                              .then(() => appToast.success("Eliminado"))
-                              .catch((e) =>
-                                appToast.error(
-                                  e instanceof Error ? e.message : "Error",
-                                ),
-                              );
-                          }}
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onPress={() => {
+                              if (!confirm("¿Eliminar este release?")) return;
+                              void remove(r.id)
+                                .then(() => appToast.success("Eliminado"))
+                                .catch((e) =>
+                                  appToast.error(
+                                    e instanceof Error ? e.message : "Error",
+                                  ),
+                                );
+                            }}
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <Modal.Backdrop isOpen={uploadState.isOpen} onOpenChange={uploadState.setOpen}>
         <Modal.Container>
@@ -535,9 +610,7 @@ function AppDetail({
                 <span>
                   <span className="font-semibold">Actualización forzada</span>
                   <span className="mt-0.5 block text-xs opacity-70">
-                    El usuario ve un aviso obligatorio y debe instalar esta
-                    versión para seguir usando la app (no puede cerrar el
-                    diálogo).
+                    El usuario debe instalar esta versión para seguir.
                   </span>
                 </span>
               </label>
@@ -547,7 +620,7 @@ function AppDetail({
                   checked={activateOnUpload}
                   onChange={(e) => setActivateOnUpload(e.target.checked)}
                 />
-                Activar al subir (reemplaza el release activo de esta plataforma)
+                Activar al subir
               </label>
             </Modal.Body>
             <Modal.Footer>

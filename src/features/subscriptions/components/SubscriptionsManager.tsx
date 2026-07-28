@@ -321,7 +321,7 @@ export function SubscriptionsManager() {
                     <p className="text-sm text-[var(--gp-text-muted)]">
                       {editing.app_name} · {editing.plan_name}
                     </p>
-                    <p className="text-xs font-medium text-zinc-700">Inicio</p>
+                    <p className="text-xs font-medium text-[var(--gp-text)]">Inicio</p>
                     <div className="flex gap-2">
                       <DatePicker
                         value={editDate}
@@ -367,7 +367,7 @@ export function SubscriptionsManager() {
                         </TimeField.Group>
                       </TimeField>
                     </div>
-                    <p className="text-xs font-medium text-zinc-700">Vencimiento</p>
+                    <p className="text-xs font-medium text-[var(--gp-text)]">Vencimiento</p>
                     <div className="flex gap-2">
                       <DatePicker
                         value={editExpiresDate}
@@ -537,7 +537,7 @@ export function SubscriptionsManager() {
                       {selectedPrice.period === "MONTHLY" ? "Mensual" : "Anual"}
                     </p>
                   )}
-                  <p className="text-xs font-medium text-zinc-700">Inicio</p>
+                  <p className="text-xs font-medium text-[var(--gp-text)]">Inicio</p>
                   <div className="flex gap-2">
                     <DatePicker
                       value={createDate}
@@ -583,7 +583,7 @@ export function SubscriptionsManager() {
                       </TimeField.Group>
                     </TimeField>
                   </div>
-                  <p className="text-xs font-medium text-zinc-700">Vencimiento</p>
+                  <p className="text-xs font-medium text-[var(--gp-text)]">Vencimiento</p>
                   <div className="flex gap-2">
                     <DatePicker
                       value={createExpiresDate}

@@ -15,7 +15,7 @@ export function normalizeAppKey(raw: string): string {
 }
 
 export function isValidSemverLike(version: string): boolean {
-  return /^\d+\.\d+\.\d+([.-][a-zA-Z0-9.-]+)?$/.test(version.trim());
+  return /^\d+(\.\d+)+([.-][a-zA-Z0-9.-]+)?$/.test(version.trim());
 }
 
 export function isMobilePlatform(value: unknown): value is MobilePlatform {

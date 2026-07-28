@@ -152,7 +152,7 @@ export function ModuleAppsPanel({
         <Briefcase width={13} height={13} />
         Apps
         {assignedCount > 0 ? (
-          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+          <span className="rounded-full bg-[var(--gp-badge-bg)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gp-badge-text)]">
             {assignedCount}
           </span>
         ) : null}
@@ -218,7 +218,7 @@ export function ModuleAppsPanel({
                             key={app.id}
                             className={`rounded-xl border p-3 transition-colors ${
                               isAssigned
-                                ? "border-indigo-200 bg-indigo-50/40"
+                                ? "border-[var(--gp-primary)]/40 bg-[color-mix(in_srgb,var(--gp-primary)_12%,transparent)]"
                                 : "border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/30"
                             }`}
                           >
@@ -231,7 +231,7 @@ export function ModuleAppsPanel({
                                   onChange={(e) =>
                                     void toggleAssignment(app.id, e.target.checked)
                                   }
-                                  className="mt-1 size-4 rounded border-zinc-300"
+                                  className="mt-1 size-4 rounded border-[var(--gp-input-border)]"
                                 />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export function ModuleAppsPanel({
                                     <p className="truncate text-sm font-semibold text-[var(--gp-text)]">
                                       {app.name || `App #${app.id}`}
                                       {app.kind === "mobile" ? (
-                                        <span className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
+                                        <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300">
                                           Móvil
                                         </span>
                                       ) : null}

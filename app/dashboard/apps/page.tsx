@@ -631,7 +631,7 @@ export default function AppsPage() {
                       <button
                         type="button"
                         onClick={() => openModules(app)}
-                        className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                        className="inline-flex items-center gap-1 rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)] hover:bg-[color-mix(in_srgb,var(--gp-primary)_22%,transparent)]"
                       >
                         <Cubes3Overlap width={11} height={11} />
                         {app.modules?.length ?? 0}
@@ -1347,7 +1347,7 @@ export default function AppsPage() {
                             {selectedPlanModules.map((mod) => (
                               <span
                                 key={mod.id}
-                                className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                                className="rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)]"
                               >
                                 {mod.module_name}
                                 {mod.is_trial ? " (trial)" : ""}

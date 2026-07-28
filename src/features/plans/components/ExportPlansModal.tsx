@@ -206,7 +206,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                         </ListBox>
                       </Select.Popover>
                     </Select>
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-[var(--gp-text-muted)]">
                       {filteredPlans.length}{" "}
                       {filteredPlans.length === 1 ? "plan" : "planes"}
                     </p>
@@ -221,26 +221,26 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                   </Button>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-zinc-200">
+                <div className="overflow-x-auto rounded-xl border border-[var(--gp-border)]">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-zinc-200 bg-zinc-50">
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                      <tr className="border-b border-[var(--gp-border)] bg-[var(--gp-table-head)]">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Plan
                         </th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Apps usando
                         </th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Mensual
                         </th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Anual
                         </th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Módulos
                         </th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700">
+                        <th className="px-4 py-3 font-semibold text-[var(--gp-text)]">
                           Ofertas
                         </th>
                       </tr>
@@ -250,7 +250,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                         <tr>
                           <td
                             colSpan={6}
-                            className="px-4 py-8 text-center text-zinc-400"
+                            className="px-4 py-8 text-center text-[var(--gp-text-muted)]"
                           >
                             No hay planes para esta aplicación
                           </td>
@@ -268,24 +268,24 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                           return (
                             <tr
                               key={plan.id}
-                              className={`border-b border-zinc-100 transition-colors hover:bg-zinc-50 ${
-                                i % 2 === 1 ? "bg-zinc-50/50" : ""
+                              className={`border-b border-[var(--gp-border)] transition-colors hover:bg-[var(--gp-surface-hover)] ${
+                                i % 2 === 1 ? "bg-[var(--gp-surface-muted)]/40" : ""
                               }`}
                             >
-                              <td className="px-4 py-3 font-medium text-zinc-900">
+                              <td className="px-4 py-3 font-medium text-[var(--gp-text)]">
                                 {plan.name || "Sin nombre"}
                               </td>
-                              <td className="px-4 py-3 text-zinc-600">
+                              <td className="px-4 py-3 text-[var(--gp-text-muted)]">
                                 {plan.apps_count > 0
                                   ? `${plan.apps_count} · ${(plan.apps_using ?? [])
                                       .map((a) => a.name || "?")
                                       .join(", ")}`
                                   : "0 apps"}
                               </td>
-                              <td className="whitespace-nowrap px-4 py-3 font-medium text-zinc-900">
+                              <td className="whitespace-nowrap px-4 py-3 font-medium text-[var(--gp-text)]">
                                 {formatPlanPrice(monthly?.price) ?? "—"}
                               </td>
-                              <td className="whitespace-nowrap px-4 py-3 font-medium text-zinc-900">
+                              <td className="whitespace-nowrap px-4 py-3 font-medium text-[var(--gp-text)]">
                                 {formatPlanPrice(annual?.price) ?? "—"}
                               </td>
                               <td className="px-4 py-3">
@@ -294,11 +294,11 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                                     {modules.map((m) => (
                                       <span
                                         key={m.id}
-                                        className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                                        className="inline-flex items-center gap-1 rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)]"
                                       >
                                         {m.module_name}
                                         {m.is_trial && (
-                                          <span className="rounded bg-amber-200 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-amber-800">
+                                          <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-amber-800 dark:text-amber-200">
                                             Trial
                                           </span>
                                         )}
@@ -306,7 +306,7 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-zinc-400">—</span>
+                                  <span className="text-[var(--gp-text-faint)]">—</span>
                                 )}
                               </td>
                               <td className="px-4 py-3">
@@ -315,14 +315,14 @@ export function ExportPlansModal({ plans, apps }: ExportPlansModalProps) {
                                     {offers.map((o) => (
                                       <span
                                         key={o.offer_id}
-                                        className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                                        className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200"
                                       >
                                         {o.offer_name}
                                       </span>
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-zinc-400">—</span>
+                                  <span className="text-[var(--gp-text-faint)]">—</span>
                                 )}
                               </td>
                             </tr>

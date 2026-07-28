@@ -174,7 +174,7 @@ export function PlanCard({
                   {visibleApps.map((group) => (
                     <span
                       key={group.app_id}
-                      className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                      className="rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)]"
                     >
                       {group.app_name} · {group.modules.length}
                     </span>
@@ -285,7 +285,7 @@ export function PlanCard({
                           {group.modules.map((mod) => (
                             <span
                               key={mod.id}
-                              className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                              className="rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)]"
                             >
                               {mod.module_name}
                               {mod.is_trial ? " (trial)" : ""}
@@ -430,8 +430,8 @@ function PlanChipGroup({
 }) {
   const chipClass =
     variant === "offer"
-      ? "rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
-      : "rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700";
+      ? "rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200"
+      : "rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)]";
 
   return (
     <div>
