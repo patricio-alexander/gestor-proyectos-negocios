@@ -18,6 +18,7 @@ import {
 } from "../types";
 import { ManagerHeader, TableSearchBar } from "@/src/shared/components/TableSearchBar";
 import { TablePagination } from "@/src/shared/components/TablePagination";
+import { GestorHowItWorks } from "@/src/shared/components/GestorHowItWorks";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
 import { appToast } from "@/src/shared/utils/app-toast";
@@ -213,6 +214,8 @@ export function ModulesManager() {
         description="Catálogo web SoftEd. No incluye módulos móviles (esos viven en Apps móvil)."
         Icon={Cubes3Overlap}
         action={
+          <div className="flex items-center gap-2">
+            <GestorHowItWorks defaultTopic="modules" />
           <Modal state={moduleCreateState}>
             <Button
               style={{
@@ -273,6 +276,7 @@ export function ModulesManager() {
               </Modal.Container>
             </Modal.Backdrop>
           </Modal>
+          </div>
         }
       />
 

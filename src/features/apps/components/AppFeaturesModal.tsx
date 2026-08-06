@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Modal, Spinner, useOverlayState } from "@heroui/react";
 import Sliders from "@gravity-ui/icons/Sliders";
 import type { App } from "../types";
@@ -51,6 +51,21 @@ export function AppFeaturesModal({
     },
   });
 
+  const applyLoadedFeatures = useCallback((features: FeatureRow[]) => {
+    setRows(features);
+    setOverrides(new Map(features.map((f) => [f.id, f.status ?? null])));
+  }, []);
+
+  const loadFeatures = useCallback(
+    async (appId: number) => {
+      const data = await fetchJson<{ features: FeatureRow[] }>(
+        `/api/apps/${appId}/features`,
+      );
+      applyLoadedFeatures(data.features);
+    },
+    [applyLoadedFeatures],
+  );
+
   useEffect(() => {
     if (!app) {
       setRows([]);
@@ -61,14 +76,7 @@ export function AppFeaturesModal({
     setLoading(true);
     void (async () => {
       try {
-        const data = await fetchJson<{ features: FeatureRow[] }>(
-          `/api/apps/${app.id}/features`,
-        );
-        if (cancelled) return;
-        setRows(data.features);
-        setOverrides(
-          new Map(data.features.map((f) => [f.id, f.status ?? null])),
-        );
+        await loadFeatures(app.id);
       } catch (err) {
         if (!cancelled) {
           appToast.error(
@@ -82,10 +90,16 @@ export function AppFeaturesModal({
     return () => {
       cancelled = true;
     };
-  }, [app]);
+  }, [app, loadFeatures]);
 
-  async function handleSave() {
+  async function persistStatus(
+    featureId: number,
+    status: LifecycleStatus | null,
+  ) {
     if (!app) return;
+    const nextOverrides = new Map(overrides);
+    nextOverrides.set(featureId, status);
+    setOverrides(nextOverrides);
     setSubmitting(true);
     try {
       const result = await fetchJson<{
@@ -97,12 +111,13 @@ export function AppFeaturesModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          features: [...overrides.entries()].map(([feature_id, status]) => ({
+          features: [...nextOverrides.entries()].map(([feature_id, st]) => ({
             feature_id,
-            status,
+            status: st,
           })),
         }),
       });
+      await loadFeatures(app.id);
       await onSaved();
       const pushNote =
         result.push_skipped
@@ -112,15 +127,16 @@ export function AppFeaturesModal({
             : result.push_ok
               ? " · sync OK"
               : "";
-      onClose();
-      // Toast después de cerrar el modal evita InvalidStateError de HeroUI.
-      queueMicrotask(() => {
-        appToast.success(`Funciones actualizadas${pushNote}`);
-      });
+      appToast.success(`Función actualizada${pushNote}`);
     } catch (err) {
       appToast.error(
         err instanceof Error ? err.message : "Error al guardar funciones",
       );
+      try {
+        await loadFeatures(app.id);
+      } catch {
+        /* ignore reload error */
+      }
     } finally {
       setSubmitting(false);
     }
@@ -140,9 +156,11 @@ export function AppFeaturesModal({
                 Funciones · {app.name || "App"}
               </Modal.Heading>
               <p className="mt-1 text-sm text-[var(--gp-text-muted)]">
-                Desbloqueá o bloqueá opciones de producto (no las enciende solas).
-                En uso = el cliente puede activarla; próximamente / mantenimiento =
-                visible pero bloqueada; oculto = no se muestra.
+                Desbloqueá o bloqueá opciones de producto (no las enciende
+                solas). Al cambiar el estado se guarda y sincroniza; el modal
+                permanece abierto. En uso = el cliente puede activarla;
+                próximamente / mantenimiento = visible pero bloqueada; oculto =
+                no se muestra.
               </p>
             </Modal.Header>
             <Modal.Body className="space-y-3">
@@ -213,11 +231,7 @@ export function AppFeaturesModal({
                                 raw === INHERIT || raw === ""
                                   ? null
                                   : normalizeLifecycleStatus(raw);
-                              setOverrides((prev) => {
-                                const map = new Map(prev);
-                                map.set(f.id, next);
-                                return map;
-                              });
+                              void persistStatus(f.id, next);
                             }}
                           >
                             <option value={INHERIT}>
@@ -243,13 +257,7 @@ export function AppFeaturesModal({
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" slot="close" isDisabled={submitting}>
-                Cancelar
-              </Button>
-              <Button
-                onPress={() => void handleSave()}
-                isDisabled={submitting || loading || rows.length === 0}
-              >
-                {submitting ? <Spinner size="sm" /> : "Guardar y sincronizar"}
+                Cerrar
               </Button>
             </Modal.Footer>
           </Modal.Dialog>

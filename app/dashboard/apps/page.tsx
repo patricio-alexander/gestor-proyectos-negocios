@@ -43,6 +43,7 @@ import {
   ManagerHeader,
   TableSearchBar,
 } from "@/src/shared/components/TableSearchBar";
+import { GestorHowItWorks } from "@/src/shared/components/GestorHowItWorks";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { gp } from "@/src/shared/ui/theme";
@@ -372,6 +373,8 @@ export default function AppsPage() {
         description="Apps web y móvil: email, sync, dispositivos, planes y mantenimiento."
         Icon={Briefcase}
         action={
+          <div className="flex items-center gap-2">
+            <GestorHowItWorks defaultTopic="features" />
           <Modal state={createState}>
             <Button
               style={{
@@ -542,6 +545,7 @@ export default function AppsPage() {
               </Modal.Container>
             </Modal.Backdrop>
           </Modal>
+          </div>
         }
       />
 

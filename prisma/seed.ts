@@ -751,30 +751,33 @@ async function seedFeatureCatalog() {
   return multi?.id ?? null;
 }
 
-/** EdDeli usa multistock: override en uso (sin pisar si ya hay override). */
+/** EdDeli usa multistock: asegura AppFeature active (crea o actualiza). */
 async function seedEddeliMultiStock(appId: number, featureId: number | null) {
   if (!featureId) return;
-  const existing = await prisma.appFeature.findUnique({
+  await prisma.appFeature.upsert({
     where: {
       app_id_feature_id: { app_id: appId, feature_id: featureId },
     },
-  });
-  if (existing) return;
-  await prisma.appFeature.create({
-    data: { app_id: appId, feature_id: featureId, status: "active" },
+    create: { app_id: appId, feature_id: featureId, status: "active" },
+    update: { status: "active" },
   });
 }
 
 /**
- * Defaults de funciones por app (idempotente: no pisa overrides existentes).
- * Producción: `npm run seed` solo completa lo que falta (Feature + AppFeature).
+ * Defaults de funciones por app.
+ * EdDeli → active (fuerza active si ya existía en planned).
+ * Store → planned solo al crear (no pisa overrides existentes).
  */
 async function seedDefaultAppFeatures(featureId: number | null) {
   if (!featureId) return [] as string[];
 
-  const defaults: Array<{ nameMatch: RegExp; status: "active" | "planned" }> = [
-    { nameMatch: /^eddeli$/i, status: "active" },
-    { nameMatch: /^store$/i, status: "planned" },
+  const defaults: Array<{
+    nameMatch: RegExp;
+    status: "active" | "planned";
+    force?: boolean;
+  }> = [
+    { nameMatch: /^eddeli$/i, status: "active", force: true },
+    { nameMatch: /^store$/i, status: "planned", force: false },
   ];
 
   const apps = await prisma.apps.findMany({
@@ -794,7 +797,15 @@ async function seedDefaultAppFeatures(featureId: number | null) {
       },
     });
     if (existing) {
-      log.push(`${name}: multi_stock=${existing.status}`);
+      if (def.force && existing.status !== def.status) {
+        await prisma.appFeature.update({
+          where: { id: existing.id },
+          data: { status: def.status },
+        });
+        log.push(`${name}: multi_stock ${existing.status} → ${def.status}`);
+      } else {
+        log.push(`${name}: multi_stock=${existing.status}`);
+      }
       continue;
     }
     await prisma.appFeature.create({
@@ -831,6 +842,11 @@ async function main() {
 
   const eventTypeRows = await seedEventTypes();
 
+  const lotesSec = await prisma.section.findFirst({
+    where: { key: "/inventario/lotes", deleted_at: null },
+    select: { status: true, name: true },
+  });
+
   // Empuja entitlement al backend EdDeli (si está corriendo).
   const { pushEntitlementToApp } =
     await import("../src/shared/lib/push-entitlement");
@@ -857,6 +873,9 @@ async function main() {
     "  EventTypes: %d tipos de evento",
     eventTypeRows.length,
   );
+  if (lotesSec) {
+    console.log("  Lotes inventario: %s → %s", lotesSec.name, lotesSec.status);
+  }
   if (featureAppLog.length) {
     console.log("  Features app: %s", featureAppLog.join(" · "));
   }

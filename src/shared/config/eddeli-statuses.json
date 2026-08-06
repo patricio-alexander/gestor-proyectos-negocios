@@ -157,14 +157,14 @@
           "status": "active"
         },
         {
-          "key": "/inventory/bodegas",
+          "key": "/inventario/bodegas",
           "name": "Bodegas",
           "status": "planned"
         },
         {
-          "key": "/inventory/lotes",
+          "key": "/inventario/lotes",
           "name": "Lotes y vencimientos",
-          "status": "planned"
+          "status": "active"
         }
       ]
     },

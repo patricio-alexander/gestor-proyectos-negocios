@@ -442,12 +442,24 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/inventario/lotes",
         name: "Lotes y vencimientos",
-        status: "planned",
+        status: "active",
         capabilities: [
           { code: "registrar_lote", name: "Registrar lote" },
           { code: "stock_por_lote", name: "Stock por lote" },
           { code: "alertas_de_vencimiento", name: "Alertas de vencimiento" },
           { code: "salida_por_fefo_fifo", name: "Salida por FEFO/FIFO" },
+        ],
+      },
+      {
+        key: "/inventario/valor",
+        name: "Valor de inventario",
+        status: "active",
+        capabilities: [
+          { code: "resumen_general", name: "Resumen general" },
+          { code: "valor_por_costo", name: "Valor por costo" },
+          { code: "valor_por_venta", name: "Valor a precio de venta" },
+          { code: "filtro_por_local", name: "Filtro por local (multistock)" },
+          { code: "detalle_por_producto", name: "Detalle por producto" },
         ],
       },
     ],

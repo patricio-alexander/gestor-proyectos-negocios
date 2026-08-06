@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { gp } from "@/src/shared/ui/theme";
 import { appToast } from "@/src/shared/utils/app-toast";
 import { ManagerHeader } from "@/src/shared/components/TableSearchBar";
+import { GestorHowItWorks } from "@/src/shared/components/GestorHowItWorks";
 import FileText from "@gravity-ui/icons/FileText";
 import Plus from "@gravity-ui/icons/Plus";
 import { apiUrl } from "@/src/utils/apiUrl";
@@ -481,6 +482,7 @@ export default function PlansPage() {
         Icon={FileText}
         action={
           <div className="flex items-center gap-2">
+            <GestorHowItWorks defaultTopic="plans" />
             <ExportPlansModal
               plans={plans}
               apps={businesses.map((app) => ({

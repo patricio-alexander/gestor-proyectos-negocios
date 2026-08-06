@@ -500,7 +500,9 @@ export function ModuleAccessPanel({
               <Modal.Heading className="truncate">Acceso · {module.name}</Modal.Heading>
               <SectionLimitSummary sections={module.sections} />
               <p className="mt-1 text-xs text-[var(--gp-text-muted)] sm:text-sm">
-                Prioridad: sección por app → módulo por app → catálogo global
+                Prioridad: sección por app → módulo por app → catálogo global.
+                Al cambiar un estado se guarda y sincroniza; este panel no se
+                cierra.
               </p>
             </Modal.Header>
 
