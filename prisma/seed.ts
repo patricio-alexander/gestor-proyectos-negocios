@@ -175,30 +175,48 @@ const LEGACY_RAPTOR_APP_HASH = crypto
 
 const EDDELI_API_KEY = "gc_4a177c0295a4cb88d52cea1035b9e9a5";
 
-const EDDELI_ENTITLEMENT_URL =
-  process.env.EDDELI_ENTITLEMENT_URL ||
+/** Solo desde env; sin default en update para no pisar producción con localhost. */
+const EDDELI_ENTITLEMENT_URL_ENV = process.env.EDDELI_ENTITLEMENT_URL?.trim() || "";
+const EDDELI_ENTITLEMENT_SECRET_ENV =
+  process.env.EDDELI_ENTITLEMENT_SECRET?.trim() || "";
+
+/** Default solo al crear la app (dev local). */
+const EDDELI_ENTITLEMENT_URL_DEFAULT =
   "http://127.0.0.1:3001/eddeliapi/subscription/entitlement";
-const EDDELI_ENTITLEMENT_SECRET =
-  process.env.EDDELI_ENTITLEMENT_SECRET || EDDELI_API_KEY;
 
 async function seedEdDeliApp() {
-  return prisma.apps.upsert({
+  const existing = await prisma.apps.findUnique({
     where: { hash: EDDELI_APP_HASH },
-    update: {
-      name: "EdDeli",
-      kind: "deployment",
-      deleted_at: null,
-      entitlement_url: EDDELI_ENTITLEMENT_URL,
-      entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
-    },
-    create: {
+  });
+
+  if (existing) {
+    // No pisar URL/secret de producción: solo actualiza si hay env explícito.
+    return prisma.apps.update({
+      where: { id: existing.id },
+      data: {
+        name: "EdDeli",
+        kind: "deployment",
+        deleted_at: null,
+        ...(EDDELI_ENTITLEMENT_URL_ENV
+          ? { entitlement_url: EDDELI_ENTITLEMENT_URL_ENV }
+          : {}),
+        ...(EDDELI_ENTITLEMENT_SECRET_ENV
+          ? { entitlement_secret: EDDELI_ENTITLEMENT_SECRET_ENV }
+          : {}),
+      },
+    });
+  }
+
+  return prisma.apps.create({
+    data: {
       hash: EDDELI_APP_HASH,
       name: "EdDeli",
       owner_name: "EdDeli",
       email: "soporte@eddeli.com",
       kind: "deployment",
-      entitlement_url: EDDELI_ENTITLEMENT_URL,
-      entitlement_secret: EDDELI_ENTITLEMENT_SECRET,
+      entitlement_url:
+        EDDELI_ENTITLEMENT_URL_ENV || EDDELI_ENTITLEMENT_URL_DEFAULT,
+      entitlement_secret: EDDELI_ENTITLEMENT_SECRET_ENV || EDDELI_API_KEY,
     },
   });
 }
