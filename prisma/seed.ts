@@ -799,7 +799,12 @@ async function seedDefaultAppFeatures(featureId: number | null) {
     if (existing) {
       if (def.force && existing.status !== def.status) {
         await prisma.appFeature.update({
-          where: { id: existing.id },
+          where: {
+            app_id_feature_id: {
+              app_id: app.id,
+              feature_id: featureId,
+            },
+          },
           data: { status: def.status },
         });
         log.push(`${name}: multi_stock ${existing.status} → ${def.status}`);
