@@ -1,9 +1,17 @@
 import { prisma } from "@/src/shared/lib/prisma";
-import { effectiveSectionStatusForApp, deriveModuleEffectiveStatus, normalizeLifecycleStatus } from "./lifecycle-status-resolve";
+import { effectiveSectionStatusForApp, deriveModuleEffectiveStatus, normalizeLifecycleStatus, effectiveLifecycleStatus } from "./lifecycle-status-resolve";
+import { ensureFeatureCatalog } from "./feature-catalog";
+
+export type EntitlementFeature = {
+  key: string;
+  name: string;
+  status: string;
+};
 
 export type EntitlementPayload = {
   maintenance: boolean;
   subscribed: boolean;
+  features: EntitlementFeature[];
   subscription: null | {
     id: number;
     plan_name: string | null;
@@ -17,6 +25,32 @@ export type EntitlementPayload = {
   };
 };
 
+async function buildFeaturesForApp(appId: number): Promise<EntitlementFeature[]> {
+  await ensureFeatureCatalog();
+
+  const catalog = await prisma.feature.findMany({
+    where: { deleted_at: null },
+    orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+    select: { id: true, key: true, name: true, status: true },
+  });
+
+  if (catalog.length === 0) return [];
+
+  const overrides = await prisma.appFeature.findMany({
+    where: { app_id: appId, feature_id: { in: catalog.map((f) => f.id) } },
+    select: { feature_id: true, status: true },
+  });
+  const overrideById = new Map(
+    overrides.map((o) => [o.feature_id, o.status]),
+  );
+
+  return catalog.map((f) => ({
+    key: f.key,
+    name: f.name,
+    status: effectiveLifecycleStatus(f.status, overrideById.get(f.id)),
+  }));
+}
+
 export async function buildEntitlementForAppHash(
   appHash: string,
 ): Promise<EntitlementPayload> {
@@ -26,8 +60,10 @@ export async function buildEntitlementForAppHash(
   });
 
   if (!app) {
-    return { maintenance: false, subscribed: false, subscription: null };
+    return { maintenance: false, subscribed: false, features: [], subscription: null };
   }
+
+  const features = await buildFeaturesForApp(app.id);
 
   const moduleChannel = app.kind === "mobile" ? "mobile" : "web";
 
@@ -196,6 +232,7 @@ export async function buildEntitlementForAppHash(
   return {
     maintenance: app.maintenance,
     subscribed: subscription?.status === "ACTIVE",
+    features,
     subscription: {
       id: subscription?.id ?? 0,
       plan_name: subscription?.plan_price.plan.name ?? null,

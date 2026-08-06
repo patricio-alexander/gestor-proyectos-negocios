@@ -25,10 +25,18 @@ function show(
       <CircleExclamation width={ICON} height={ICON} />
     );
 
-  toast[variant](title, {
-    description: options?.description,
-    indicator,
-  });
+  try {
+    const result = toast[variant](title, {
+      description: options?.description,
+      indicator,
+    }) as unknown;
+    // HeroUI toast + ViewTransition puede rechazar con InvalidStateError.
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      void (result as Promise<unknown>).catch(() => undefined);
+    }
+  } catch {
+    /* ignore aborted view transitions */
+  }
 }
 
 /** Toasts HeroUI con iconos y variantes consistentes en todo el proyecto. */

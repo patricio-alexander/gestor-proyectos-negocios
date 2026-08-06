@@ -44,6 +44,13 @@ export type App = {
     name: string | null;
   } | null;
   modules?: { id: number; key: string; name: string }[];
+  /** Resumen de funciones del catálogo (con estado efectivo por app). */
+  features?: {
+    id: number;
+    key: string;
+    name: string;
+    status: string;
+  }[];
 };
 
 export type CreateAppInput = {

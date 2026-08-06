@@ -22,6 +22,8 @@ export const BACKUP_TABLE_KEYS = [
   "Capability",
   "AppModule",
   "AppSection",
+  "Feature",
+  "AppFeature",
   "Offer",
   "OfferModule",
   "Plan",
@@ -59,6 +61,10 @@ export function backupTableDelegate(db: DbClient, key: BackupTableKey): Delegate
       return db.appModule;
     case "AppSection":
       return db.appSection;
+    case "Feature":
+      return db.feature;
+    case "AppFeature":
+      return db.appFeature;
     case "Offer":
       return db.offer;
     case "OfferModule":

@@ -721,6 +721,90 @@ async function seedEdDeliLocalSubscription(appHash: string) {
   };
 }
 
+async function seedFeatureCatalog() {
+  const { FEATURE_CATALOG_SEED } = await import(
+    "../src/shared/lib/feature-catalog"
+  );
+  for (const def of FEATURE_CATALOG_SEED) {
+    await prisma.feature.upsert({
+      where: { key: def.key },
+      create: {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        status: def.status,
+        sort_order: def.sort_order,
+      },
+      update: {
+        name: def.name,
+        description: def.description,
+        sort_order: def.sort_order,
+        deleted_at: null,
+      },
+    });
+  }
+
+  const multi = await prisma.feature.findUnique({
+    where: { key: "multi_stock" },
+    select: { id: true },
+  });
+  return multi?.id ?? null;
+}
+
+/** EdDeli usa multistock: override en uso (sin pisar si ya hay override). */
+async function seedEddeliMultiStock(appId: number, featureId: number | null) {
+  if (!featureId) return;
+  const existing = await prisma.appFeature.findUnique({
+    where: {
+      app_id_feature_id: { app_id: appId, feature_id: featureId },
+    },
+  });
+  if (existing) return;
+  await prisma.appFeature.create({
+    data: { app_id: appId, feature_id: featureId, status: "active" },
+  });
+}
+
+/**
+ * Defaults de funciones por app (idempotente: no pisa overrides existentes).
+ * Producción: `npm run seed` solo completa lo que falta (Feature + AppFeature).
+ */
+async function seedDefaultAppFeatures(featureId: number | null) {
+  if (!featureId) return [] as string[];
+
+  const defaults: Array<{ nameMatch: RegExp; status: "active" | "planned" }> = [
+    { nameMatch: /^eddeli$/i, status: "active" },
+    { nameMatch: /^store$/i, status: "planned" },
+  ];
+
+  const apps = await prisma.apps.findMany({
+    where: { deleted_at: null, kind: "deployment" },
+    select: { id: true, name: true },
+  });
+
+  const log: string[] = [];
+  for (const app of apps) {
+    const name = app.name || "";
+    const def = defaults.find((d) => d.nameMatch.test(name));
+    if (!def) continue;
+
+    const existing = await prisma.appFeature.findUnique({
+      where: {
+        app_id_feature_id: { app_id: app.id, feature_id: featureId },
+      },
+    });
+    if (existing) {
+      log.push(`${name}: multi_stock=${existing.status}`);
+      continue;
+    }
+    await prisma.appFeature.create({
+      data: { app_id: app.id, feature_id: featureId, status: def.status },
+    });
+    log.push(`${name}: multi_stock=${def.status} (nuevo)`);
+  }
+  return log;
+}
+
 async function main() {
   console.log("Seed %s → BD `%s`", SEED_ENV.platformName, SEED_ENV.databaseName);
 
@@ -729,6 +813,9 @@ async function main() {
   const removedRaptor = await removeLegacyRaptorApp();
   const eddeliApp = await seedEdDeliApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
+  const multiStockFeatureId = await seedFeatureCatalog();
+  await seedEddeliMultiStock(eddeliApp.id, multiStockFeatureId);
+  const featureAppLog = await seedDefaultAppFeatures(multiStockFeatureId);
 
   const allModules = await prisma.module.findMany({
     where: { deleted_at: null },
@@ -770,6 +857,9 @@ async function main() {
     "  EventTypes: %d tipos de evento",
     eventTypeRows.length,
   );
+  if (featureAppLog.length) {
+    console.log("  Features app: %s", featureAppLog.join(" · "));
+  }
   console.log(
     "  Entitlement push: %s",
     push.skipped

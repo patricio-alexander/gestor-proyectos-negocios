@@ -33,6 +33,14 @@ export async function GET() {
             },
           },
         },
+        app_features: {
+          select: {
+            status: true,
+            feature: {
+              select: { id: true, key: true, name: true, status: true, deleted_at: true },
+            },
+          },
+        },
         mobile_app: {
           select: {
             id: true,
@@ -138,6 +146,14 @@ export async function GET() {
             key: am.module.key,
             name: am.module.name,
           })),
+          features: a.app_features
+            .filter((af) => !af.feature.deleted_at)
+            .map((af) => ({
+              id: af.feature.id,
+              key: af.feature.key,
+              name: af.feature.name,
+              status: af.status ?? af.feature.status,
+            })),
         };
       }),
     );

@@ -192,6 +192,42 @@ model AppSection {
   @@index([section_id, status])
 }
 
+/**
+ * Funciones de producto (flags) con ciclo de vida — independientes de módulos/secciones.
+ * Ej.: multi_stock. Escalable: se agregan filas al catálogo sin migrar el entitlement.
+ */
+model Feature {
+  id          Int             @id @default(autoincrement())
+  key         String          @unique
+  name        String
+  description String?         @db.Text
+  /** Estado global del catálogo; AppFeature.status puede sobreescribir por app. */
+  status      LifecycleStatus @default(planned)
+  sort_order  Int             @default(0)
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  deleted_at  DateTime?
+  app_features AppFeature[]
+
+  @@index([status])
+  @@index([deleted_at])
+  @@index([sort_order, deleted_at])
+}
+
+/** Override de Feature por app (null = hereda Feature.status). */
+model AppFeature {
+  app_id     Int
+  feature_id Int
+  status     LifecycleStatus?
+  app        Apps    @relation(fields: [app_id], references: [id], onDelete: Cascade)
+  feature    Feature @relation(fields: [feature_id], references: [id], onDelete: Cascade)
+
+  @@id([app_id, feature_id])
+  @@index([app_id])
+  @@index([feature_id])
+  @@index([feature_id, status])
+}
+
 model Capability {
   id         Int      @id @default(autoincrement())
   section_id Int
@@ -236,6 +272,7 @@ model Apps {
   events                  Event[]
   app_modules             AppModule[]
   app_sections            AppSection[]
+  app_features            AppFeature[]
   mobile_app              MobileApp?
 
   @@index([deleted_at])

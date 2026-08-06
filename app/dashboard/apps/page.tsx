@@ -19,12 +19,14 @@ import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
 import CreditCard from "@gravity-ui/icons/CreditCard";
 import Copy from "@gravity-ui/icons/Copy";
 import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
+import Sliders from "@gravity-ui/icons/Sliders";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
 import ArrowsRotateLeft from "@gravity-ui/icons/ArrowsRotateLeft";
 import Eye from "@gravity-ui/icons/Eye";
 import CircleCheck from "@gravity-ui/icons/CircleCheck";
 import CircleExclamation from "@gravity-ui/icons/CircleExclamation";
 import { AppModulesModal } from "@/src/features/apps/components/AppModulesModal";
+import { AppFeaturesModal } from "@/src/features/apps/components/AppFeaturesModal";
 import { useState, useMemo, type ReactNode } from "react";
 import { useApps } from "@/src/features/apps/hooks/useApps";
 import type { App } from "@/src/features/apps/types";
@@ -128,6 +130,7 @@ export default function AppsPage() {
   const [viewingApp, setViewingApp] = useState<App | null>(null);
   const [deletingApp, setDeletingApp] = useState<App | null>(null);
   const [modulesApp, setModulesApp] = useState<App | null>(null);
+  const [featuresApp, setFeaturesApp] = useState<App | null>(null);
   const [planApp, setPlanApp] = useState<App | null>(null);
   const [planId, setPlanId] = useState("");
   const [planPeriod, setPlanPeriod] = useState<"MONTHLY" | "ANNUALLY">("MONTHLY");
@@ -169,6 +172,10 @@ export default function AppsPage() {
 
   function openModules(app: App) {
     setModulesApp(app);
+  }
+
+  function openFeatures(app: App) {
+    setFeaturesApp(app);
   }
 
   async function handleSaveAppModules(appId: number, moduleIds: number[]) {
@@ -556,6 +563,7 @@ export default function AppsPage() {
               <th>Propietario</th>
               <th>Plan</th>
               <th>Módulos</th>
+              <th>Funciones</th>
               <th>
                 <span className="inline-flex items-center gap-1.5">
                   Sync
@@ -584,7 +592,7 @@ export default function AppsPage() {
           <tbody>
             {paginatedApps.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-10 text-center">
+                <td colSpan={9} className="py-10 text-center">
                   <p className={gp.subtitle}>
                     {search.trim()
                       ? "No hay aplicaciones que coincidan con la búsqueda."
@@ -635,6 +643,21 @@ export default function AppsPage() {
                       >
                         <Cubes3Overlap width={11} height={11} />
                         {app.modules?.length ?? 0}
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    {isTemplateApp(app) ? (
+                      <span className="text-[var(--gp-text-muted)]">—</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openFeatures(app)}
+                        className="inline-flex items-center gap-1 rounded-md bg-[var(--gp-badge-bg)] px-2 py-0.5 text-xs font-medium text-[var(--gp-badge-text)] hover:bg-[color-mix(in_srgb,var(--gp-primary)_22%,transparent)]"
+                        title="Funciones de producto (multistock, etc.)"
+                      >
+                        <Sliders width={11} height={11} />
+                        Funciones
                       </button>
                     )}
                   </td>
@@ -766,6 +789,21 @@ export default function AppsPage() {
                           onPress={() => openModules(app)}
                         >
                           <Cubes3Overlap width={14} height={14} />
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip="Funciones: multistock y flags de producto"
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Funciones: multistock y flags de producto"
+                          isDisabled={isTemplateApp(app)}
+                          className={isTemplateApp(app) ? "pointer-events-none" : undefined}
+                          onPress={() => openFeatures(app)}
+                        >
+                          <Sliders width={14} height={14} />
                         </Button>
                       </span>
                       <span
@@ -1417,6 +1455,14 @@ export default function AppsPage() {
         app={modulesApp}
         onClose={() => setModulesApp(null)}
         onSave={handleSaveAppModules}
+      />
+
+      <AppFeaturesModal
+        app={featuresApp}
+        onClose={() => setFeaturesApp(null)}
+        onSaved={async () => {
+          await refetch();
+        }}
       />
     </div>
   );
