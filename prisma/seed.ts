@@ -1020,16 +1020,21 @@ async function main() {
   if (featureAppLog.length) {
     console.log("  Features app: %s", featureAppLog.join(" · "));
   }
-  const pushLine = (label: string, push: { skipped?: boolean; ok?: boolean; error?: string; status?: number }) =>
-    push.skipped
-      ? `${label}: omitido (sin URL)`
-      : push.ok
-        ? `${label}: OK`
-        : `${label}: falló (${push.error || push.status})`;
   console.log(
-    "  Entitlement push: %s · %s",
-    pushBag("EdDeli", pushEddeli),
-    pushBag("Store", pushStore),
+    "  Entitlement push EdDeli: %s",
+    pushEddeli.skipped
+      ? "omitido (sin URL)"
+      : pushEddeli.ok
+        ? "OK"
+        : `falló (${pushEddeli.error || pushEddeli.status})`,
+  );
+  console.log(
+    "  Entitlement push Store: %s",
+    pushStore.skipped
+      ? "omitido (sin URL)"
+      : pushStore.ok
+        ? "OK"
+        : `falló (${pushStore.error || pushStore.status})`,
   );
 }
 
