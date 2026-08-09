@@ -166,6 +166,12 @@ const EDDELI_APP_HASH = crypto
   .digest("hex")
   .slice(0, 32);
 
+const STORE_APP_HASH = crypto
+  .createHash("sha256")
+  .update("store-seed-app")
+  .digest("hex")
+  .slice(0, 32);
+
 /** Hash legacy de la app plantilla Raptor (ya no se usa ni se crea en seed). */
 const LEGACY_RAPTOR_APP_HASH = crypto
   .createHash("sha256")
@@ -174,17 +180,29 @@ const LEGACY_RAPTOR_APP_HASH = crypto
   .slice(0, 32);
 
 const EDDELI_API_KEY = "gc_4a177c0295a4cb88d52cea1035b9e9a5";
+/** Default secret Store (alineado a GESTOR_SYNC_SECRET típico). Override: STORE_ENTITLEMENT_SECRET */
+const STORE_API_KEY = "gc_46ba297fd7a64b1dde02252adc16d936";
 
 /** Producción (default del seed). Override local: EDDELI_ENTITLEMENT_URL=http://127.0.0.1:3001/... */
 const EDDELI_ENTITLEMENT_URL_PRODUCTION =
   "https://aplicaciones.marianosamaniego.edu.ec/eddeliapi/subscription/entitlement";
 
+const STORE_ENTITLEMENT_URL_PRODUCTION =
+  "https://aplicaciones.marianosamaniego.edu.ec/storeapi/subscription/entitlement";
+
 const EDDELI_ENTITLEMENT_URL =
   process.env.EDDELI_ENTITLEMENT_URL?.trim() ||
   EDDELI_ENTITLEMENT_URL_PRODUCTION;
 
+const STORE_ENTITLEMENT_URL =
+  process.env.STORE_ENTITLEMENT_URL?.trim() ||
+  STORE_ENTITLEMENT_URL_PRODUCTION;
+
 const EDDELI_ENTITLEMENT_SECRET_ENV =
   process.env.EDDELI_ENTITLEMENT_SECRET?.trim() || "";
+
+const STORE_ENTITLEMENT_SECRET_ENV =
+  process.env.STORE_ENTITLEMENT_SECRET?.trim() || "";
 
 async function seedEdDeliApp() {
   const existing = await prisma.apps.findUnique({
@@ -223,6 +241,64 @@ async function seedEdDeliApp() {
       kind: "deployment",
       entitlement_url: EDDELI_ENTITLEMENT_URL,
       entitlement_secret: EDDELI_ENTITLEMENT_SECRET_ENV || EDDELI_API_KEY,
+    },
+  });
+}
+
+async function seedStoreApp() {
+  const existing = await prisma.apps.findUnique({
+    where: { hash: STORE_APP_HASH },
+  });
+
+  if (existing) {
+    const updated = await prisma.apps.update({
+      where: { id: existing.id },
+      data: {
+        name: "Store",
+        kind: "deployment",
+        deleted_at: null,
+        entitlement_url: STORE_ENTITLEMENT_URL,
+        ...(STORE_ENTITLEMENT_SECRET_ENV
+          ? { entitlement_secret: STORE_ENTITLEMENT_SECRET_ENV }
+          : {}),
+      },
+    });
+    console.log(
+      "  Store entitlement_url → %s%s",
+      STORE_ENTITLEMENT_URL,
+      existing.entitlement_url !== STORE_ENTITLEMENT_URL
+        ? ` (antes: ${existing.entitlement_url || "vacío"})`
+        : "",
+    );
+    return updated;
+  }
+
+  // Si ya existe una app "Store" creada a mano (otro hash), reutilizarla.
+  const byName = await prisma.apps.findFirst({
+    where: { name: "Store", deleted_at: null, kind: "deployment" },
+  });
+  if (byName) {
+    return prisma.apps.update({
+      where: { id: byName.id },
+      data: {
+        entitlement_url: STORE_ENTITLEMENT_URL,
+        entitlement_secret:
+          STORE_ENTITLEMENT_SECRET_ENV ||
+          byName.entitlement_secret ||
+          STORE_API_KEY,
+      },
+    });
+  }
+
+  return prisma.apps.create({
+    data: {
+      hash: STORE_APP_HASH,
+      name: "Store",
+      owner_name: "Store",
+      email: "soporte@store.local",
+      kind: "deployment",
+      entitlement_url: STORE_ENTITLEMENT_URL,
+      entitlement_secret: STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
     },
   });
 }
@@ -680,8 +756,8 @@ async function seedEdDeliCommercialPlans(appId: number) {
   return created;
 }
 
-/** Suscripción ACTIVE al Plan Socios (todos los módulos) para pruebas locales. */
-async function seedEdDeliLocalSubscription(appHash: string) {
+/** Suscripción ACTIVE al Plan Socios (todos los módulos) para pruebas / prod seed. */
+async function seedLocalSubscription(appHash: string, appLabel = "app") {
   const plan = await prisma.plan.findFirst({
     where: {
       name: "Plan Socios",
@@ -691,7 +767,7 @@ async function seedEdDeliLocalSubscription(appHash: string) {
   });
   if (!plan) {
     throw new Error(
-      "Plan Socios (web) no encontrado; corre seedEdDeliCommercialPlans antes",
+      `Plan Socios (web) no encontrado; corre seedCommercialPlans antes (${appLabel})`,
     );
   }
 
@@ -733,15 +809,22 @@ async function seedEdDeliLocalSubscription(appHash: string) {
     });
   }
 
-  const moduleCount = await prisma.planAppModule.count({
-    where: { plan_id: plan.id },
+  const app = await prisma.apps.findUnique({
+    where: { hash: appHash },
+    select: { id: true },
   });
+  const moduleCount = app
+    ? await prisma.planAppModule.count({
+        where: { plan_id: plan.id, app_module: { app_id: app.id } },
+      })
+    : await prisma.planAppModule.count({ where: { plan_id: plan.id } });
 
   return {
     planId: plan.id,
     planName: plan.name!,
     subscriptionId: subscription.id,
     modules: moduleCount,
+    appLabel,
   };
 }
 
@@ -852,6 +935,7 @@ async function main() {
   await seedPlatformAccounts();
   const removedRaptor = await removeLegacyRaptorApp();
   const eddeliApp = await seedEdDeliApp();
+  const storeApp = await seedStoreApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
   const multiStockFeatureId = await seedFeatureCatalog();
   await seedEddeliMultiStock(eddeliApp.id, multiStockFeatureId);
@@ -861,13 +945,14 @@ async function main() {
     where: { deleted_at: null },
     select: { id: true },
   });
-  await seedAppModules(
-    eddeliApp.id,
-    allModules.map((m) => m.id),
-  );
+  const moduleIds = allModules.map((m) => m.id);
+  await seedAppModules(eddeliApp.id, moduleIds);
+  await seedAppModules(storeApp.id, moduleIds);
 
   const commercialPlans = await seedEdDeliCommercialPlans(eddeliApp.id);
-  const localSub = await seedEdDeliLocalSubscription(EDDELI_APP_HASH);
+  await seedEdDeliCommercialPlans(storeApp.id);
+  const eddeliSub = await seedLocalSubscription(EDDELI_APP_HASH, "EdDeli");
+  const storeSub = await seedLocalSubscription(storeApp.hash, "Store");
 
   const eventTypeRows = await seedEventTypes();
 
@@ -888,13 +973,14 @@ async function main() {
     },
   });
 
-  // Empuja entitlement al backend EdDeli (si está corriendo).
+  // Empuja entitlement a backends (si están corriendo).
   const { pushEntitlementToApp } =
     await import("../src/shared/lib/push-entitlement");
-  const push = await pushEntitlementToApp(EDDELI_APP_HASH);
+  const pushEddeli = await pushEntitlementToApp(EDDELI_APP_HASH);
+  const pushStore = await pushEntitlementToApp(storeApp.hash);
 
   console.log(
-    "Seed OK [%s]: roles, catálogo global (%d módulos, %d secciones), EdDeli, cuentas%s",
+    "Seed OK [%s]: roles, catálogo global (%d módulos, %d secciones), EdDeli + Store, cuentas%s",
     SEED_ENV.databaseName,
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
@@ -912,10 +998,17 @@ async function main() {
     commercialPlans.map((p) => `${p.name}(${p.modules}m)`).join(", "),
   );
   console.log(
-    "  Suscripción local: %s (%d módulos) → sub %d",
-    localSub.planName,
-    localSub.modules,
-    localSub.subscriptionId,
+    "  Suscripción EdDeli: %s (%d módulos) → sub %d",
+    eddeliSub.planName,
+    eddeliSub.modules,
+    eddeliSub.subscriptionId,
+  );
+  console.log(
+    "  Suscripción Store: %s (%d módulos) → sub %d · hash %s",
+    storeSub.planName,
+    storeSub.modules,
+    storeSub.subscriptionId,
+    storeApp.hash,
   );
   console.log(
     "  EventTypes: %d tipos de evento",
@@ -927,13 +1020,16 @@ async function main() {
   if (featureAppLog.length) {
     console.log("  Features app: %s", featureAppLog.join(" · "));
   }
-  console.log(
-    "  Entitlement push: %s",
+  const pushLine = (label: string, push: { skipped?: boolean; ok?: boolean; error?: string; status?: number }) =>
     push.skipped
-      ? "omitido (sin URL)"
+      ? `${label}: omitido (sin URL)`
       : push.ok
-        ? "OK → EdDeli backend"
-        : `falló (${push.error || push.status}) — arranca EdDeli y vuelve a seed o haz pull`,
+        ? `${label}: OK`
+        : `${label}: falló (${push.error || push.status})`;
+  console.log(
+    "  Entitlement push: %s · %s",
+    pushBag("EdDeli", pushEddeli),
+    pushBag("Store", pushStore),
   );
 }
 
