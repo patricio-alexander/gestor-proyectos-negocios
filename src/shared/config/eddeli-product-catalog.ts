@@ -262,7 +262,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "ventas",
     name: "Ventas y Compras",
-    description: "Pedidos, clientes, proveedores, cobranzas (ventas) y cuentas por pagar (compras).",
+    description: "Pedidos, clientes, proveedores, reporte de ventas y reporte de compras.",
     status: "active",
     sections: [
       {
@@ -308,10 +308,9 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         name: "Ventas",
         status: "active",
         capabilities: [
-          { code: "abonar_pedido", name: "Abonar pedido" },
-          { code: "selector_por_deuda", name: "Selector por deuda" },
-          { code: "grupos_y_abonos", name: "Grupos y abonos" },
-          { code: "resumen_de_cuenta", name: "Resumen de cuenta" },
+          { code: "filtros_por_fecha_y_vendedor", name: "Filtros por fecha y vendedor" },
+          { code: "tabla_diaria", name: "Tabla diaria" },
+          { code: "totales", name: "Totales" },
         ],
       },
       {
@@ -319,8 +318,9 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         name: "Compras",
         status: "active",
         capabilities: [
-          { code: "cuentas_por_pagar", name: "Cuentas por pagar" },
-          { code: "pacas_grupos_de_pago", name: "Pacas / grupos de pago" },
+          { code: "filtros_por_fecha_y_proveedor", name: "Filtros por fecha y proveedor" },
+          { code: "tabla_diaria", name: "Tabla diaria" },
+          { code: "totales", name: "Totales" },
         ],
       },
       {
@@ -338,7 +338,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "finanzas",
     name: "Finanzas",
-    description: "Ingresos, gastos, préstamos y gastos recurrentes.",
+    description: "Ingresos, gastos, cobranzas, préstamos y gastos recurrentes.",
     status: "active",
     sections: [
       {
@@ -351,7 +351,15 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "filtro_por_tipo", name: "Filtro por tipo" },
           { code: "filtro_por_categoria", name: "Filtro por categoría" },
           { code: "registrar_ingreso_gasto", name: "Registrar ingreso/gasto" },
-          { code: "ir_a_ventas_compras", name: "Ir a Ventas / Compras" },
+        ],
+      },
+      {
+        key: "/finanzas/cobranzas",
+        name: "Cobranzas",
+        status: "active",
+        capabilities: [
+          { code: "modo_clientes_proveedores", name: "Modo Clientes / Proveedores" },
+          { code: "abonos_y_grupos", name: "Abonos y grupos" },
         ],
       },
       {
