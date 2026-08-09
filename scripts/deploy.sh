@@ -8,6 +8,7 @@
 # Opciones:
 #   SKIP_MIGRATE=1 npm run deploy   # no corre prisma migrate deploy
 #   SKIP_INSTALL=1 npm run deploy   # no corre npm install
+#   SKIP_SEED=1 npm run deploy      # no corre seed (catálogo/módulos/secciones)
 #
 set -euo pipefail
 
@@ -41,6 +42,15 @@ if [[ "${SKIP_MIGRATE:-0}" != "1" ]]; then
   npx prisma migrate deploy
 else
   echo "==> prisma migrate (omitido)"
+fi
+
+# Seed upserta módulos/secciones del catálogo (Ventas y Compras, Proveedores, etc.)
+# y empuja entitlement a las apps. Es idempotente.
+if [[ "${SKIP_SEED:-0}" != "1" ]]; then
+  echo "==> npm run seed (catálogo módulos/secciones)"
+  npm run seed
+else
+  echo "==> seed (omitido)"
 fi
 
 echo "==> next build"

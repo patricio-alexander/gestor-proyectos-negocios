@@ -1,5 +1,5 @@
 {
-  "exportedAt": "2026-07-14T21:38:20.023Z",
+  "exportedAt": "2026-08-08T23:59:09.275Z",
   "app": {
     "id": 1,
     "name": "EdDeli",
@@ -29,71 +29,136 @@
       ]
     },
     {
-      "key": "notificaciones",
-      "name": "Notificaciones",
-      "status": "active",
-      "sections": [
-        {
-          "key": "/notifications",
-          "name": "Notificaciones",
-          "status": "active"
-        }
-      ]
-    },
-    {
       "key": "operacion",
       "name": "Operación",
       "status": "active",
       "sections": [
         {
-          "key": "/caja",
+          "key": "/operacion/caja",
           "name": "Caja",
           "status": "active"
         },
         {
-          "key": "/turno",
+          "key": "/operacion/turno",
           "name": "Turno",
           "status": "active"
         },
         {
-          "key": "/tareas",
+          "key": "/operacion/tareas",
           "name": "Tareas",
           "status": "active"
         },
         {
-          "key": "/facturacion",
+          "key": "/operacion/comprobantes-pos",
           "name": "Comprobantes POS",
           "status": "active"
         },
         {
-          "key": "/turno/supervision",
+          "key": "/operacion/supervision-caja",
           "name": "Supervisión caja",
           "status": "active"
         },
         {
-          "key": "/turno/multi-caja",
+          "key": "/operacion/turno/multi-caja",
           "name": "Apertura multi-caja por local",
           "status": "planned"
         }
       ]
     },
     {
+      "key": "comprobantes_electronicos",
+      "name": "Comprobantes electrónicos",
+      "status": "maintenance",
+      "sections": [
+        {
+          "key": "/comprobantes-electronicos",
+          "name": "Inicio SRI",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/facturas",
+          "name": "Facturas",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/notas-venta",
+          "name": "Notas de venta",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/notas-credito",
+          "name": "Notas de crédito / débito",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/retenciones",
+          "name": "Retenciones",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/guias-remision",
+          "name": "Guías de remisión",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/liquidacion-compras",
+          "name": "Liquidación de compras",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes-electronicos/emitidos",
+          "name": "Documentos emitidos",
+          "status": "maintenance"
+        },
+        {
+          "key": "/comprobantes",
+          "name": "Comprobantes (redir)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/sistema/facturacion-electronica",
+          "name": "Facturación electrónica (atajo)",
+          "status": "maintenance"
+        },
+        {
+          "key": "/facturacion/sri",
+          "name": "Config SRI (atajo)",
+          "status": "maintenance"
+        }
+      ]
+    },
+    {
       "key": "ventas",
-      "name": "Ventas",
+      "name": "Ventas y Compras",
       "status": "active",
       "sections": [
         {
-          "key": "/inventory/orders",
+          "key": "/ventas/pedidos",
           "name": "Pedidos",
           "status": "active"
         },
         {
-          "key": "/inventory/customers",
+          "key": "/ventas/clientes",
           "name": "Clientes",
           "status": "active"
         },
         {
-          "key": "/inventory/customers/cuentas",
+          "key": "/ventas/proveedores",
+          "name": "Proveedores",
+          "status": "active"
+        },
+        {
+          "key": "/ventas/ventas",
+          "name": "Ventas",
+          "status": "active"
+        },
+        {
+          "key": "/ventas/compras",
+          "name": "Compras",
+          "status": "active"
+        },
+        {
+          "key": "/ventas/clientes/cuentas",
           "name": "Clientes con cuenta",
           "status": "planned"
         }
@@ -105,22 +170,17 @@
       "status": "active",
       "sections": [
         {
-          "key": "/inventory/finance",
+          "key": "/finanzas/movimientos",
           "name": "Finanzas",
           "status": "active"
         },
         {
-          "key": "/inventory/collections",
-          "name": "Cobranzas",
-          "status": "active"
-        },
-        {
-          "key": "/inventory/prestamos-deudas",
+          "key": "/finanzas/prestamos-deudas",
           "name": "Préstamos y deudas",
           "status": "active"
         },
         {
-          "key": "/inventory/gastos-recurrentes",
+          "key": "/finanzas/gastos-recurrentes",
           "name": "Gastos recurrentes",
           "status": "maintenance"
         }
@@ -132,27 +192,27 @@
       "status": "active",
       "sections": [
         {
-          "key": "/inventory/products",
+          "key": "/inventario/productos",
           "name": "Productos",
           "status": "active"
         },
         {
-          "key": "/inventory/movement",
+          "key": "/inventario/movimientos",
           "name": "Movimientos",
           "status": "active"
         },
         {
-          "key": "/inventory/categories",
+          "key": "/inventario/categorias",
           "name": "Categorías",
           "status": "active"
         },
         {
-          "key": "/inventory/tramos",
+          "key": "/inventario/tramos",
           "name": "Tramos",
           "status": "active"
         },
         {
-          "key": "/inventory/units",
+          "key": "/inventario/unidades",
           "name": "Unidades",
           "status": "active"
         },
@@ -164,6 +224,11 @@
         {
           "key": "/inventario/lotes",
           "name": "Lotes y vencimientos",
+          "status": "planned"
+        },
+        {
+          "key": "/inventario/valor",
+          "name": "Valor de inventario",
           "status": "active"
         }
       ]
@@ -174,27 +239,22 @@
       "status": "active",
       "sections": [
         {
-          "key": "/inventory/insumos",
+          "key": "/produccion/insumos",
           "name": "Insumos y marcas",
           "status": "active"
         },
         {
-          "key": "/inventory/recipes",
+          "key": "/produccion/recetas",
           "name": "Recetas",
           "status": "active"
         },
         {
-          "key": "/inventory/production",
+          "key": "/produccion/fabricacion",
           "name": "Producción",
           "status": "active"
         },
         {
-          "key": "/inventory/suppliers",
-          "name": "Proveedores",
-          "status": "active"
-        },
-        {
-          "key": "/inventory/suppliers/cuentas",
+          "key": "/produccion/proveedores/cuentas",
           "name": "Proveedores con cuenta",
           "status": "planned"
         }
@@ -206,34 +266,100 @@
       "status": "active",
       "sections": [
         {
-          "key": "/catalog_manager",
+          "key": "/canal/catalogo",
           "name": "Catálogo config",
           "status": "active"
         },
         {
-          "key": "/inventory/puntos-venta",
+          "key": "/canal/locales",
           "name": "Puntos de venta",
           "status": "active"
         },
         {
-          "key": "/inventory/productos-destacados",
+          "key": "/canal/productos-destacados",
           "name": "Productos destacados",
           "status": "maintenance"
         },
         {
-          "key": "/compare_groups",
+          "key": "/canal/grupos-comparativos",
           "name": "Grupos comparativos",
           "status": "maintenance"
+        }
+      ]
+    },
+    {
+      "key": "documentos",
+      "name": "Documentos",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/documentos/plantillas",
+          "name": "Plantillas",
+          "status": "planned"
         },
         {
-          "key": "/catalogo",
-          "name": "Catálogo público",
-          "status": "active"
+          "key": "/documentos/contratos",
+          "name": "Contratos",
+          "status": "planned"
         },
         {
-          "key": "/punto_venta",
-          "name": "Puntos de venta",
-          "status": "active"
+          "key": "/documentos/firmas",
+          "name": "Firmas",
+          "status": "planned"
+        },
+        {
+          "key": "/documentos/archivo",
+          "name": "Archivo",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "logistica",
+      "name": "Logística",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/logistica/rutas",
+          "name": "Rutas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/transportistas",
+          "name": "Transportistas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/entregas",
+          "name": "Entregas",
+          "status": "planned"
+        },
+        {
+          "key": "/logistica/tracking",
+          "name": "Tracking",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "key": "comunidad",
+      "name": "Comunidad",
+      "status": "planned",
+      "sections": [
+        {
+          "key": "/comunidad/encuestas",
+          "name": "Encuestas",
+          "status": "planned"
+        },
+        {
+          "key": "/comunidad/quejas",
+          "name": "Quejas",
+          "status": "planned"
+        },
+        {
+          "key": "/comunidad/resultados",
+          "name": "Resultados",
+          "status": "planned"
         }
       ]
     },
@@ -317,39 +443,39 @@
       "status": "active",
       "sections": [
         {
-          "key": "/users",
+          "key": "/administracion/usuarios",
           "name": "Usuarios",
           "status": "active"
         },
         {
-          "key": "/cuentas",
+          "key": "/administracion/cuentas",
           "name": "Cuentas",
           "status": "active"
         },
         {
-          "key": "/roles",
+          "key": "/administracion/roles",
           "name": "Roles",
           "status": "active"
         },
         {
-          "key": "/panel_control",
+          "key": "/administracion/panel-control",
           "name": "Panel de control",
           "status": "active"
         },
         {
-          "key": "/notification-programs",
+          "key": "/administracion/programas-notificacion",
           "name": "Programas de notificación",
           "status": "active"
+        },
+        {
+          "key": "/administracion/asistencia",
+          "name": "Asistencia / horarios del personal",
+          "status": "planned"
         },
         {
           "key": "/app-settings",
           "name": "Ajustes de app",
           "status": "active"
-        },
-        {
-          "key": "/admin/asistencia",
-          "name": "Asistencia / horarios del personal",
-          "status": "planned"
         }
       ]
     },
@@ -374,12 +500,12 @@
           "status": "active"
         },
         {
-          "key": "/perfil",
+          "key": "/sistema/perfil",
           "name": "Perfil",
           "status": "active"
         },
         {
-          "key": "/donaciones",
+          "key": "/sistema/donaciones",
           "name": "Donaciones",
           "status": "active"
         },
@@ -396,167 +522,29 @@
       "status": "developer",
       "sections": [
         {
-          "key": "/img",
+          "key": "/desarrollador/imagenes",
           "name": "Imágenes",
           "status": "active"
         },
         {
-          "key": "/file",
+          "key": "/desarrollador/archivos",
           "name": "Archivos",
           "status": "active"
         },
         {
-          "key": "/logs",
+          "key": "/desarrollador/logs",
           "name": "Logs",
           "status": "active"
         },
         {
-          "key": "/backups",
+          "key": "/desarrollador/backups",
           "name": "Backups JSON",
           "status": "active"
         },
         {
-          "key": "/comandos",
+          "key": "/desarrollador/comandos",
           "name": "Comandos",
           "status": "active"
-        }
-      ]
-    },
-    {
-      "key": "comprobantes_electronicos",
-      "name": "Comprobantes electrónicos",
-      "status": "maintenance",
-      "sections": [
-        {
-          "key": "/comprobantes-electronicos",
-          "name": "Inicio SRI",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/facturas",
-          "name": "Facturas",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/notas-venta",
-          "name": "Notas de venta",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/notas-credito",
-          "name": "Notas de crédito / débito",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/retenciones",
-          "name": "Retenciones",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/guias-remision",
-          "name": "Guías de remisión",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/liquidacion-compras",
-          "name": "Liquidación de compras",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes-electronicos/emitidos",
-          "name": "Documentos emitidos",
-          "status": "maintenance"
-        },
-        {
-          "key": "/sistema/facturacion-electronica",
-          "name": "Facturación electrónica (atajo)",
-          "status": "maintenance"
-        },
-        {
-          "key": "/facturacion/sri",
-          "name": "Config SRI (atajo)",
-          "status": "maintenance"
-        },
-        {
-          "key": "/comprobantes",
-          "name": "Comprobantes (redir)",
-          "status": "maintenance"
-        }
-      ]
-    },
-    {
-      "key": "documentos",
-      "name": "Documentos",
-      "status": "planned",
-      "sections": [
-        {
-          "key": "/documentos/plantillas",
-          "name": "Plantillas",
-          "status": "planned"
-        },
-        {
-          "key": "/documentos/contratos",
-          "name": "Contratos",
-          "status": "planned"
-        },
-        {
-          "key": "/documentos/firmas",
-          "name": "Firmas",
-          "status": "planned"
-        },
-        {
-          "key": "/documentos/archivo",
-          "name": "Archivo",
-          "status": "planned"
-        }
-      ]
-    },
-    {
-      "key": "logistica",
-      "name": "Logística",
-      "status": "planned",
-      "sections": [
-        {
-          "key": "/logistica/rutas",
-          "name": "Rutas",
-          "status": "planned"
-        },
-        {
-          "key": "/logistica/transportistas",
-          "name": "Transportistas",
-          "status": "planned"
-        },
-        {
-          "key": "/logistica/entregas",
-          "name": "Entregas",
-          "status": "planned"
-        },
-        {
-          "key": "/logistica/tracking",
-          "name": "Tracking",
-          "status": "planned"
-        }
-      ]
-    },
-    {
-      "key": "comunidad",
-      "name": "Comunidad",
-      "status": "planned",
-      "sections": [
-        {
-          "key": "/comunidad/encuestas",
-          "name": "Encuestas",
-          "status": "planned"
-        },
-        {
-          "key": "/comunidad/quejas",
-          "name": "Quejas",
-          "status": "planned"
-        },
-        {
-          "key": "/comunidad/resultados",
-          "name": "Resultados",
-          "status": "planned"
         }
       ]
     }

@@ -3,12 +3,19 @@
  * incluyendo status (active | development | maintenance | developer | planned).
  */
 import { writeFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { dirname, join } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
-const CATALOG_PATH =
-  "/home/edgarpc8/Escritorio/AppsWeb/eddeli/frontend/src/config/appModulesCatalog.js";
-const OUT_PATH =
-  "/home/edgarpc8/Escritorio/AppsWeb/gestor-proyectos-negocios/src/shared/config/eddeli-product-catalog.ts";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+/** Fuente: frontend Raptor (hermano de este repo en AppsWeb/). */
+const CATALOG_PATH = join(
+  __dirname,
+  "../../raptor/frontend/src/config/appModulesCatalog.js",
+);
+const OUT_PATH = join(
+  __dirname,
+  "../src/shared/config/eddeli-product-catalog.ts",
+);
 
 const {
   APP_MODULE_GROUPS,

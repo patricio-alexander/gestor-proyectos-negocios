@@ -4,8 +4,7 @@ export type LifecycleStatus =
   | "development"
   | "maintenance"
   | "developer"
-  | "planned"
-  | "hidden";
+  | "planned";
 
 export type CatalogCapabilityDef = {
   /** Identificador estable para el cliente (ej. export_pdf, export_excel). */
@@ -61,24 +60,15 @@ export const EDDELI_MENU_ITEMS: CatalogModuleDef[] = [
           { code: "tabla_de_clientes", name: "Tabla de clientes" },
         ],
       },
-    ],
-  },
-  {
-    key: "info",
-    name: "Información",
-    description: "Documentación de la app y módulos.",
-    status: "active",
-    sections: [
       {
-        key: "/info",
-        name: "Información",
+        key: "/inicio",
+        name: "Inicio (alias)",
         status: "active",
-        capabilities: [
-          { code: "pestana_la_app", name: "Pestaña La app" },
-          { code: "pestana_modulos", name: "Pestaña Módulos" },
-          { code: "detalle_de_seccion", name: "Detalle de sección" },
-          { code: "descargar_pdf", name: "Descargar PDF" },
-        ],
+      },
+      {
+        key: "/backery",
+        name: "Backery (alias)",
+        status: "active",
       },
     ],
   }
@@ -123,7 +113,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "cierre_con_arqueo", name: "Cierre con arqueo" },
           { code: "cerrar_turno", name: "Cerrar turno" },
           { code: "historial_de_turnos", name: "Historial de turnos" },
-          { code: "edicion_programador", name: "Edición programador" },
           { code: "supervision_por_fecha", name: "Supervisión por fecha" },
         ],
       },
@@ -214,18 +203,11 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       },
       {
         key: "/comprobantes-electronicos/notas-credito",
-        name: "Notas de crédito",
+        name: "Notas de crédito / débito",
         status: "maintenance",
         capabilities: [
-          { code: "bandeja_prox", name: "Bandeja (próx.)" },
-        ],
-      },
-      {
-        key: "/comprobantes-electronicos/notas-debito",
-        name: "Notas de débito",
-        status: "maintenance",
-        capabilities: [
-          { code: "bandeja_prox", name: "Bandeja (próx.)" },
+          { code: "notas_de_credito", name: "Notas de crédito" },
+          { code: "notas_de_debito", name: "Notas de débito" },
         ],
       },
       {
@@ -260,12 +242,27 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "bandeja_prox", name: "Bandeja (próx.)" },
         ],
       },
+      {
+        key: "/comprobantes",
+        name: "Comprobantes (redir)",
+        status: "maintenance",
+      },
+      {
+        key: "/sistema/facturacion-electronica",
+        name: "Facturación electrónica (atajo)",
+        status: "maintenance",
+      },
+      {
+        key: "/facturacion/sri",
+        name: "Config SRI (atajo)",
+        status: "maintenance",
+      },
     ],
   },
 {
     key: "ventas",
-    name: "Ventas",
-    description: "Pedidos institucionales, clientes mayoristas y (próx.) clientes con cuenta.",
+    name: "Ventas y Compras",
+    description: "Pedidos, clientes, proveedores, cobranzas (ventas) y cuentas por pagar (compras).",
     status: "active",
     sections: [
       {
@@ -296,6 +293,37 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
+        key: "/ventas/proveedores",
+        name: "Proveedores",
+        status: "active",
+        capabilities: [
+          { code: "agregar_proveedor", name: "Agregar proveedor" },
+          { code: "tabla_con_busqueda", name: "Tabla con búsqueda" },
+          { code: "editar_proveedor", name: "Editar proveedor" },
+          { code: "eliminar_proveedor", name: "Eliminar proveedor" },
+        ],
+      },
+      {
+        key: "/ventas/ventas",
+        name: "Ventas",
+        status: "active",
+        capabilities: [
+          { code: "abonar_pedido", name: "Abonar pedido" },
+          { code: "selector_por_deuda", name: "Selector por deuda" },
+          { code: "grupos_y_abonos", name: "Grupos y abonos" },
+          { code: "resumen_de_cuenta", name: "Resumen de cuenta" },
+        ],
+      },
+      {
+        key: "/ventas/compras",
+        name: "Compras",
+        status: "active",
+        capabilities: [
+          { code: "cuentas_por_pagar", name: "Cuentas por pagar" },
+          { code: "pacas_grupos_de_pago", name: "Pacas / grupos de pago" },
+        ],
+      },
+      {
         key: "/ventas/clientes/cuentas",
         name: "Clientes con cuenta",
         status: "planned",
@@ -310,7 +338,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "finanzas",
     name: "Finanzas",
-    description: "Ingresos, cobros, gastos y cuentas por pagar a proveedores.",
+    description: "Ingresos, gastos, préstamos y gastos recurrentes.",
     status: "active",
     sections: [
       {
@@ -323,20 +351,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "filtro_por_tipo", name: "Filtro por tipo" },
           { code: "filtro_por_categoria", name: "Filtro por categoría" },
           { code: "registrar_ingreso_gasto", name: "Registrar ingreso/gasto" },
-          { code: "ir_a_cobranzas", name: "Ir a Cobranzas" },
-        ],
-      },
-      {
-        key: "/finanzas/cobranzas",
-        name: "Cobranzas",
-        status: "active",
-        capabilities: [
-          { code: "modo_clientes_proveedores", name: "Modo Clientes / Proveedores" },
-          { code: "abonar_pedido_de_cliente", name: "Abonar pedido de cliente" },
-          { code: "abonar_pedido_de_proveedor", name: "Abonar pedido de proveedor" },
-          { code: "selector_por_deuda", name: "Selector por deuda" },
-          { code: "grupos_y_abonos_clientes", name: "Grupos y abonos (clientes)" },
-          { code: "resumen_de_cuenta", name: "Resumen de cuenta" },
+          { code: "ir_a_ventas_compras", name: "Ir a Ventas / Compras" },
         ],
       },
       {
@@ -369,7 +384,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "inventario",
     name: "Inventario",
-    description: "Catálogo, stock, (próx.) bodegas y lotes/vencimientos.",
+    description: "Catálogo, stock, lotes/vencimientos y (próx.) bodegas.",
     status: "active",
     sections: [
       {
@@ -393,7 +408,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "carrito_multi_linea", name: "Carrito multi-línea" },
           { code: "produccion_integrada", name: "Producción integrada" },
           { code: "comprobante_adjunto", name: "Comprobante adjunto" },
-          { code: "editar_eliminar_programador", name: "Editar/eliminar (Programador)" },
+          { code: "historial_y_auditoria", name: "Historial y auditoría" },
           { code: "historial_agrupado", name: "Historial agrupado" },
         ],
       },
@@ -442,12 +457,12 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/inventario/lotes",
         name: "Lotes y vencimientos",
-        status: "active",
+        status: "planned",
         capabilities: [
           { code: "registrar_lote", name: "Registrar lote" },
           { code: "stock_por_lote", name: "Stock por lote" },
           { code: "alertas_de_vencimiento", name: "Alertas de vencimiento" },
-          { code: "salida_por_fefo_fifo", name: "Salida por FEFO/FIFO" },
+          { code: "baja_por_caducidad", name: "Baja por caducidad" },
         ],
       },
       {
@@ -457,8 +472,8 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         capabilities: [
           { code: "resumen_general", name: "Resumen general" },
           { code: "valor_por_costo", name: "Valor por costo" },
-          { code: "valor_por_venta", name: "Valor a precio de venta" },
-          { code: "filtro_por_local", name: "Filtro por local (multistock)" },
+          { code: "valor_a_precio_de_venta", name: "Valor a precio de venta" },
+          { code: "filtro_por_local", name: "Filtro por local" },
           { code: "detalle_por_producto", name: "Detalle por producto" },
         ],
       },
@@ -503,16 +518,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "ajuste_de_stock_inline", name: "Ajuste de stock inline" },
           { code: "producir_producto_final", name: "Producir producto final" },
           { code: "producir_intermedio", name: "Producir intermedio" },
-          { code: "fecha_personalizada", name: "Fecha personalizada" },
-        ],
-      },
-      {
-        key: "/produccion/proveedores",
-        name: "Proveedores",
-        status: "active",
-        capabilities: [
-          { code: "crud_proveedores", name: "CRUD proveedores" },
-          { code: "tabla_paginada", name: "Tabla paginada" },
+          { code: "fecha_del_registro", name: "Fecha del registro" },
         ],
       },
       {
@@ -528,8 +534,8 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     ],
   },
 {
-    key: "canal",
-    name: "Canal",
+    key: "canal_digital",
+    name: "Canal digital",
     description: "Catálogo web y vitrina pública.",
     status: "active",
     sections: [
@@ -576,36 +582,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "rellenos_con_colores", name: "Rellenos con colores" },
           { code: "vista_previa_en_vivo", name: "Vista previa en vivo" },
           { code: "bootstrap_pasteles", name: "Bootstrap Pasteles" },
-        ],
-      },
-    ],
-  },
-{
-    key: "publico",
-    name: "Público",
-    description: "Vitrina y locales visibles para clientes.",
-    status: "active",
-    sections: [
-      {
-        key: "/publico/catalogo",
-        name: "Catálogo público",
-        status: "active",
-        capabilities: [
-          { code: "secciones_de_catalogo", name: "Secciones de catálogo" },
-          { code: "busqueda_y_filtros", name: "Búsqueda y filtros" },
-          { code: "grupos_comparativos", name: "Grupos comparativos" },
-          { code: "vista_previa_modal", name: "Vista previa modal" },
-        ],
-      },
-      {
-        key: "/publico/locales",
-        name: "Locales",
-        status: "active",
-        capabilities: [
-          { code: "filtro_por_tipo", name: "Filtro por tipo" },
-          { code: "listado_de_locales", name: "Listado de locales" },
-          { code: "detalle_de_local", name: "Detalle de local" },
-          { code: "productos_del_local", name: "Productos del local" },
         ],
       },
     ],
@@ -789,9 +765,14 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         status: "maintenance",
       },
       {
-        key: "/publicidad/campanas/:id",
-        name: "Editar campaña",
+        key: "/tv",
+        name: "Reproductor TV",
         status: "maintenance",
+        capabilities: [
+          { code: "kiosco_pantalla_completa", name: "Kiosco pantalla completa" },
+          { code: "sync_remota", name: "Sync remota" },
+          { code: "fallback_offline", name: "Fallback offline" },
+        ],
       },
     ],
   },
@@ -835,6 +816,26 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "duplicar_y_eliminar", name: "Duplicar y eliminar" },
           { code: "abrir_en_editor", name: "Abrir en editor" },
         ],
+      },
+      {
+        key: "/editor",
+        name: "Editor (atajo)",
+        status: "maintenance",
+      },
+      {
+        key: "/publicity_edit",
+        name: "Edición publicidad (atajo)",
+        status: "maintenance",
+      },
+      {
+        key: "/editorDefault",
+        name: "Editor por defecto",
+        status: "maintenance",
+      },
+      {
+        key: "/templates",
+        name: "Plantillas (atajo)",
+        status: "maintenance",
       },
     ],
   },
@@ -883,7 +884,6 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "estadisticas_del_sistema", name: "Estadísticas del sistema" },
           { code: "info_ultimo_backup", name: "Info último backup" },
           { code: "guardar_copia_en_servidor", name: "Guardar copia en servidor" },
-          { code: "descargar_copia", name: "Descargar copia" },
         ],
       },
       {
@@ -898,7 +898,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/admin/asistencia",
+        key: "/administracion/asistencia",
         name: "Asistencia / horarios del personal",
         status: "planned",
         capabilities: [
@@ -907,6 +907,11 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "historial_y_reportes", name: "Historial y reportes" },
           { code: "vinculo_con_usuarios", name: "Vinculo con usuarios" },
         ],
+      },
+      {
+        key: "/app-settings",
+        name: "Ajustes de app",
+        status: "active",
       },
     ],
   },
@@ -924,20 +929,9 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "pestana_negocio_y_app", name: "Pestaña Negocio y app" },
           { code: "pestana_facturacion_electronica", name: "Pestaña Facturación electrónica" },
           { code: "subir_cambiar_logo", name: "Subir / cambiar logo" },
+          { code: "subir_cambiar_icono", name: "Subir / cambiar icono" },
           { code: "zona_horaria", name: "Zona horaria" },
           { code: "firma_sri", name: "Firma SRI" },
-        ],
-      },
-      {
-        key: "/sistema/notificaciones",
-        name: "Notificaciones",
-        status: "active",
-        capabilities: [
-          { code: "pestanas_admin", name: "Pestañas admin" },
-          { code: "filtro_leidas", name: "Filtro leídas" },
-          { code: "menu_por_notificacion", name: "Menú por notificación" },
-          { code: "marcar_todas_leidas", name: "Marcar todas leídas" },
-          { code: "navegacion_por_enlace", name: "Navegación por enlace" },
         ],
       },
       {
@@ -981,12 +975,23 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "informacion_de_apoyo", name: "Información de apoyo" },
         ],
       },
+      {
+        key: "/info",
+        name: "Información",
+        status: "active",
+        capabilities: [
+          { code: "pestana_la_app", name: "Pestaña La app" },
+          { code: "pestana_modulos", name: "Pestaña Módulos" },
+          { code: "detalle_de_seccion", name: "Detalle de sección" },
+          { code: "descargar_pdf", name: "Descargar PDF" },
+        ],
+      },
     ],
   },
 {
     key: "desarrollador",
     name: "Desarrollador",
-    description: "Herramientas técnicas del rol Programador (futuro: Desarrollador). El cliente debe saber que existe; en producción del negocio no forma parte del uso diario.",
+    description: "Herramientas técnicas de mantenimiento interno. No forman parte del uso diario del negocio.",
     status: "developer",
     sections: [
       {

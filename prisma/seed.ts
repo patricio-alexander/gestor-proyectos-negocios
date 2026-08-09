@@ -876,6 +876,18 @@ async function main() {
     select: { status: true, name: true },
   });
 
+  const ventasMod = await prisma.module.findFirst({
+    where: { key: "ventas", deleted_at: null },
+    select: {
+      name: true,
+      sections: {
+        where: { deleted_at: null },
+        select: { key: true, name: true },
+        orderBy: { id: "asc" },
+      },
+    },
+  });
+
   // Empuja entitlement al backend EdDeli (si está corriendo).
   const { pushEntitlementToApp } =
     await import("../src/shared/lib/push-entitlement");
@@ -888,6 +900,13 @@ async function main() {
     sectionCount,
     removedRaptor ? " · Raptor legacy eliminada" : "",
   );
+  if (ventasMod) {
+    console.log(
+      "  Ventas y Compras: %s → %s",
+      ventasMod.name,
+      ventasMod.sections.map((s) => s.name).join(" · "),
+    );
+  }
   console.log(
     "  Planes: %s",
     commercialPlans.map((p) => `${p.name}(${p.modules}m)`).join(", "),

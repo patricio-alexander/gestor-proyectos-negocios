@@ -1,13 +1,4 @@
 "use strict";
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_ROLES = exports.EDDELI_PRODUCT_CATALOG = exports.EDDELI_MENU_GROUPS = exports.EDDELI_MENU_ITEMS = exports.DEFAULT_EXPORT_CAPABILITIES = void 0;
 exports.DEFAULT_EXPORT_CAPABILITIES = [
@@ -52,30 +43,6 @@ exports.EDDELI_MENU_ITEMS = [
                 status: "active",
             },
         ],
-    },
-    {
-        key: "notificaciones",
-        name: "Notificaciones",
-        description: "Avisos del sistema y mensajes para el equipo.",
-        status: "active",
-        sections: [
-            {
-                key: "/notifications",
-                name: "Notificaciones",
-                status: "active",
-                capabilities: [
-                    { code: "pestanas_admin", name: "Pestañas admin" },
-                    { code: "filtro_leidas", name: "Filtro leídas" },
-                    { code: "menu_por_notificacion", name: "Menú por notificación" },
-                    { code: "marcar_todas_leidas", name: "Marcar todas leídas" },
-                    { code: "navegacion_por_enlace", name: "Navegación por enlace" },
-                    { code: "crud_plantillas", name: "CRUD plantillas" },
-                    { code: "programacion_de_envio", name: "Programación de envío" },
-                    { code: "destinatarios", name: "Destinatarios" },
-                    { code: "enviar_ahora", name: "Enviar ahora" },
-                ],
-            },
-        ],
     }
 ];
 /** Grupos del menú: el `label` del grupo es el módulo; el `link` de cada ítem es la sección. */
@@ -87,7 +54,7 @@ exports.EDDELI_MENU_GROUPS = [
         status: "active",
         sections: [
             {
-                key: "/caja",
+                key: "/operacion/caja",
                 name: "Caja",
                 status: "active",
                 capabilities: [
@@ -106,7 +73,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/turno",
+                key: "/operacion/turno",
                 name: "Turno",
                 status: "active",
                 capabilities: [
@@ -117,12 +84,11 @@ exports.EDDELI_MENU_GROUPS = [
                     { code: "cierre_con_arqueo", name: "Cierre con arqueo" },
                     { code: "cerrar_turno", name: "Cerrar turno" },
                     { code: "historial_de_turnos", name: "Historial de turnos" },
-                    { code: "edicion_programador", name: "Edición programador" },
                     { code: "supervision_por_fecha", name: "Supervisión por fecha" },
                 ],
             },
             {
-                key: "/tareas",
+                key: "/operacion/tareas",
                 name: "Tareas",
                 status: "active",
                 capabilities: [
@@ -139,7 +105,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/facturacion",
+                key: "/operacion/comprobantes-pos",
                 name: "Comprobantes POS",
                 status: "active",
                 capabilities: [
@@ -150,7 +116,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/turno/supervision",
+                key: "/operacion/supervision-caja",
                 name: "Supervisión caja",
                 status: "active",
                 capabilities: [
@@ -163,7 +129,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/turno/multi-caja",
+                key: "/operacion/turno/multi-caja",
                 name: "Apertura multi-caja por local",
                 status: "planned",
                 capabilities: [
@@ -266,12 +232,12 @@ exports.EDDELI_MENU_GROUPS = [
     },
     {
         key: "ventas",
-        name: "Ventas",
-        description: "Pedidos institucionales, clientes mayoristas y (próx.) clientes con cuenta.",
+        name: "Ventas y Compras",
+        description: "Pedidos, clientes, proveedores, cobranzas (ventas) y cuentas por pagar (compras).",
         status: "active",
         sections: [
             {
-                key: "/inventory/orders",
+                key: "/ventas/pedidos",
                 name: "Pedidos",
                 status: "active",
                 capabilities: [
@@ -287,7 +253,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/customers",
+                key: "/ventas/clientes",
                 name: "Clientes",
                 status: "active",
                 capabilities: [
@@ -298,7 +264,38 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/customers/cuentas",
+                key: "/ventas/proveedores",
+                name: "Proveedores",
+                status: "active",
+                capabilities: [
+                    { code: "agregar_proveedor", name: "Agregar proveedor" },
+                    { code: "tabla_con_busqueda", name: "Tabla con búsqueda" },
+                    { code: "editar_proveedor", name: "Editar proveedor" },
+                    { code: "eliminar_proveedor", name: "Eliminar proveedor" },
+                ],
+            },
+            {
+                key: "/ventas/ventas",
+                name: "Ventas",
+                status: "active",
+                capabilities: [
+                    { code: "abonar_pedido", name: "Abonar pedido" },
+                    { code: "selector_por_deuda", name: "Selector por deuda" },
+                    { code: "grupos_y_abonos", name: "Grupos y abonos" },
+                    { code: "resumen_de_cuenta", name: "Resumen de cuenta" },
+                ],
+            },
+            {
+                key: "/ventas/compras",
+                name: "Compras",
+                status: "active",
+                capabilities: [
+                    { code: "cuentas_por_pagar", name: "Cuentas por pagar" },
+                    { code: "pacas_grupos_de_pago", name: "Pacas / grupos de pago" },
+                ],
+            },
+            {
+                key: "/ventas/clientes/cuentas",
                 name: "Clientes con cuenta",
                 status: "planned",
                 capabilities: [
@@ -312,11 +309,11 @@ exports.EDDELI_MENU_GROUPS = [
     {
         key: "finanzas",
         name: "Finanzas",
-        description: "Ingresos, cobros, gastos y cuentas por pagar a proveedores.",
+        description: "Ingresos, gastos, préstamos y gastos recurrentes.",
         status: "active",
         sections: [
             {
-                key: "/inventory/finance",
+                key: "/finanzas/movimientos",
                 name: "Finanzas",
                 status: "active",
                 capabilities: [
@@ -325,24 +322,11 @@ exports.EDDELI_MENU_GROUPS = [
                     { code: "filtro_por_tipo", name: "Filtro por tipo" },
                     { code: "filtro_por_categoria", name: "Filtro por categoría" },
                     { code: "registrar_ingreso_gasto", name: "Registrar ingreso/gasto" },
-                    { code: "ir_a_cobranzas", name: "Ir a Cobranzas" },
+                    { code: "ir_a_ventas_compras", name: "Ir a Ventas / Compras" },
                 ],
             },
             {
-                key: "/inventory/collections",
-                name: "Cobranzas",
-                status: "active",
-                capabilities: [
-                    { code: "modo_clientes_proveedores", name: "Modo Clientes / Proveedores" },
-                    { code: "abonar_pedido_de_cliente", name: "Abonar pedido de cliente" },
-                    { code: "abonar_pedido_de_proveedor", name: "Abonar pedido de proveedor" },
-                    { code: "selector_por_deuda", name: "Selector por deuda" },
-                    { code: "grupos_y_abonos_clientes", name: "Grupos y abonos (clientes)" },
-                    { code: "resumen_de_cuenta", name: "Resumen de cuenta" },
-                ],
-            },
-            {
-                key: "/inventory/prestamos-deudas",
+                key: "/finanzas/prestamos-deudas",
                 name: "Préstamos y deudas",
                 status: "active",
                 capabilities: [
@@ -354,7 +338,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/gastos-recurrentes",
+                key: "/finanzas/gastos-recurrentes",
                 name: "Gastos recurrentes",
                 status: "maintenance",
                 capabilities: [
@@ -371,11 +355,11 @@ exports.EDDELI_MENU_GROUPS = [
     {
         key: "inventario",
         name: "Inventario",
-        description: "Catálogo, stock, (próx.) bodegas y lotes/vencimientos.",
+        description: "Catálogo, stock, lotes/vencimientos y (próx.) bodegas.",
         status: "active",
         sections: [
             {
-                key: "/inventory/products",
+                key: "/inventario/productos",
                 name: "Productos",
                 status: "active",
                 capabilities: [
@@ -387,7 +371,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/movement",
+                key: "/inventario/movimientos",
                 name: "Movimientos",
                 status: "active",
                 capabilities: [
@@ -395,12 +379,12 @@ exports.EDDELI_MENU_GROUPS = [
                     { code: "carrito_multi_linea", name: "Carrito multi-línea" },
                     { code: "produccion_integrada", name: "Producción integrada" },
                     { code: "comprobante_adjunto", name: "Comprobante adjunto" },
-                    { code: "editar_eliminar_programador", name: "Editar/eliminar (Programador)" },
+                    { code: "historial_y_auditoria", name: "Historial y auditoría" },
                     { code: "historial_agrupado", name: "Historial agrupado" },
                 ],
             },
             {
-                key: "/inventory/categories",
+                key: "/inventario/categorias",
                 name: "Categorías",
                 status: "active",
                 capabilities: [
@@ -411,7 +395,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/tramos",
+                key: "/inventario/tramos",
                 name: "Tramos",
                 status: "active",
                 capabilities: [
@@ -422,7 +406,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/units",
+                key: "/inventario/unidades",
                 name: "Unidades",
                 status: "active",
                 capabilities: [
@@ -431,7 +415,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/bodegas",
+                key: "/inventario/bodegas",
                 name: "Bodegas",
                 status: "planned",
                 capabilities: [
@@ -444,12 +428,12 @@ exports.EDDELI_MENU_GROUPS = [
             {
                 key: "/inventario/lotes",
                 name: "Lotes y vencimientos",
-                status: "active",
+                status: "planned",
                 capabilities: [
                     { code: "registrar_lote", name: "Registrar lote" },
                     { code: "stock_por_lote", name: "Stock por lote" },
                     { code: "alertas_de_vencimiento", name: "Alertas de vencimiento" },
-                    { code: "salida_por_fefo_fifo", name: "Salida por FEFO/FIFO" },
+                    { code: "baja_por_caducidad", name: "Baja por caducidad" },
                 ],
             },
             {
@@ -459,8 +443,8 @@ exports.EDDELI_MENU_GROUPS = [
                 capabilities: [
                     { code: "resumen_general", name: "Resumen general" },
                     { code: "valor_por_costo", name: "Valor por costo" },
-                    { code: "valor_por_venta", name: "Valor a precio de venta" },
-                    { code: "filtro_por_local", name: "Filtro por local (multistock)" },
+                    { code: "valor_a_precio_de_venta", name: "Valor a precio de venta" },
+                    { code: "filtro_por_local", name: "Filtro por local" },
                     { code: "detalle_por_producto", name: "Detalle por producto" },
                 ],
             },
@@ -473,7 +457,7 @@ exports.EDDELI_MENU_GROUPS = [
         status: "active",
         sections: [
             {
-                key: "/inventory/insumos",
+                key: "/produccion/insumos",
                 name: "Insumos y marcas",
                 status: "active",
                 capabilities: [
@@ -485,7 +469,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/recipes",
+                key: "/produccion/recetas",
                 name: "Recetas",
                 status: "active",
                 capabilities: [
@@ -498,27 +482,18 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/production",
+                key: "/produccion/fabricacion",
                 name: "Producción",
                 status: "active",
                 capabilities: [
                     { code: "ajuste_de_stock_inline", name: "Ajuste de stock inline" },
                     { code: "producir_producto_final", name: "Producir producto final" },
                     { code: "producir_intermedio", name: "Producir intermedio" },
-                    { code: "fecha_personalizada", name: "Fecha personalizada" },
+                    { code: "fecha_del_registro", name: "Fecha del registro" },
                 ],
             },
             {
-                key: "/inventory/suppliers",
-                name: "Proveedores",
-                status: "active",
-                capabilities: [
-                    { code: "crud_proveedores", name: "CRUD proveedores" },
-                    { code: "tabla_paginada", name: "Tabla paginada" },
-                ],
-            },
-            {
-                key: "/inventory/suppliers/cuentas",
+                key: "/produccion/proveedores/cuentas",
                 name: "Proveedores con cuenta",
                 status: "planned",
                 capabilities: [
@@ -536,7 +511,7 @@ exports.EDDELI_MENU_GROUPS = [
         status: "active",
         sections: [
             {
-                key: "/catalog_manager",
+                key: "/canal/catalogo",
                 name: "Catálogo config",
                 status: "active",
                 capabilities: [
@@ -547,7 +522,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/puntos-venta",
+                key: "/canal/locales",
                 name: "Puntos de venta",
                 status: "active",
                 capabilities: [
@@ -560,7 +535,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/inventory/productos-destacados",
+                key: "/canal/productos-destacados",
                 name: "Productos destacados",
                 status: "maintenance",
                 capabilities: [
@@ -570,7 +545,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/compare_groups",
+                key: "/canal/grupos-comparativos",
                 name: "Grupos comparativos",
                 status: "maintenance",
                 capabilities: [
@@ -578,28 +553,6 @@ exports.EDDELI_MENU_GROUPS = [
                     { code: "rellenos_con_colores", name: "Rellenos con colores" },
                     { code: "vista_previa_en_vivo", name: "Vista previa en vivo" },
                     { code: "bootstrap_pasteles", name: "Bootstrap Pasteles" },
-                ],
-            },
-            {
-                key: "/catalogo",
-                name: "Catálogo público",
-                status: "active",
-                capabilities: [
-                    { code: "secciones_de_catalogo", name: "Secciones de catálogo" },
-                    { code: "busqueda_y_filtros", name: "Búsqueda y filtros" },
-                    { code: "grupos_comparativos", name: "Grupos comparativos" },
-                    { code: "vista_previa_modal", name: "Vista previa modal" },
-                ],
-            },
-            {
-                key: "/punto_venta",
-                name: "Puntos de venta",
-                status: "active",
-                capabilities: [
-                    { code: "filtro_por_tipo", name: "Filtro por tipo" },
-                    { code: "listado_de_locales", name: "Listado de locales" },
-                    { code: "detalle_de_local", name: "Detalle de local" },
-                    { code: "productos_del_local", name: "Productos del local" },
                 ],
             },
         ],
@@ -864,7 +817,7 @@ exports.EDDELI_MENU_GROUPS = [
         status: "active",
         sections: [
             {
-                key: "/users",
+                key: "/administracion/usuarios",
                 name: "Usuarios",
                 status: "active",
                 capabilities: [
@@ -874,7 +827,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/cuentas",
+                key: "/administracion/cuentas",
                 name: "Cuentas",
                 status: "active",
                 capabilities: [
@@ -885,7 +838,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/roles",
+                key: "/administracion/roles",
                 name: "Roles",
                 status: "active",
                 capabilities: [
@@ -895,18 +848,17 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/panel_control",
+                key: "/administracion/panel-control",
                 name: "Panel de control",
                 status: "active",
                 capabilities: [
                     { code: "estadisticas_del_sistema", name: "Estadísticas del sistema" },
                     { code: "info_ultimo_backup", name: "Info último backup" },
                     { code: "guardar_copia_en_servidor", name: "Guardar copia en servidor" },
-                    { code: "descargar_copia", name: "Descargar copia" },
                 ],
             },
             {
-                key: "/notification-programs",
+                key: "/administracion/programas-notificacion",
                 name: "Programas de notificación",
                 status: "active",
                 capabilities: [
@@ -917,7 +869,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/admin/asistencia",
+                key: "/administracion/asistencia",
                 name: "Asistencia / horarios del personal",
                 status: "planned",
                 capabilities: [
@@ -948,6 +900,7 @@ exports.EDDELI_MENU_GROUPS = [
                     { code: "pestana_negocio_y_app", name: "Pestaña Negocio y app" },
                     { code: "pestana_facturacion_electronica", name: "Pestaña Facturación electrónica" },
                     { code: "subir_cambiar_logo", name: "Subir / cambiar logo" },
+                    { code: "subir_cambiar_icono", name: "Subir / cambiar icono" },
                     { code: "zona_horaria", name: "Zona horaria" },
                     { code: "firma_sri", name: "Firma SRI" },
                 ],
@@ -977,7 +930,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/perfil",
+                key: "/sistema/perfil",
                 name: "Perfil",
                 status: "active",
                 capabilities: [
@@ -986,7 +939,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/donaciones",
+                key: "/sistema/donaciones",
                 name: "Donaciones",
                 status: "active",
                 capabilities: [
@@ -1009,11 +962,11 @@ exports.EDDELI_MENU_GROUPS = [
     {
         key: "desarrollador",
         name: "Desarrollador",
-        description: "Herramientas técnicas del rol Programador (futuro: Desarrollador). El cliente debe saber que existe; en producción del negocio no forma parte del uso diario.",
+        description: "Herramientas técnicas de mantenimiento interno. No forman parte del uso diario del negocio.",
         status: "developer",
         sections: [
             {
-                key: "/img",
+                key: "/desarrollador/imagenes",
                 name: "Imágenes",
                 status: "active",
                 capabilities: [
@@ -1023,7 +976,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/file",
+                key: "/desarrollador/archivos",
                 name: "Archivos",
                 status: "active",
                 capabilities: [
@@ -1034,7 +987,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/logs",
+                key: "/desarrollador/logs",
                 name: "Logs",
                 status: "active",
                 capabilities: [
@@ -1047,7 +1000,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/backups",
+                key: "/desarrollador/backups",
                 name: "Backups JSON",
                 status: "active",
                 capabilities: [
@@ -1058,7 +1011,7 @@ exports.EDDELI_MENU_GROUPS = [
                 ],
             },
             {
-                key: "/comandos",
+                key: "/desarrollador/comandos",
                 name: "Comandos",
                 status: "active",
                 capabilities: [
@@ -1071,7 +1024,10 @@ exports.EDDELI_MENU_GROUPS = [
         ],
     }
 ];
-exports.EDDELI_PRODUCT_CATALOG = __spreadArray(__spreadArray([], exports.EDDELI_MENU_ITEMS, true), exports.EDDELI_MENU_GROUPS, true);
+exports.EDDELI_PRODUCT_CATALOG = [
+    ...exports.EDDELI_MENU_ITEMS,
+    ...exports.EDDELI_MENU_GROUPS,
+];
 exports.DEFAULT_ROLES = [
     { key: "programador", name: "Programador", description: "Acceso total al gestor y catálogo." },
     { key: "admin", name: "Administrador", description: "Gestiona aplicaciones, planes y licencias." },
