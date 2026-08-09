@@ -266,7 +266,7 @@ async function seedSectionCapabilities(
 
 /** UI SoftEd: development legado → maintenance. */
 function catalogStatus(
-  status: CatalogModuleDef["status"] | undefined,
+  status: CatalogModuleDef["status"] | "hidden" | undefined,
 ): "active" | "maintenance" | "developer" | "planned" | "hidden" {
   if (status === "development" || status === "maintenance")
     return "maintenance";
