@@ -18,6 +18,7 @@ import {
   getAnnualSavingsPercent,
 } from "../lib/format-plan-price";
 import { groupPlanModulesByApp } from "../lib/group-plan-modules-by-app";
+import { dedupePlanModulesByModuleId } from "../lib/dedupe-plan-modules";
 import { getPlanAppIds } from "../lib/plan-for-app";
 
 const MAX_VISIBLE_APP_CHIPS = 3;
@@ -41,6 +42,7 @@ export function PlanCard({
   const annual = plan.prices?.find((p) => p.period === "ANNUALLY");
   const savings = getAnnualSavingsPercent(monthly?.price, annual?.price);
   const modules = plan.plan_modules ?? [];
+  const uniqueModules = dedupePlanModulesByModuleId(modules);
   const offers = plan.plan_offers ?? [];
   const modulesByApp = groupPlanModulesByApp(modules);
   const planAppIds = getPlanAppIds(plan);
@@ -132,15 +134,16 @@ export function PlanCard({
           />
         </div>
 
-        {(modules.length > 0 || offers.length > 0) && (
+        {(uniqueModules.length > 0 || offers.length > 0) && (
           <div className="mt-5 flex-1 space-y-4">
             <p className="text-xs text-[var(--gp-text-muted)]">
-              {modules.length > 0 && (
+              {uniqueModules.length > 0 && (
                 <>
-                  {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+                  {uniqueModules.length}{" "}
+                  {uniqueModules.length === 1 ? "módulo" : "módulos"}
                 </>
               )}
-              {modules.length > 0 && offers.length > 0 && " · "}
+              {uniqueModules.length > 0 && offers.length > 0 && " · "}
               {offers.length > 0 && (
                 <>
                   {offers.length} {offers.length === 1 ? "oferta" : "ofertas"}
@@ -148,7 +151,7 @@ export function PlanCard({
               )}
             </p>
 
-            {modules.length > 0 && (
+            {uniqueModules.length > 0 && (
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--gp-text-muted)]">
@@ -200,7 +203,7 @@ export function PlanCard({
           </div>
         )}
 
-        {modules.length === 0 && offers.length === 0 && (
+        {uniqueModules.length === 0 && offers.length === 0 && (
           <p className="mt-5 flex-1 text-xs text-[var(--gp-text-muted)]">
             Sin módulos ni ofertas asignados.
           </p>
@@ -245,15 +248,15 @@ export function PlanCard({
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
-                  Módulos por app · {plan.name || "Plan"}
+                  Módulos incluidos · {plan.name || "Plan"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
-                  Configuración de módulos incluidos en este plan, agrupados por
-                  app.
+                  Módulos del catálogo incluidos en este plan (sin repetir por
+                  app).
                 </p>
-                {modulesByApp.length === 0 ? (
+                {uniqueModules.length === 0 ? (
                   <p className="text-sm text-[var(--gp-text-muted)]">
                     Sin módulos asignados.
                   </p>

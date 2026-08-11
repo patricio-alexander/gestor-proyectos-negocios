@@ -35,7 +35,13 @@ export async function buildEntitlementForAppId(appId: number) {
     select: { hash: true },
   });
   if (!app) {
-    return { maintenance: false, subscribed: false, subscription: null };
+    return {
+      maintenance: false,
+      subscribed: false,
+      features: [],
+      plans: [],
+      subscription: null,
+    };
   }
   return buildEntitlementForAppHash(app.hash);
 }

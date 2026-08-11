@@ -5,6 +5,7 @@ import { requireAppId } from "@/src/shared/lib/app-kind";
 import { Period } from "../../../../prisma/generated/prisma/enums";
 import { findPlanById, mapPlanById } from "@/src/features/plans/lib/plan-query";
 import {
+  removePlanModulesForAppsNotIn,
   replacePlanAppModulesForApp,
   syncPlanAppModules,
 } from "@/src/features/plans/lib/plan-app-modules";
@@ -123,6 +124,14 @@ export async function PATCH(request: Request, { params }: Params) {
             selectedAppIds,
             selectedModuleIds,
           );
+        }
+
+        if (
+          app_ids !== undefined &&
+          Array.isArray(app_ids) &&
+          app_ids.length > 0
+        ) {
+          await removePlanModulesForAppsNotIn(tx, planId, selectedAppIds);
         }
       }
 

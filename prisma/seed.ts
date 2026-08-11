@@ -10,6 +10,7 @@ import {
   type CatalogModuleDef,
 } from "../src/shared/config/eddeli-product-catalog";
 import { EVENT_TYPES_SEED } from "./event-types-seed";
+import { removePlanModulesForAppsNotIn } from "../src/features/plans/lib/plan-app-modules";
 
 /** Conexión y branding del seed — valores desde .env (default: raptorsolutions). */
 const SEED_ENV = {
@@ -612,6 +613,8 @@ async function syncPlanAppModulesForApp(
       create: { plan_id: planId, app_module_id: appModule.id },
     });
   }
+
+  await removePlanModulesForAppsNotIn(prisma, planId, [appId]);
 }
 
 /** Los planes comerciales de EdDeli + precios + módulos (mismos para todos por ahora). */

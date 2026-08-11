@@ -42,6 +42,37 @@ export async function syncPlanAppModules(
   }
 }
 
+/** Quita del plan los módulos de apps que no están en la lista permitida. */
+export async function removePlanModulesForAppsNotIn(
+  db: DbClient,
+  planId: number,
+  allowedAppIds: number[],
+) {
+  if (allowedAppIds.length === 0) return;
+
+  const rows = await db.planAppModule.findMany({
+    where: { plan_id: planId },
+    select: {
+      app_module_id: true,
+      app_module: { select: { app_id: true } },
+    },
+  });
+
+  const allowed = new Set(allowedAppIds);
+  const toRemove = rows
+    .filter((row) => !allowed.has(row.app_module.app_id))
+    .map((row) => row.app_module_id);
+
+  if (toRemove.length === 0) return;
+
+  await db.planAppModule.deleteMany({
+    where: {
+      plan_id: planId,
+      app_module_id: { in: toRemove },
+    },
+  });
+}
+
 /** Reemplaza los módulos de una app concreta en un plan (conserva otras apps). */
 export async function replacePlanAppModulesForApp(
   db: DbClient,

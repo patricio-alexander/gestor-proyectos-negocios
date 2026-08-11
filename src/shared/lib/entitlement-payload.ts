@@ -8,10 +8,39 @@ export type EntitlementFeature = {
   status: string;
 };
 
+export type EntitlementPlanModule = {
+  id: number;
+  key: string;
+  name: string;
+  is_trial: boolean;
+};
+
+export type EntitlementPlanPrice = {
+  id: number;
+  price: number | null;
+  period: string;
+};
+
+export type EntitlementPlanOffer = {
+  offer_id: number;
+  offer_name: string;
+};
+
+export type EntitlementPlan = {
+  id: number;
+  name: string | null;
+  sort_order: number;
+  channel: string;
+  prices: EntitlementPlanPrice[];
+  modules: EntitlementPlanModule[];
+  offers: EntitlementPlanOffer[];
+};
+
 export type EntitlementPayload = {
   maintenance: boolean;
   subscribed: boolean;
   features: EntitlementFeature[];
+  plans: EntitlementPlan[];
   subscription: null | {
     id: number;
     plan_name: string | null;
@@ -24,6 +53,66 @@ export type EntitlementPayload = {
     offers: unknown[];
   };
 };
+
+async function buildPlansForApp(
+  appId: number,
+  channel: "web" | "mobile",
+): Promise<EntitlementPlan[]> {
+  const plans = await prisma.plan.findMany({
+    where: { deleted_at: null, channel },
+    orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      sort_order: true,
+      channel: true,
+      prices: {
+        select: { id: true, price: true, period: true },
+      },
+      planOffers: {
+        select: {
+          offer_id: true,
+          offer: { select: { name: true } },
+        },
+      },
+      plan_app_modules: {
+        where: {
+          app_module: {
+            app_id: appId,
+            module: { deleted_at: null, channel },
+          },
+        },
+        select: {
+          app_module: {
+            select: {
+              module: {
+                select: { id: true, key: true, name: true, is_trial: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    sort_order: plan.sort_order,
+    channel: plan.channel,
+    prices: plan.prices,
+    modules: plan.plan_app_modules.map((pam) => ({
+      id: pam.app_module.module.id,
+      key: pam.app_module.module.key,
+      name: pam.app_module.module.name,
+      is_trial: pam.app_module.module.is_trial,
+    })),
+    offers: plan.planOffers.map((po) => ({
+      offer_id: po.offer_id,
+      offer_name: po.offer.name,
+    })),
+  }));
+}
 
 async function buildFeaturesForApp(appId: number): Promise<EntitlementFeature[]> {
   await ensureFeatureCatalog();
@@ -60,12 +149,19 @@ export async function buildEntitlementForAppHash(
   });
 
   if (!app) {
-    return { maintenance: false, subscribed: false, features: [], subscription: null };
+    return {
+      maintenance: false,
+      subscribed: false,
+      features: [],
+      plans: [],
+      subscription: null,
+    };
   }
 
   const features = await buildFeaturesForApp(app.id);
 
   const moduleChannel = app.kind === "mobile" ? "mobile" : "web";
+  const plans = await buildPlansForApp(app.id, moduleChannel);
 
   const subscription = await prisma.subscription.findFirst({
     where: { app_hash: appHash },
@@ -233,6 +329,7 @@ export async function buildEntitlementForAppHash(
     maintenance: app.maintenance,
     subscribed: subscription?.status === "ACTIVE",
     features,
+    plans,
     subscription: {
       id: subscription?.id ?? 0,
       plan_name: subscription?.plan_price.plan.name ?? null,
