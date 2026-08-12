@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@heroui/react";
 import { ThemeProvider } from "@/src/shared/providers/ThemeProvider";
 import { QueryProvider } from "@/src/shared/providers/QueryProvider";
+import { ViewTransitionErrorGuard } from "@/src/shared/components/ViewTransitionErrorGuard";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,6 +46,7 @@ export default function RootLayout({
         />
         <QueryProvider>
           <ThemeProvider>
+            <ViewTransitionErrorGuard />
             <ToastProvider placement="top" />
             {children}
           </ThemeProvider>

@@ -173,6 +173,12 @@ const STORE_APP_HASH = crypto
   .digest("hex")
   .slice(0, 32);
 
+const TIENDA_APP_HASH = crypto
+  .createHash("sha256")
+  .update("tienda-seed-app")
+  .digest("hex")
+  .slice(0, 32);
+
 /** Hash legacy de la app plantilla Raptor (ya no se usa ni se crea en seed). */
 const LEGACY_RAPTOR_APP_HASH = crypto
   .createHash("sha256")
@@ -183,6 +189,8 @@ const LEGACY_RAPTOR_APP_HASH = crypto
 const EDDELI_API_KEY = "gc_4a177c0295a4cb88d52cea1035b9e9a5";
 /** Default secret Store (alineado a GESTOR_SYNC_SECRET típico). Override: STORE_ENTITLEMENT_SECRET */
 const STORE_API_KEY = "gc_46ba297fd7a64b1dde02252adc16d936";
+/** Default secret Tienda. Override: TIENDA_ENTITLEMENT_SECRET */
+const TIENDA_API_KEY = "gc_7c3e91a2b8f04d55e6a1c09d4f2b87e0";
 
 /** Producción (default del seed). Override local: EDDELI_ENTITLEMENT_URL=http://127.0.0.1:3001/... */
 const EDDELI_ENTITLEMENT_URL_PRODUCTION =
@@ -190,6 +198,9 @@ const EDDELI_ENTITLEMENT_URL_PRODUCTION =
 
 const STORE_ENTITLEMENT_URL_PRODUCTION =
   "https://aplicaciones.marianosamaniego.edu.ec/storeapi/subscription/entitlement";
+
+const TIENDA_ENTITLEMENT_URL_PRODUCTION =
+  "https://aplicaciones.marianosamaniego.edu.ec/tiendaapi/subscription/entitlement";
 
 const EDDELI_ENTITLEMENT_URL =
   process.env.EDDELI_ENTITLEMENT_URL?.trim() ||
@@ -199,11 +210,18 @@ const STORE_ENTITLEMENT_URL =
   process.env.STORE_ENTITLEMENT_URL?.trim() ||
   STORE_ENTITLEMENT_URL_PRODUCTION;
 
+const TIENDA_ENTITLEMENT_URL =
+  process.env.TIENDA_ENTITLEMENT_URL?.trim() ||
+  TIENDA_ENTITLEMENT_URL_PRODUCTION;
+
 const EDDELI_ENTITLEMENT_SECRET_ENV =
   process.env.EDDELI_ENTITLEMENT_SECRET?.trim() || "";
 
 const STORE_ENTITLEMENT_SECRET_ENV =
   process.env.STORE_ENTITLEMENT_SECRET?.trim() || "";
+
+const TIENDA_ENTITLEMENT_SECRET_ENV =
+  process.env.TIENDA_ENTITLEMENT_SECRET?.trim() || "";
 
 async function seedEdDeliApp() {
   const existing = await prisma.apps.findUnique({
@@ -300,6 +318,67 @@ async function seedStoreApp() {
       kind: "deployment",
       entitlement_url: STORE_ENTITLEMENT_URL,
       entitlement_secret: STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
+    },
+  });
+}
+
+async function seedTiendaApp() {
+  const existing = await prisma.apps.findUnique({
+    where: { hash: TIENDA_APP_HASH },
+  });
+
+  const entitlementSecret =
+    TIENDA_ENTITLEMENT_SECRET_ENV || TIENDA_API_KEY;
+
+  if (existing) {
+    const updated = await prisma.apps.update({
+      where: { id: existing.id },
+      data: {
+        name: "Tienda",
+        kind: "deployment",
+        deleted_at: null,
+        database_name: existing.database_name || "tienda",
+        path: existing.path || "tienda",
+        entitlement_url: TIENDA_ENTITLEMENT_URL,
+        entitlement_secret: entitlementSecret,
+      },
+    });
+    console.log(
+      "  Tienda entitlement_url → %s%s",
+      TIENDA_ENTITLEMENT_URL,
+      existing.entitlement_url !== TIENDA_ENTITLEMENT_URL
+        ? ` (antes: ${existing.entitlement_url || "vacío"})`
+        : "",
+    );
+    return updated;
+  }
+
+  const byName = await prisma.apps.findFirst({
+    where: { name: "Tienda", deleted_at: null, kind: "deployment" },
+  });
+  if (byName) {
+    return prisma.apps.update({
+      where: { id: byName.id },
+      data: {
+        database_name: byName.database_name || "tienda",
+        path: byName.path || "tienda",
+        entitlement_url: TIENDA_ENTITLEMENT_URL,
+        entitlement_secret: entitlementSecret,
+      },
+    });
+  }
+
+  return prisma.apps.create({
+    data: {
+      hash: TIENDA_APP_HASH,
+      name: "Tienda",
+      owner_name: "Tienda",
+      email: "soporte@tienda.local",
+      kind: "deployment",
+      database_name: "tienda",
+      path: "tienda",
+      entitlement_url: TIENDA_ENTITLEMENT_URL,
+      entitlement_secret: entitlementSecret,
     },
   });
 }
@@ -888,6 +967,7 @@ async function seedDefaultAppFeatures(featureId: number | null) {
   }> = [
     { nameMatch: /^eddeli$/i, status: "active", force: true },
     { nameMatch: /^store$/i, status: "planned", force: false },
+    { nameMatch: /^tienda$/i, status: "planned", force: false },
   ];
 
   const apps = await prisma.apps.findMany({
@@ -939,6 +1019,7 @@ async function main() {
   const removedRaptor = await removeLegacyRaptorApp();
   const eddeliApp = await seedEdDeliApp();
   const storeApp = await seedStoreApp();
+  const tiendaApp = await seedTiendaApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
   const multiStockFeatureId = await seedFeatureCatalog();
   await seedEddeliMultiStock(eddeliApp.id, multiStockFeatureId);
@@ -951,11 +1032,14 @@ async function main() {
   const moduleIds = allModules.map((m) => m.id);
   await seedAppModules(eddeliApp.id, moduleIds);
   await seedAppModules(storeApp.id, moduleIds);
+  await seedAppModules(tiendaApp.id, moduleIds);
 
   const commercialPlans = await seedEdDeliCommercialPlans(eddeliApp.id);
   await seedEdDeliCommercialPlans(storeApp.id);
+  await seedEdDeliCommercialPlans(tiendaApp.id);
   const eddeliSub = await seedLocalSubscription(EDDELI_APP_HASH, "EdDeli");
   const storeSub = await seedLocalSubscription(storeApp.hash, "Store");
+  const tiendaSub = await seedLocalSubscription(tiendaApp.hash, "Tienda");
 
   const eventTypeRows = await seedEventTypes();
 
@@ -981,9 +1065,10 @@ async function main() {
     await import("../src/shared/lib/push-entitlement");
   const pushEddeli = await pushEntitlementToApp(EDDELI_APP_HASH);
   const pushStore = await pushEntitlementToApp(storeApp.hash);
+  const pushTienda = await pushEntitlementToApp(tiendaApp.hash);
 
   console.log(
-    "Seed OK [%s]: roles, catálogo global (%d módulos, %d secciones), EdDeli + Store, cuentas%s",
+    "Seed OK [%s]: roles, catálogo global (%d módulos, %d secciones), EdDeli + Store + Tienda, cuentas%s",
     SEED_ENV.databaseName,
     EDDELI_PRODUCT_CATALOG.length,
     sectionCount,
@@ -1014,6 +1099,13 @@ async function main() {
     storeApp.hash,
   );
   console.log(
+    "  Suscripción Tienda: %s (%d módulos) → sub %d · hash %s",
+    tiendaSub.planName,
+    tiendaSub.modules,
+    tiendaSub.subscriptionId,
+    tiendaApp.hash,
+  );
+  console.log(
     "  EventTypes: %d tipos de evento",
     eventTypeRows.length,
   );
@@ -1038,6 +1130,14 @@ async function main() {
       : pushStore.ok
         ? "OK"
         : `falló (${pushStore.error || pushStore.status})`,
+  );
+  console.log(
+    "  Entitlement push Tienda: %s",
+    pushTienda.skipped
+      ? "omitido (sin URL)"
+      : pushTienda.ok
+        ? "OK"
+        : `falló (${pushTienda.error || pushTienda.status})`,
   );
 }
 
