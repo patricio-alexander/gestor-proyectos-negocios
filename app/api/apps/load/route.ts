@@ -67,9 +67,9 @@ export async function GET(request: NextRequest) {
     const to = alignUtc(new Date(), config.stepMs);
     const from = new Date(to.getTime() - config.windowMs + config.stepMs);
 
-    const rows =
+    const [rows, catalogApps] = await Promise.all([
       config.source === "sample"
-        ? await prisma.appLoadSample.findMany({
+        ? prisma.appLoadSample.findMany({
             where: {
               interval_start: { gte: from, lte: to },
               ...(appId ? { app_id: appId } : {}),
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
             },
             orderBy: [{ interval_start: "asc" }],
           })
-        : await prisma.appLoadMinute.findMany({
+        : prisma.appLoadMinute.findMany({
             where: {
               interval_start: { gte: from, lte: to },
               ...(appId ? { app_id: appId } : {}),
@@ -88,7 +88,19 @@ export async function GET(request: NextRequest) {
               app: { select: { id: true, name: true, path: true, kind: true } },
             },
             orderBy: [{ interval_start: "asc" }],
-          });
+          }),
+      // Siempre listamos las apps web del catálogo para que el gráfico
+      // muestre una línea de color por app, aunque alguna aún no reporte.
+      prisma.apps.findMany({
+        where: {
+          deleted_at: null,
+          NOT: { kind: "mobile" },
+          ...(appId ? { id: appId } : {}),
+        },
+        select: { id: true, name: true, path: true, kind: true },
+        orderBy: { id: "asc" },
+      }),
+    ]);
 
     const byApp = new Map<
       number,
@@ -107,6 +119,14 @@ export async function GET(request: NextRequest) {
         >;
       }
     >();
+
+    for (const app of catalogApps) {
+      byApp.set(app.id, {
+        app_id: app.id,
+        app_name: app.name || `App #${app.id}`,
+        points: new Map(),
+      });
+    }
 
     for (const row of rows) {
       if (row.app.kind === "mobile") continue;

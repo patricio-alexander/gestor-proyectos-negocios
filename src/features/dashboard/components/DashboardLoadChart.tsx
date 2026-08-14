@@ -16,7 +16,6 @@ import {
 import { fetchJson } from "@/src/shared/lib/api-client";
 import { queryKeys } from "@/src/shared/lib/query-keys";
 import { gp } from "@/src/shared/ui/theme";
-import { CHART_COLORS } from "../lib/chart-data";
 
 type Bucket = "10s" | "1m" | "1h" | "1d";
 
@@ -42,14 +41,14 @@ type AppLoadResponse = {
 };
 
 /** Total + colores por app (GET/POST/PUT/etc. van juntos en requests). */
-const TOTAL_COLOR = "var(--gp-text)";
+const TOTAL_COLOR = "#111827";
 const APP_COLORS = [
-  CHART_COLORS.primary,
-  CHART_COLORS.cyan,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.bright,
-  CHART_COLORS.danger,
+  "#3e6ae1", // EdDeli / primary
+  "#0088cc", // Store / cyan
+  "#16a34a", // Tienda / green
+  "#ca8a04",
+  "#5b9cff",
+  "#dc2626",
 ];
 
 const BUCKET_OPTIONS: { value: Bucket; label: string }[] = [
@@ -93,10 +92,14 @@ function formatTick(iso: string, bucket: Bucket) {
   });
 }
 
-function chipStyle(active: boolean) {
+function chipStyle(active: boolean, accent?: string) {
   return {
-    borderColor: "var(--gp-card-border)",
-    backgroundColor: active ? "var(--gp-surface-muted)" : "transparent",
+    borderColor: accent || "var(--gp-card-border)",
+    backgroundColor: active
+      ? accent
+        ? `${accent}22`
+        : "var(--gp-surface-muted)"
+      : "transparent",
     color: "var(--gp-text)",
   };
 }
@@ -171,14 +174,21 @@ export function DashboardLoadChart() {
           >
             Todas
           </button>
-          {apps.map((item) => (
+          {apps.map((item, index) => (
             <button
               key={item.app_id}
               type="button"
               onClick={() => setAppId(item.app_id)}
               className="rounded-md border px-2 py-1 text-xs font-medium"
-              style={chipStyle(item.app_id === appId)}
+              style={chipStyle(
+                item.app_id === appId,
+                APP_COLORS[index % APP_COLORS.length],
+              )}
             >
+              <span
+                className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                style={{ backgroundColor: APP_COLORS[index % APP_COLORS.length] }}
+              />
               {item.app_name}
             </button>
           ))}
