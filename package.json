@@ -48,7 +48,6 @@
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "lightweight-charts": "^5.2.1",
     "mysql2": "^3.22.6",
     "next": "16.2.7",
     "node-cron": "^4.6.0",

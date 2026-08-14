@@ -12,7 +12,6 @@ import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { useDashboardOverview } from "../hooks/useDashboardOverview";
 import { DashboardOperationalPanels } from "./DashboardOperationalPanels";
 import { DashboardLoadChart } from "./DashboardLoadChart";
-import { DashboardHealthCandles } from "./DashboardHealthCandles";
 import { StatCard } from "@/src/shared/components/StatCard";
 import {
   StatusBadge,
@@ -127,7 +126,6 @@ export function DashboardOverview() {
       <DashboardOperationalPanels data={data} />
 
       <DashboardLoadChart />
-      <DashboardHealthCandles />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className={`${gp.card} overflow-hidden xl:col-span-2`}>

@@ -41,7 +41,9 @@ type AppLoadResponse = {
   series: AppLoadSeries[];
 };
 
-const LINE_COLORS = [
+/** Total + colores por app (GET/POST/PUT/etc. van juntos en requests). */
+const TOTAL_COLOR = "var(--gp-text)";
+const APP_COLORS = [
   CHART_COLORS.primary,
   CHART_COLORS.cyan,
   CHART_COLORS.success,
@@ -103,41 +105,50 @@ export function DashboardLoadChart() {
   const [bucket, setBucket] = useState<Bucket>("10s");
   const [appId, setAppId] = useState<number>(0);
 
+  // Siempre pedimos todas las series: el filtro es solo visual.
   const query = useQuery({
-    queryKey: queryKeys.apps.load(bucket, appId || "all"),
-    queryFn: () =>
-      fetchJson<AppLoadResponse>(
-        `/api/apps/load?bucket=${bucket}${appId ? `&app_id=${appId}` : ""}`,
-      ),
+    queryKey: queryKeys.apps.load(bucket, "all"),
+    queryFn: () => fetchJson<AppLoadResponse>(`/api/apps/load?bucket=${bucket}`),
     refetchInterval: REFRESH_MS[bucket],
   });
 
   const series = query.data?.series ?? [];
-  const apps = series.filter((item) => item.app_id !== 0);
+  const apps = useMemo(
+    () => series.filter((item) => item.app_id !== 0),
+    [series],
+  );
+  const total = useMemo(
+    () => series.find((item) => item.app_id === 0) ?? null,
+    [series],
+  );
+
   const visibleSeries = useMemo(() => {
     if (appId === 0) {
-      const total = series.find((item) => item.app_id === 0);
-      return total ? [total] : series.filter((item) => item.app_id !== 0);
+      // Todas: línea total + una línea de color por app
+      return [...(total ? [total] : []), ...apps];
     }
-    return series.filter((item) => item.app_id === appId);
-  }, [series, appId]);
+    // Una app: solo su línea (todas las peticiones de esa app)
+    return apps.filter((item) => item.app_id === appId);
+  }, [appId, total, apps]);
 
-  const timeline = visibleSeries[0]?.points.map((point) => point.t) ?? [];
+  const timeline =
+    visibleSeries[0]?.points.map((point) => point.t) ??
+    total?.points.map((point) => point.t) ??
+    [];
+
   const chartData = timeline.map((t, index) => {
     const row: Record<string, string | number> = { t };
     for (const item of visibleSeries) {
       row[`req_${item.app_id}`] = item.points[index]?.requests ?? 0;
-      row[`mb_${item.app_id}`] = Number(
-        ((item.points[index]?.bytes ?? 0) / (1024 * 1024)).toFixed(3),
-      );
     }
     return row;
   });
 
   const hasTraffic = visibleSeries.some((item) =>
-    item.points.some((point) => point.requests > 0 || point.bytes > 0),
+    item.points.some((point) => point.requests > 0),
   );
-  const bucketLabel = BUCKET_OPTIONS.find((item) => item.value === bucket)?.label ?? bucket;
+  const bucketLabel =
+    BUCKET_OPTIONS.find((item) => item.value === bucket)?.label ?? bucket;
 
   return (
     <Card className={`${gp.card} px-5 py-4`}>
@@ -147,8 +158,8 @@ export function DashboardLoadChart() {
             Tráfico en tiempo real
           </h2>
           <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-            Pulso de peticiones de EdDeli, Store y Tienda. Sube con actividad y baja
-            cuando el intervalo está quieto.
+            Todas las peticiones (GET, POST, PUT, DELETE…) en una línea. En
+            “Todas” ves el total más una línea de color por app.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -186,83 +197,75 @@ export function DashboardLoadChart() {
       </div>
 
       {query.isLoading ? (
-        <p className={`${gp.subtitle} py-10 text-center text-sm`}>Cargando tráfico…</p>
+        <p className={`${gp.subtitle} py-10 text-center text-sm`}>
+          Cargando tráfico…
+        </p>
       ) : !hasTraffic ? (
         <p className={`${gp.subtitle} py-10 text-center text-sm`}>
-          Todavía no hay tráfico reportado. Las apps enlazadas empiezan a guardar
-          un punto cada 10 segundos cuando reciben peticiones.
+          Todavía no hay tráfico reportado. Las apps enlazadas guardan un punto
+          cada 10 segundos cuando reciben peticiones.
         </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="h-72">
-            <p className="mb-2 text-xs font-medium text-[var(--gp-text-muted)]">
-              Peticiones / {bucketLabel}
-            </p>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--gp-border)" vertical={false} />
-                <XAxis
-                  dataKey="t"
-                  tickFormatter={(value) => formatTick(String(value), bucket)}
-                  tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
-                  minTickGap={24}
-                />
-                <YAxis allowDecimals={false} tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(value) => formatTick(String(value), bucket)}
-                />
-                <Legend />
-                {visibleSeries.map((item, index) => (
+        <div className="h-80">
+          <p className="mb-2 text-xs font-medium text-[var(--gp-text-muted)]">
+            Peticiones / {bucketLabel}
+          </p>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--gp-border)"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="t"
+                tickFormatter={(value) => formatTick(String(value), bucket)}
+                tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
+                minTickGap={24}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                labelFormatter={(value) => formatTick(String(value), bucket)}
+                formatter={(value, name) => [
+                  `${Number(value ?? 0)} peticiones`,
+                  String(name),
+                ]}
+              />
+              <Legend />
+              {visibleSeries.map((item, index) => {
+                const isTotal = item.app_id === 0;
+                const appColorIndex = apps.findIndex(
+                  (app) => app.app_id === item.app_id,
+                );
+                const stroke = isTotal
+                  ? TOTAL_COLOR
+                  : APP_COLORS[
+                      (appColorIndex >= 0 ? appColorIndex : index) %
+                        APP_COLORS.length
+                    ];
+                return (
                   <Line
                     key={item.app_id}
                     type="monotone"
                     dataKey={`req_${item.app_id}`}
-                    name={item.app_name}
-                    stroke={LINE_COLORS[index % LINE_COLORS.length]}
-                    strokeWidth={2}
+                    name={isTotal ? "Todas las peticiones" : item.app_name}
+                    stroke={stroke}
+                    strokeWidth={isTotal ? 3 : 2}
+                    strokeDasharray={isTotal ? "6 3" : undefined}
                     dot={false}
                     isAnimationActive={false}
                   />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="h-72">
-            <p className="mb-2 text-xs font-medium text-[var(--gp-text-muted)]">
-              Datos transferidos / {bucketLabel}
-            </p>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--gp-border)" vertical={false} />
-                <XAxis
-                  dataKey="t"
-                  tickFormatter={(value) => formatTick(String(value), bucket)}
-                  tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
-                  minTickGap={24}
-                />
-                <YAxis tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(value) => formatTick(String(value), bucket)}
-                  formatter={(value) => [`${Number(value ?? 0).toFixed(3)} MB`, "Datos"]}
-                />
-                <Legend />
-                {visibleSeries.map((item, index) => (
-                  <Line
-                    key={item.app_id}
-                    type="monotone"
-                    dataKey={`mb_${item.app_id}`}
-                    name={item.app_name}
-                    stroke={LINE_COLORS[index % LINE_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
     </Card>
