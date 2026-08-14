@@ -8,7 +8,8 @@ export const queryKeys = {
     list: ["apps", "list"] as const,
     detail: (id: number) => ["apps", "detail", id] as const,
     syncHealth: ["apps", "sync-health"] as const,
-    load: (minutes = 60) => ["apps", "load", minutes] as const,
+    load: (bucket = "10s", appId: number | "all" = "all") =>
+      ["apps", "load", bucket, appId] as const,
   },
   modules: {
     all: ["modules"] as const,

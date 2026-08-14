@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { validateKey } from "@/src/shared/lib/api-auth";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
-import { ingestAppLoadMinute } from "@/src/features/apps/lib/ingest-app-load";
+import { ingestAppLoadSample } from "@/src/features/apps/lib/ingest-app-load";
 
 /**
- * Webhook de carga por minuto. No crea Event (es telemetría agregada).
+ * Webhook de carga cada 10 segundos. No crea Event (es telemetría agregada).
  * Auth: Authorization: Bearer {entitlement_secret}
  */
 export async function POST(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Body JSON inválido" }, { status: 400 });
     }
 
-    const row = await ingestAppLoadMinute(auth.app_id, body);
+    const row = await ingestAppLoadSample(auth.app_id, body);
     return NextResponse.json(
       {
         ok: true,

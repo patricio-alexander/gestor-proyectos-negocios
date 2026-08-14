@@ -1,12 +1,13 @@
 import { prisma } from "@/src/shared/lib/prisma";
 
-export type AppLoadMinuteInput = {
+/** Llega por JSON desde las apps: los numéricos pueden venir como texto. */
+export type AppLoadSampleInput = {
   interval_start: string;
-  requests?: number;
-  bytes_in?: number;
-  bytes_out?: number;
-  errors?: number;
-  latency_p95_ms?: number | null;
+  requests?: number | string;
+  bytes_in?: number | string;
+  bytes_out?: number | string;
+  errors?: number | string;
+  latency_p95_ms?: number | string | null;
 };
 
 function toNonNegInt(value: unknown, fallback = 0) {
@@ -15,18 +16,25 @@ function toNonNegInt(value: unknown, fallback = 0) {
   return Math.round(n);
 }
 
-function truncateToMinute(raw: string) {
+function truncateToTenSeconds(raw: string) {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return null;
-  date.setUTCSeconds(0, 0);
+  date.setUTCMilliseconds(0);
+  date.setUTCSeconds(Math.floor(date.getUTCSeconds() / 10) * 10);
   return date;
 }
 
-export async function ingestAppLoadMinute(
+function truncateToMinute(date: Date) {
+  const copy = new Date(date);
+  copy.setUTCSeconds(0, 0);
+  return copy;
+}
+
+export async function ingestAppLoadSample(
   appId: number,
-  body: AppLoadMinuteInput,
+  body: AppLoadSampleInput,
 ) {
-  const intervalStart = truncateToMinute(body.interval_start);
+  const intervalStart = truncateToTenSeconds(body.interval_start);
   if (!intervalStart) {
     throw Object.assign(new Error("interval_start inválido"), { statusCode: 400 });
   }
@@ -40,7 +48,7 @@ export async function ingestAppLoadMinute(
       ? null
       : toNonNegInt(body.latency_p95_ms);
 
-  return prisma.appLoadMinute.upsert({
+  const sample = await prisma.appLoadSample.upsert({
     where: {
       app_id_interval_start: {
         app_id: appId,
@@ -64,4 +72,50 @@ export async function ingestAppLoadMinute(
       latency_p95_ms: latency,
     },
   });
+
+  const minuteStart = truncateToMinute(intervalStart);
+  const nextMinute = new Date(minuteStart.getTime() + 60_000);
+  const minuteSamples = await prisma.appLoadSample.findMany({
+    where: {
+      app_id: appId,
+      interval_start: { gte: minuteStart, lt: nextMinute },
+    },
+  });
+  const minuteRequests = minuteSamples.reduce((sum, row) => sum + row.requests, 0);
+  const minuteBytesIn = minuteSamples.reduce((sum, row) => sum + row.bytes_in, BigInt(0));
+  const minuteBytesOut = minuteSamples.reduce((sum, row) => sum + row.bytes_out, BigInt(0));
+  const minuteErrors = minuteSamples.reduce((sum, row) => sum + row.errors, 0);
+  const latencies = minuteSamples
+    .map((row) => row.latency_p95_ms)
+    .filter((value): value is number => value != null);
+  const minuteLatency = latencies.length
+    ? Math.max(...latencies)
+    : null;
+
+  await prisma.appLoadMinute.upsert({
+    where: {
+      app_id_interval_start: {
+        app_id: appId,
+        interval_start: minuteStart,
+      },
+    },
+    create: {
+      app_id: appId,
+      interval_start: minuteStart,
+      requests: minuteRequests,
+      bytes_in: minuteBytesIn,
+      bytes_out: minuteBytesOut,
+      errors: minuteErrors,
+      latency_p95_ms: minuteLatency,
+    },
+    update: {
+      requests: minuteRequests,
+      bytes_in: minuteBytesIn,
+      bytes_out: minuteBytesOut,
+      errors: minuteErrors,
+      latency_p95_ms: minuteLatency,
+    },
+  });
+
+  return sample;
 }
