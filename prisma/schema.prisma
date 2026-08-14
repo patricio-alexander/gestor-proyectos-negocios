@@ -270,6 +270,7 @@ model Apps {
   subscriptions           Subscription[]
   offers                  Offer[]
   events                  Event[]
+  load_minutes            AppLoadMinute[]
   app_modules             AppModule[]
   app_sections            AppSection[]
   app_features            AppFeature[]
@@ -380,6 +381,25 @@ model Event {
   @@index([source])
   @@index([created_at])
   @@index([app_id, created_at])
+}
+
+/** Tráfico HTTP agregado por minuto (reportado por cada app enlazada). */
+model AppLoadMinute {
+  id             BigInt   @id @default(autoincrement())
+  app_id         Int
+  interval_start DateTime
+  requests       Int      @default(0)
+  bytes_in       BigInt   @default(0)
+  bytes_out      BigInt   @default(0)
+  errors         Int      @default(0)
+  latency_p95_ms Int?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  app            Apps     @relation(fields: [app_id], references: [id], onDelete: Cascade)
+
+  @@unique([app_id, interval_start])
+  @@index([app_id, interval_start])
+  @@index([interval_start])
 }
 
 // ─── Apps móviles / OTA (+ vínculo al control de módulos vía Apps) ───────────

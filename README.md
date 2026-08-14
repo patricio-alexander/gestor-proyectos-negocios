@@ -27,7 +27,7 @@ DATABASE_NAME="gestor_proyectos"
 DATABASE_HOST="localhost"
 DATABASE_PORT=3306
 JWT_SECRET="cambiar-por-un-secreto-seguro"
-NEXT_PUBLIC_BASE_PATH=/gestor-proyectos-negocios # no cambiar
+NEXT_PUBLIC_BASE_PATH=/raptorsolutions
 ```
 
 ### 3. Sincronizar el esquema
@@ -124,7 +124,48 @@ También podés levantar uno solo:
 ```bash
 pm2 start npm --name "usage-reset" -- run worker:usage
 ```
+
+## Git y despliegue
+
+El gestor vive en su propio repo (`AppsWeb/gestor-proyectos-negocios`).
+La URL pública es `/raptorsolutions` (PM2 en el puerto `3002`).
+
+Desde el equipo de desarrollo:
+
+```bash
+cd AppsWeb/raptor/frontend
+npm run git-push-gestor -- "descripción del cambio"
 ```
+
+Equivale a:
+
+```bash
+cd AppsWeb/gestor-proyectos-negocios
+npm run git:push -- "descripción del cambio"
+```
+
+En el servidor, con el árbol limpio (`git status` sin cambios locales):
+
+```bash
+cd /ruta/del/gestor
+git status
+npm run deploy
+```
+
+`npm run deploy` hace `git pull --ff-only`, instala dependencias, Prisma,
+seed, build y reinicia PM2 (`Raptor Solutions`). Si hay cambios locales o
+untracked, el pull aborta: guardalos o descartalos antes.
+
+La sincronización con las apps usa el mismo patrón en todas:
+
+| App | Destino del gestor | Secreto de la app |
+|-----|--------------------|-------------------|
+| EdDeli | `/eddeliapi/subscription/entitlement` | `GESTOR_SYNC_SECRET` de EdDeli |
+| Store | `/storeapi/subscription/entitlement` | `GESTOR_SYNC_SECRET` de Store |
+| Tienda | `/tiendaapi/subscription/entitlement` | `GESTOR_SYNC_SECRET` de Tienda |
+
+Cada app tiene su propio secreto. En producción el pull de las apps apunta a
+`https://aplicaciones.marianosamaniego.edu.ec/raptorsolutions/api`.
 
 ## Arquitectura
 

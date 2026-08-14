@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { Card, Spinner } from "@heroui/react";
 import Briefcase from "@gravity-ui/icons/Briefcase";
-import CreditCard from "@gravity-ui/icons/CreditCard";
 import ChartLine from "@gravity-ui/icons/ChartLine";
+import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
+import CreditCard from "@gravity-ui/icons/CreditCard";
+import Smartphone from "@gravity-ui/icons/Smartphone";
+import AntennaSignal from "@gravity-ui/icons/AntennaSignal";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
 import { useDashboardOverview } from "../hooks/useDashboardOverview";
+import { DashboardOperationalPanels } from "./DashboardOperationalPanels";
+import { DashboardLoadChart } from "./DashboardLoadChart";
 import { StatCard } from "@/src/shared/components/StatCard";
 import {
   StatusBadge,
@@ -15,31 +20,47 @@ import {
 import { gp } from "@/src/shared/ui/theme";
 import { formatDate, daysUntil } from "@/src/shared/utils/format-display";
 import { NavIcon } from "@/src/shared/config/dashboard-nav-icons";
-import { DashboardCharts } from "./DashboardCharts";
-import { DashboardFinancialKpis } from "./DashboardFinancialKpis";
-import Picture from "@gravity-ui/icons/Picture";
-import Database from "@gravity-ui/icons/Database";
-
-function formatMB(mb: number | null): string {
-  if (mb == null) return "—";
-  return `${mb.toFixed(1)} MB`;
-}
+import type { App } from "@/src/features/apps/types";
 
 const QUICK_LINKS = [
-  { href: "/dashboard/apps", label: "Todas" },
+  { href: "/dashboard/apps", label: "Gestionar apps" },
   { href: "/dashboard/kanban", label: "Apps web" },
   { href: "/dashboard/mobile-apps", label: "Apps móvil" },
-  { href: "/dashboard/plans", label: "Planes" },
   { href: "/dashboard/modules", label: "Módulos" },
-  { href: "/dashboard/offers", label: "Ofertas" },
   { href: "/dashboard/subscriptions", label: "Suscripciones" },
-
+  { href: "/dashboard/events", label: "Eventos" },
 ];
+
+const APP_PRIORITY = ["eddeli", "store", "tienda"];
+// Turnos se añadirá aquí al registrarse su endpoint y entitlement en el gestor.
+
+function appPriority(app: App) {
+  const searchable = `${app.name ?? ""} ${app.path ?? ""}`.toLowerCase();
+  const index = APP_PRIORITY.findIndex((key) => searchable.includes(key));
+  return index === -1 ? APP_PRIORITY.length : index;
+}
+
+function syncLabel(app: App, state: string | undefined) {
+  if (app.kind === "mobile") return { label: "Móvil", tone: "info" as const };
+  if (state === "online") return { label: "En línea", tone: "success" as const };
+  if (state === "offline") return { label: "Sin conexión", tone: "danger" as const };
+  if (state === "no_secret") return { label: "Sin secreto", tone: "warning" as const };
+  return { label: "Sin configurar", tone: "neutral" as const };
+}
+
+function appKindLabel(app: App) {
+  if (app.kind === "mobile") return "Móvil";
+  if (app.kind === "template") return "Plantilla";
+  return "Web";
+}
 
 export function DashboardOverview() {
   const { user } = useAuth();
   const { data, loading } = useDashboardOverview();
   const label = user?.display_name || user?.username || "Administrador";
+  const priorityApps = [...data.appList]
+    .sort((a, b) => appPriority(a) - appPriority(b))
+    .slice(0, 8);
 
   if (loading) {
     return (
@@ -57,141 +78,141 @@ export function DashboardOverview() {
           <h1 className={gp.titleLg}>Hola, {label}</h1>
         </div>
         <p className={gp.subtitleBlock}>
-          Resumen del control plane: suscripciones, ofertas y acceso
-          remoto de tus aplicaciones cliente.
+          Centro de control de tus productos, módulos y aplicaciones conectadas.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-6">
         <StatCard
           icon={Briefcase}
           label="Aplicaciones"
           value={data.apps}
-          hint={`${data.plans} planes · ${data.modules} módulos`}
+          hint="Web y móviles registradas"
+        />
+        <StatCard
+          icon={ChartLine}
+          label="Apps web"
+          value={data.webApps}
+          hint="EdDeli, Store, Tienda y otras"
+        />
+        <StatCard
+          icon={Smartphone}
+          label="Apps móviles"
+          value={data.mobileApps}
+          hint={`${data.onlineDevices} dispositivo(s) en línea`}
+        />
+        <StatCard
+          icon={Cubes3Overlap}
+          label="Módulos"
+          value={data.modules}
+          hint="Disponibles en el catálogo"
         />
         <StatCard
           icon={CreditCard}
-          label="Suscripciones activas"
+          label="Suscripciones"
           value={data.subscriptions.active}
-          hint={`${data.subscriptions.total} en total`}
+          hint={`${data.subscriptions.total} registradas`}
           featured={data.subscriptions.active > 0}
+        />
+        <StatCard
+          icon={AntennaSignal}
+          label="Sync en línea"
+          value={data.syncHealth.online}
+          hint={`${data.syncHealth.offline} con incidencia`}
+          featured={data.syncHealth.offline === 0 && data.syncHealth.online > 0}
         />
       </div>
 
-      <DashboardFinancialKpis financial={data.financial} />
+      <DashboardOperationalPanels data={data} />
 
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <Database width={18} height={18} className="text-[--gp-text-muted]" />
-          <h2 className="text-sm font-semibold text-[--gp-text]">
-            Almacenamiento por aplicación
-          </h2>
-        </div>
-        {data.appList.filter(
-          (a) => a.images_size != null || a.database_size != null,
-        ).length === 0 ? (
-          <Card className={`${gp.card} px-5 py-4`}>
-            <p className={`${gp.subtitle} py-4 text-center text-sm`}>
-              No hay datos de almacenamiento disponibles.
-            </p>
-          </Card>
-        ) : (
-          <div className={gp.card}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wider text-[--gp-text-muted]"
-                  style={{ borderColor: "var(--gp-card-border)" }}>
-                  <th className="px-4 py-3 font-medium">Aplicación</th>
-                  <th className="px-4 py-3 font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Picture width={13} height={13} />
-                      Imágenes
-                    </span>
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Database width={13} height={13} />
-                      Base de datos
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.appList
-                  .filter((a) => a.images_size != null || a.database_size != null)
-                  .map((app) => (
-                    <tr
-                      key={app.id}
-                      className="border-b last:border-0"
-                      style={{ borderColor: "var(--gp-card-border)" }}
-                    >
-                      <td className="px-4 py-3 font-medium text-[--gp-text]">
-                        {app.name || "—"}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-[--gp-text]">
-                        {formatMB(app.images_size)}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-[--gp-text]">
-                        {formatMB(app.database_size)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <DashboardLoadChart />
 
-      <DashboardCharts data={data} />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className={`${gp.card} lg:col-span-2 px-5 py-4`}>
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-[var(--gp-text)]">
-              Suscripciones recientes
-            </h2>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className={`${gp.card} overflow-hidden xl:col-span-2`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--gp-text)]">
+                Aplicaciones conectadas
+              </h2>
+              <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
+                EdDeli, Store y Tienda aparecen primero. Turnos se integrará aquí cuando
+                esté registrada como aplicación.
+              </p>
+            </div>
             <Link
-              href="/dashboard/subscriptions"
+              href="/dashboard/apps"
               className="text-xs font-medium text-[var(--gp-badge-text)] hover:underline"
             >
-              Ver todas
+              Ver todas →
             </Link>
           </div>
-          {data.recentSubscriptions.length === 0 ? (
-            <p className={`${gp.subtitle} py-6 text-center text-sm`}>
-              Aún no hay suscripciones activadas.
+          {priorityApps.length === 0 ? (
+            <p className={`${gp.subtitle} px-5 py-10 text-center text-sm`}>
+              Todavía no hay aplicaciones registradas.
             </p>
           ) : (
-            <div className="space-y-2">
-              {data.recentSubscriptions.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5"
-                  style={{
-                    borderColor: "var(--gp-card-border)",
-                    backgroundColor: "var(--gp-surface-muted)",
-                  }}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--gp-text)]">
-                      {sub.app_name || "—"} · {sub.plan_name || "Plan"}
-                    </p>
-                    <p className="text-xs text-[var(--gp-text-muted)]">
-                      Vence {formatDate(sub.expires_at)}
-                    </p>
-                  </div>
-                  <StatusBadge
-                    label={
-                      sub.status === "ACTIVE"
-                        ? "Activa"
-                        : sub.status === "EXPIRED"
-                          ? "Vencida"
-                          : "Cancelada"
-                    }
-                    tone={subscriptionStatusTone(sub.status)}
-                  />
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[690px] text-sm">
+                <thead>
+                  <tr
+                    className="border-y text-left text-xs uppercase tracking-wider text-[--gp-text-muted]"
+                    style={{ borderColor: "var(--gp-card-border)" }}
+                  >
+                    <th className="px-5 py-3 font-medium">Aplicación</th>
+                    <th className="px-4 py-3 font-medium">Tipo</th>
+                    <th className="px-4 py-3 font-medium">Plan</th>
+                    <th className="px-4 py-3 font-medium">Módulos</th>
+                    <th className="px-4 py-3 font-medium">Estado</th>
+                    <th className="px-5 py-3 text-right font-medium">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priorityApps.map((app) => {
+                    const sync = syncLabel(app, data.syncByAppId[app.id]?.state);
+                    return (
+                      <tr
+                        key={app.id}
+                        className="border-b last:border-0"
+                        style={{ borderColor: "var(--gp-card-border)" }}
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-[var(--gp-text)]">
+                            {app.name || "Sin nombre"}
+                          </p>
+                          <p className="text-xs text-[var(--gp-text-muted)]">
+                            {app.owner_name || app.ruc || "Sin responsable asignado"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--gp-text-muted)]">
+                          {appKindLabel(app)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--gp-text-muted)]">
+                          {app.plan?.name || "Sin plan"}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--gp-text-muted)]">
+                          {app.modules?.length ?? 0}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {app.maintenance ? (
+                              <StatusBadge label="Mantenimiento" tone="warning" />
+                            ) : null}
+                            <StatusBadge label={sync.label} tone={sync.tone} />
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <Link
+                            href="/dashboard/apps"
+                            className="text-xs font-medium text-[var(--gp-badge-text)] hover:underline"
+                          >
+                            Gestionar
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>
@@ -218,26 +239,28 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AlertPanel
-          title="Por vencer (30 días)"
+          title="Suscripciones por vencer (30 días)"
           empty="No hay suscripciones por vencer pronto."
           items={data.expiringSubscriptions.map((sub) => ({
             id: sub.id,
             primary: `${sub.app_name} · ${sub.plan_name}`,
             secondary: `${daysUntil(sub.expires_at)} días restantes`,
+            status: sub.status,
           }))}
           href="/dashboard/subscriptions"
         />
         <AlertPanel
-          title="Ofertas por finalizar (14 días)"
-          empty="No hay ofertas próximas a vencer."
-          items={data.expiringOffers.map((offer) => ({
-            id: offer.id,
-            primary: offer.name,
-            secondary: `Vence ${formatDate(offer.expires_at)}`,
+          title="Suscripciones recientes"
+          empty="Aún no hay suscripciones activadas."
+          items={data.recentSubscriptions.map((sub) => ({
+            id: sub.id,
+            primary: `${sub.app_name || "—"} · ${sub.plan_name || "Plan"}`,
+            secondary: `Vence ${formatDate(sub.expires_at)}`,
+            status: sub.status,
           }))}
-          href="/dashboard/offers"
+          href="/dashboard/subscriptions"
         />
       </div>
     </div>
@@ -252,7 +275,7 @@ function AlertPanel({
 }: {
   title: string;
   empty: string;
-  items: { id: number; primary: string; secondary: string }[];
+  items: { id: number; primary: string; secondary: string; status: string }[];
   href: string;
 }) {
   return (
@@ -273,18 +296,28 @@ function AlertPanel({
           {items.map((item) => (
             <li
               key={item.id}
-              className="rounded-lg border px-3 py-2"
+              className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
               style={{
                 borderColor: "var(--gp-card-border)",
                 backgroundColor: "var(--gp-surface-muted)",
               }}
             >
-              <p className="text-sm font-medium text-[var(--gp-text)]">
-                {item.primary}
-              </p>
-              <p className="text-xs text-[var(--gp-text-muted)]">
-                {item.secondary}
-              </p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--gp-text)]">
+                  {item.primary}
+                </p>
+                <p className="text-xs text-[var(--gp-text-muted)]">{item.secondary}</p>
+              </div>
+              <StatusBadge
+                label={
+                  item.status === "ACTIVE"
+                    ? "Activa"
+                    : item.status === "EXPIRED"
+                      ? "Vencida"
+                      : "Cancelada"
+                }
+                tone={subscriptionStatusTone(item.status)}
+              />
             </li>
           ))}
         </ul>
