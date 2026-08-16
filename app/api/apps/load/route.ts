@@ -54,6 +54,25 @@ function bucketStart(date: Date, bucket: Bucket) {
   return copy;
 }
 
+type UsageRow = { module: string; section: string; requests: number };
+
+function normalizeUsage(value: unknown): UsageRow[] {
+  if (!Array.isArray(value)) return [];
+  const totals = new Map<string, UsageRow>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const module = String(item.module || "Sistema").trim() || "Sistema";
+    const section = String(item.section || "Otros servicios").trim() || "Otros servicios";
+    const requests = toNumber(item.requests as number | bigint | null);
+    if (!requests) continue;
+    const key = `${module}::${section}`;
+    const previous = totals.get(key);
+    totals.set(key, { module, section, requests: (previous?.requests || 0) + requests });
+  }
+  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 12);
+}
+
 export async function GET(request: NextRequest) {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;
@@ -115,6 +134,7 @@ export async function GET(request: NextRequest) {
             bytes: number;
             errors: number;
             latency_p95_ms: number | null;
+            usage_breakdown: UsageRow[];
           }
         >;
       }
@@ -146,6 +166,7 @@ export async function GET(request: NextRequest) {
         bytes: 0,
         errors: 0,
         latency_p95_ms: null as number | null,
+        usage_breakdown: [] as UsageRow[],
       };
       prev.values.push(row.requests);
       // Salud del intervalo: respuestas OK empujan hacia arriba; cada error
@@ -159,6 +180,10 @@ export async function GET(request: NextRequest) {
             ? row.latency_p95_ms
             : Math.max(prev.latency_p95_ms, row.latency_p95_ms);
       }
+      prev.usage_breakdown = normalizeUsage([
+        ...prev.usage_breakdown,
+        ...(Array.isArray(row.usage_breakdown) ? row.usage_breakdown : []),
+      ]);
       series.points.set(key, prev);
     }
 
@@ -200,6 +225,7 @@ export async function GET(request: NextRequest) {
             bytes: point?.bytes ?? 0,
             errors: point?.errors ?? 0,
             latency_p95_ms: point?.latency_p95_ms ?? null,
+            usage_breakdown: point?.usage_breakdown ?? [],
           };
         }),
       }));
@@ -231,6 +257,9 @@ export async function GET(request: NextRequest) {
           if (value == null) return max;
           return max == null ? value : Math.max(max, value);
         }, null),
+        usage_breakdown: normalizeUsage(
+          appSeries.flatMap((item) => item.points[index].usage_breakdown),
+        ),
       };
     });
 

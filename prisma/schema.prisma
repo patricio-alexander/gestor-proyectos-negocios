@@ -394,6 +394,7 @@ model AppLoadMinute {
   bytes_out      BigInt   @default(0)
   errors         Int      @default(0)
   latency_p95_ms Int?
+  usage_breakdown Json?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   app            Apps     @relation(fields: [app_id], references: [id], onDelete: Cascade)
@@ -413,6 +414,7 @@ model AppLoadSample {
   bytes_out      BigInt   @default(0)
   errors         Int      @default(0)
   latency_p95_ms Int?
+  usage_breakdown Json?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   app            Apps     @relation(fields: [app_id], references: [id], onDelete: Cascade)

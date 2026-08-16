@@ -8,6 +8,11 @@ export type AppLoadSampleInput = {
   bytes_out?: number | string;
   errors?: number | string;
   latency_p95_ms?: number | string | null;
+  usage_breakdown?: Array<{
+    module?: string;
+    section?: string;
+    requests?: number | string;
+  }>;
 };
 
 function toNonNegInt(value: unknown, fallback = 0) {
@@ -30,6 +35,30 @@ function truncateToMinute(date: Date) {
   return copy;
 }
 
+type UsageRow = { module: string; section: string; requests: number };
+
+function normalizeUsage(value: unknown): UsageRow[] {
+  if (!Array.isArray(value)) return [];
+  const totals = new Map<string, UsageRow>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const module = String(item.module || "Sistema").trim().slice(0, 100) || "Sistema";
+    const section =
+      String(item.section || "Otros servicios").trim().slice(0, 160) || "Otros servicios";
+    const requests = toNonNegInt(item.requests);
+    if (!requests) continue;
+    const key = `${module}::${section}`;
+    const previous = totals.get(key);
+    totals.set(key, { module, section, requests: (previous?.requests || 0) + requests });
+  }
+  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 30);
+}
+
+function aggregateUsage(rows: Array<{ usage_breakdown: unknown }>): UsageRow[] {
+  return normalizeUsage(rows.flatMap((row) => (Array.isArray(row.usage_breakdown) ? row.usage_breakdown : [])));
+}
+
 export async function ingestAppLoadSample(
   appId: number,
   body: AppLoadSampleInput,
@@ -43,6 +72,7 @@ export async function ingestAppLoadSample(
   const bytesIn = BigInt(toNonNegInt(body.bytes_in));
   const bytesOut = BigInt(toNonNegInt(body.bytes_out));
   const errors = toNonNegInt(body.errors);
+  const usageBreakdown = normalizeUsage(body.usage_breakdown);
   const latency =
     body.latency_p95_ms == null || body.latency_p95_ms === ""
       ? null
@@ -63,6 +93,7 @@ export async function ingestAppLoadSample(
       bytes_out: bytesOut,
       errors,
       latency_p95_ms: latency,
+      usage_breakdown: usageBreakdown,
     },
     update: {
       requests,
@@ -70,6 +101,7 @@ export async function ingestAppLoadSample(
       bytes_out: bytesOut,
       errors,
       latency_p95_ms: latency,
+      usage_breakdown: usageBreakdown,
     },
   });
 
@@ -91,6 +123,7 @@ export async function ingestAppLoadSample(
   const minuteLatency = latencies.length
     ? Math.max(...latencies)
     : null;
+  const minuteUsage = aggregateUsage(minuteSamples);
 
   await prisma.appLoadMinute.upsert({
     where: {
@@ -107,6 +140,7 @@ export async function ingestAppLoadSample(
       bytes_out: minuteBytesOut,
       errors: minuteErrors,
       latency_p95_ms: minuteLatency,
+      usage_breakdown: minuteUsage,
     },
     update: {
       requests: minuteRequests,
@@ -114,6 +148,7 @@ export async function ingestAppLoadSample(
       bytes_out: minuteBytesOut,
       errors: minuteErrors,
       latency_p95_ms: minuteLatency,
+      usage_breakdown: minuteUsage,
     },
   });
 

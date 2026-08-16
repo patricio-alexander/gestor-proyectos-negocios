@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@heroui/react";
+import { Card, Modal, useOverlayState } from "@heroui/react";
 import {
   CartesianGrid,
   Legend,
@@ -25,6 +25,7 @@ export type AppLoadPoint = {
   bytes: number;
   errors: number;
   latency_p95_ms: number | null;
+  usage_breakdown: Array<{ module: string; section: string; requests: number }>;
 };
 
 export type AppLoadSeries = {
@@ -43,12 +44,12 @@ type AppLoadResponse = {
 /** Total + colores por app (GET/POST/PUT/etc. van juntos en requests). */
 const TOTAL_COLOR = "#111827";
 const APP_COLORS = [
-  "#3e6ae1", // EdDeli / primary
-  "#0088cc", // Store / cyan
-  "#16a34a", // Tienda / green
-  "#ca8a04",
-  "#5b9cff",
-  "#dc2626",
+  "#FF2D95", // magenta
+  "#00E5FF", // cyan
+  "#A3FF12", // lima
+  "#FFB000", // ámbar
+  "#9B5CFF", // violeta
+  "#FF4D3D", // coral
 ];
 
 const BUCKET_OPTIONS: { value: Bucket; label: string }[] = [
@@ -107,6 +108,11 @@ function chipStyle(active: boolean, accent?: string) {
 export function DashboardLoadChart() {
   const [bucket, setBucket] = useState<Bucket>("10s");
   const [appId, setAppId] = useState<number>(0);
+  const [selectedPoint, setSelectedPoint] = useState<{
+    appName: string;
+    point: AppLoadPoint;
+  } | null>(null);
+  const detailModal = useOverlayState();
 
   // Siempre pedimos todas las series: el filtro es solo visual.
   const query = useQuery({
@@ -152,6 +158,12 @@ export function DashboardLoadChart() {
   );
   const bucketLabel =
     BUCKET_OPTIONS.find((item) => item.value === bucket)?.label ?? bucket;
+
+  const openPointDetail = (appName: string, point: AppLoadPoint | undefined) => {
+    if (!point) return;
+    setSelectedPoint({ appName, point });
+    detailModal.open();
+  };
 
   return (
     <Card className={`${gp.card} px-5 py-4`}>
@@ -267,9 +279,30 @@ export function DashboardLoadChart() {
                     dataKey={`req_${item.app_id}`}
                     name={isTotal ? "Todas las peticiones" : item.app_name}
                     stroke={stroke}
-                    strokeWidth={isTotal ? 3 : 2}
+                    strokeWidth={isTotal ? 3 : 3}
                     strokeDasharray={isTotal ? "6 3" : undefined}
-                    dot={false}
+                    dot={(dotProps) => {
+                      const pointIndex = (dotProps as unknown as { index?: number }).index ?? -1;
+                      return (
+                        <circle
+                          cx={dotProps.cx}
+                          cy={dotProps.cy}
+                          r={isTotal ? 3 : 4}
+                          fill={stroke}
+                          stroke="var(--gp-card-bg)"
+                          strokeWidth={2}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => openPointDetail(item.app_name, item.points[pointIndex])}
+                        />
+                      );
+                    }}
+                    activeDot={{
+                      r: 7,
+                      fill: stroke,
+                      stroke: "#FFFFFF",
+                      strokeWidth: 2,
+                      cursor: "pointer",
+                    }}
                     isAnimationActive={false}
                   />
                 );
@@ -278,6 +311,65 @@ export function DashboardLoadChart() {
           </ResponsiveContainer>
         </div>
       )}
+      <Modal state={detailModal}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-lg">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>
+                  Uso de módulos · {selectedPoint?.appName || "App"}
+                </Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                {selectedPoint && (
+                  <>
+                    <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
+                      {formatTick(selectedPoint.point.t, bucket)} ·{" "}
+                      <strong>{selectedPoint.point.requests}</strong> peticiones ·{" "}
+                      {selectedPoint.point.errors} error(es)
+                      {selectedPoint.point.latency_p95_ms != null
+                        ? ` · p95 ${selectedPoint.point.latency_p95_ms} ms`
+                        : ""}
+                    </p>
+                    {selectedPoint.point.usage_breakdown.length ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--gp-text-muted)]">
+                          Módulos/secciones más usados en este intervalo
+                        </p>
+                        {selectedPoint.point.usage_breakdown.map((row) => (
+                          <div
+                            key={`${row.module}-${row.section}`}
+                            className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                            style={{ borderColor: "var(--gp-border)" }}
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-[var(--gp-text)]">
+                                {row.module}
+                              </p>
+                              <p className="text-xs text-[var(--gp-text-muted)]">
+                                {row.section}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-[var(--gp-surface-muted)] px-2 py-1 text-xs font-semibold">
+                              {row.requests} usos
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[var(--gp-text-muted)]">
+                        Este punto todavía no tiene desglose por módulo. Se llenará con
+                        las nuevas peticiones recibidas después de actualizar las apps.
+                      </p>
+                    )}
+                  </>
+                )}
+              </Modal.Body>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </Card>
   );
 }
