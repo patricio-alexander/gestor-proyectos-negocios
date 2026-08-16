@@ -8,7 +8,7 @@
 # Opciones:
 #   SKIP_MIGRATE=1 npm run deploy   # no corre prisma migrate deploy
 #   SKIP_INSTALL=1 npm run deploy   # no corre npm install
-#   SKIP_SEED=1 npm run deploy      # no corre seed (catálogo/módulos/secciones)
+#   RUN_SEED=1 npm run deploy       # corre seed (NO recomendado en prod: reescribe planes/subs/entitlement)
 #
 set -euo pipefail
 
@@ -44,13 +44,13 @@ else
   echo "==> prisma migrate (omitido)"
 fi
 
-# Seed upserta módulos/secciones del catálogo (Ventas y Compras, Proveedores, etc.)
-# y empuja entitlement a las apps. Es idempotente.
-if [[ "${SKIP_SEED:-0}" != "1" ]]; then
-  echo "==> npm run seed (catálogo módulos/secciones)"
+# Por defecto NO seedeamos: migrate solo aplica SQL nuevo y no toca datos ya guardados.
+# El seed completo reescribe planes, suscripciones, features y empuja entitlement a las apps.
+if [[ "${RUN_SEED:-0}" == "1" ]]; then
+  echo "==> npm run seed (opt-in: reescribe catálogo/planes/subs y empuja entitlement)"
   npm run seed
 else
-  echo "==> seed (omitido)"
+  echo "==> seed omitido (datos actuales intactos). Para forzar: RUN_SEED=1 npm run deploy"
 fi
 
 echo "==> next build"
