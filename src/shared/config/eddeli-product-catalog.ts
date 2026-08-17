@@ -310,6 +310,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         capabilities: [
           { code: "filtros_por_fecha_y_vendedor", name: "Filtros por fecha y vendedor" },
           { code: "tabla_diaria", name: "Tabla diaria" },
+          { code: "exportar_excel", name: "Exportar Excel" },
           { code: "totales", name: "Totales" },
         ],
       },
@@ -318,8 +319,11 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         name: "Compras",
         status: "active",
         capabilities: [
+          { code: "nueva_compra", name: "Nueva compra" },
           { code: "filtros_por_fecha_y_proveedor", name: "Filtros por fecha y proveedor" },
           { code: "tabla_diaria", name: "Tabla diaria" },
+          { code: "exportar_excel", name: "Exportar Excel" },
+          { code: "editar_desde_fila", name: "Editar desde fila" },
           { code: "totales", name: "Totales" },
         ],
       },
@@ -729,15 +733,38 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
     ],
   },
 {
-    key: "publicidad",
-    name: "Publicidad",
-    description: "Señalización digital en pantallas TV. En mantenimiento: no se usa en producción y requiere mejora.",
-    status: "maintenance",
+    key: "marketing",
+    name: "Marketing",
+    description: "Promociones por grupo de clientes, señalización en pantallas y editor de piezas. Publicidad y diseño siguen en mantenimiento; Promociones está en uso. Noticias (novedades para inicio y vitrina) llegará pronto.",
+    status: "active",
     sections: [
+      {
+        key: "/marketing/promociones",
+        name: "Promociones",
+        status: "active",
+        capabilities: [
+          { code: "crear_grupo", name: "Crear grupo" },
+          { code: "pegar_beneficio", name: "Pegar beneficio" },
+          { code: "anadir_clientes", name: "Añadir clientes" },
+          { code: "activar_pausar", name: "Activar / pausar" },
+          { code: "ver_en_caja", name: "Ver en caja" },
+        ],
+      },
+      {
+        key: "/marketing/noticias",
+        name: "Noticias",
+        status: "planned",
+        capabilities: [
+          { code: "tablero_de_novedades", name: "Tablero de novedades" },
+          { code: "redactar_aviso", name: "Redactar aviso" },
+          { code: "mostrar_en_inicio", name: "Mostrar en inicio" },
+          { code: "archivo", name: "Archivo" },
+        ],
+      },
       {
         key: "/publicidad",
         name: "Campañas",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "listado_de_campanas", name: "Listado de campañas" },
           { code: "nueva_editar_campana", name: "Nueva/editar campaña" },
@@ -748,7 +775,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/publicidad/dispositivos",
         name: "Dispositivos TV",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "aprobacion_de_dispositivos", name: "Aprobación de dispositivos" },
           { code: "asignar_campana", name: "Asignar campaña" },
@@ -759,7 +786,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/publicidad/reproductor",
         name: "Reproductor",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "reproduccion_fullscreen", name: "Reproducción fullscreen" },
           { code: "sync_en_tiempo_real", name: "Sync en tiempo real" },
@@ -768,32 +795,9 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         ],
       },
       {
-        key: "/publicidad/campanas/nueva",
-        name: "Nueva campaña",
-        status: "maintenance",
-      },
-      {
-        key: "/tv",
-        name: "Reproductor TV",
-        status: "maintenance",
-        capabilities: [
-          { code: "kiosco_pantalla_completa", name: "Kiosco pantalla completa" },
-          { code: "sync_remota", name: "Sync remota" },
-          { code: "fallback_offline", name: "Fallback offline" },
-        ],
-      },
-    ],
-  },
-{
-    key: "diseno_promocional",
-    name: "Diseño promocional",
-    description: "Editor gráfico del sistema. En mantenimiento: no se usa en producción y requiere mejora.",
-    status: "maintenance",
-    sections: [
-      {
         key: "/diseno-promocional/editor",
         name: "Editor de diseño",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "canvas_de_diseno", name: "Canvas de diseño" },
           { code: "capas", name: "Capas" },
@@ -806,7 +810,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/diseno-promocional/vista",
         name: "Vista con productos",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "estudio_de_producto", name: "Estudio de producto" },
           { code: "canvas_en_vivo", name: "Canvas en vivo" },
@@ -816,7 +820,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/diseno-promocional/plantillas",
         name: "Plantillas",
-        status: "active",
+        status: "maintenance",
         capabilities: [
           { code: "listado_de_plantillas", name: "Listado de plantillas" },
           { code: "crear_plantilla", name: "Crear plantilla" },
@@ -824,6 +828,11 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "duplicar_y_eliminar", name: "Duplicar y eliminar" },
           { code: "abrir_en_editor", name: "Abrir en editor" },
         ],
+      },
+      {
+        key: "/publicidad/campanas/nueva",
+        name: "Nueva campaña",
+        status: "maintenance",
       },
       {
         key: "/editor",
@@ -844,6 +853,16 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         key: "/templates",
         name: "Plantillas (atajo)",
         status: "maintenance",
+      },
+      {
+        key: "/tv",
+        name: "Reproductor TV",
+        status: "maintenance",
+        capabilities: [
+          { code: "kiosco_pantalla_completa", name: "Kiosco pantalla completa" },
+          { code: "sync_remota", name: "Sync remota" },
+          { code: "fallback_offline", name: "Fallback offline" },
+        ],
       },
     ],
   },
@@ -1054,6 +1073,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
         capabilities: [
           { code: "subir_backup_json", name: "Subir backup.json" },
           { code: "descargar_backup", name: "Descargar backup" },
+          { code: "descargar_backup_2", name: "Descargar backup" },
           { code: "recargar_bd", name: "Recargar BD" },
           { code: "progreso_visual", name: "Progreso visual" },
         ],

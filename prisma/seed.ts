@@ -11,6 +11,12 @@ import {
 } from "../src/shared/config/eddeli-product-catalog";
 import { EVENT_TYPES_SEED } from "./event-types-seed";
 import { removePlanModulesForAppsNotIn } from "../src/features/plans/lib/plan-app-modules";
+import {
+  mergeMarketingModule,
+  pruneDeletedModulesFromApps,
+  pruneMobileModulesFromWebApps,
+  retireLegacyCanalModule,
+} from "../src/features/modules/lib/cleanup-module-assignments";
 
 /** Conexión y branding del seed — valores desde .env (default: raptorsolutions). */
 const SEED_ENV = {
@@ -533,6 +539,16 @@ async function seedProductCatalog(catalog: CatalogModuleDef[]) {
 
 /** Asigna módulos del catálogo a una app vía AppModule. */
 async function seedAppModules(appId: number, moduleIds: number[]) {
+  const want = new Set(moduleIds);
+  const existing = await prisma.appModule.findMany({
+    where: { app_id: appId },
+    select: { id: true, module_id: true },
+  });
+  for (const row of existing) {
+    if (want.has(row.module_id)) continue;
+    await prisma.planAppModule.deleteMany({ where: { app_module_id: row.id } });
+    await prisma.appModule.delete({ where: { id: row.id } });
+  }
   for (const moduleId of moduleIds) {
     await prisma.appModule.upsert({
       where: {
@@ -626,8 +642,7 @@ const EDDELI_PLAN_DEFS: {
       "inventario",
       "produccion",
       "canal_digital",
-      "publicidad",
-      "diseno_promocional",
+      "marketing",
       "administracion",
       "sistema",
     ],
@@ -1021,12 +1036,16 @@ async function main() {
   const storeApp = await seedStoreApp();
   const tiendaApp = await seedTiendaApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
+  await retireLegacyCanalModule();
+  await mergeMarketingModule();
+  await pruneMobileModulesFromWebApps();
+  await pruneDeletedModulesFromApps();
   const multiStockFeatureId = await seedFeatureCatalog();
   await seedEddeliMultiStock(eddeliApp.id, multiStockFeatureId);
   const featureAppLog = await seedDefaultAppFeatures(multiStockFeatureId);
 
   const allModules = await prisma.module.findMany({
-    where: { deleted_at: null },
+    where: { deleted_at: null, channel: "web" },
     select: { id: true },
   });
   const moduleIds = allModules.map((m) => m.id);

@@ -29,7 +29,9 @@
     "git-push-gestor": "bash scripts/git-push.sh",
     "deploy": "bash scripts/deploy.sh",
     "postinstall": "prisma generate",
-    "setup": "npm run db:reset"
+    "setup": "bash scripts/setup-local.sh",
+    "setup:reset": "npm run db:reset",
+    "setup:import": "tsx scripts/import-gestor-backup.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

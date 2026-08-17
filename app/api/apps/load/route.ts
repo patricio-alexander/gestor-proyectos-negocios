@@ -54,7 +54,7 @@ function bucketStart(date: Date, bucket: Bucket) {
   return copy;
 }
 
-type UsageRow = { module: string; section: string; requests: number };
+type UsageRow = { module: string; section: string; method: string; requests: number };
 
 function normalizeUsage(value: unknown): UsageRow[] {
   if (!Array.isArray(value)) return [];
@@ -64,13 +64,19 @@ function normalizeUsage(value: unknown): UsageRow[] {
     const item = raw as Record<string, unknown>;
     const module = String(item.module || "Sistema").trim() || "Sistema";
     const section = String(item.section || "Otros servicios").trim() || "Otros servicios";
+    const method = String(item.method || "").trim().toUpperCase();
     const requests = toNumber(item.requests as number | bigint | null);
     if (!requests) continue;
-    const key = `${module}::${section}`;
+    const key = `${module}::${section}::${method || "*"}`;
     const previous = totals.get(key);
-    totals.set(key, { module, section, requests: (previous?.requests || 0) + requests });
+    totals.set(key, {
+      module,
+      section,
+      method,
+      requests: (previous?.requests || 0) + requests,
+    });
   }
-  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 12);
+  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 40);
 }
 
 export async function GET(request: NextRequest) {

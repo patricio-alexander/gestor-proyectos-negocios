@@ -35,10 +35,12 @@ fi
 echo "==> git add"
 git add -A
 
-# Evitar subir secretos por si acaso
-if git diff --cached --name-only | grep -E '(^|/)\.env($|\.)' >/dev/null; then
-  echo "Error: hay archivos .env en el staging. Sacálos del commit."
-  git restore --staged $(git diff --cached --name-only | grep -E '(^|/)\.env($|\.)' || true)
+# Evitar subir secretos / dumps de BD
+BLOCKED="$(git diff --cached --name-only | grep -E '(^|/)\.env($|\.)|backup.*\.json$|\.backup\.json$|backup-eddeli-servidor\.json$|backup-tienda\.json$|backup-gestor-.*\.json$' | grep -v 'backup\.json\.example$' || true)"
+if [[ -n "$BLOCKED" ]]; then
+  echo "Error: hay archivos sensibles en el staging (.env o backups JSON):"
+  echo "$BLOCKED"
+  git restore --staged $BLOCKED
   exit 1
 fi
 

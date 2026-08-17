@@ -101,8 +101,7 @@ const KEY_MAP = {
   documentos: "documentos",
   logistica: "logistica",
   comunidad: "comunidad",
-  publicidad: "publicidad",
-  diseno: "diseno_promocional",
+  marketing: "marketing",
   admin: "administracion",
   sistema: "sistema",
   desarrollador: "desarrollador",
@@ -181,18 +180,16 @@ for (const group of APP_MODULE_GROUPS) {
     administracion: [
       { key: "/app-settings", name: "Ajustes de app", status: "active" },
     ],
-    diseno_promocional: [
-      { key: "/editor", name: "Editor (atajo)", status: groupStatus },
-      { key: "/publicity_edit", name: "Edición publicidad (atajo)", status: groupStatus },
-      { key: "/editorDefault", name: "Editor por defecto", status: groupStatus },
-      { key: "/templates", name: "Plantillas (atajo)", status: groupStatus },
-    ],
-    publicidad: [
+    marketing: [
       {
         key: "/publicidad/campanas/nueva",
         name: "Nueva campaña",
-        status: groupStatus,
+        status: "maintenance",
       },
+      { key: "/editor", name: "Editor (atajo)", status: "maintenance" },
+      { key: "/publicity_edit", name: "Edición publicidad (atajo)", status: "maintenance" },
+      { key: "/editorDefault", name: "Editor por defecto", status: "maintenance" },
+      { key: "/templates", name: "Plantillas (atajo)", status: "maintenance" },
     ],
     canal_digital: [],
   };
@@ -214,11 +211,11 @@ for (const group of APP_MODULE_GROUPS) {
     }
   }
 
-  if (key === "canal_digital" || key === "publicidad") {
+  if (key === "canal_digital" || key === "marketing") {
     for (const sec of APP_PUBLIC_SECTIONS) {
       const path = String(sec.path || "");
-      if (path.startsWith("/tv") && key === "publicidad") {
-        const def = sectionDef({ ...sec, path: "/tv" }, { statusOverride: groupStatus });
+      if (path.startsWith("/tv") && key === "marketing") {
+        const def = sectionDef({ ...sec, path: "/tv" }, { statusOverride: "maintenance" });
         if (def && !seen.has(def.key)) {
           seen.add(def.key);
           sections.push(def);
