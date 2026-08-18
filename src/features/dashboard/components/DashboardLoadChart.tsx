@@ -1,44 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Modal, useOverlayState } from "@heroui/react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { fetchJson } from "@/src/shared/lib/api-client";
 import { queryKeys } from "@/src/shared/lib/query-keys";
 import { gp } from "@/src/shared/ui/theme";
+import {
+  type AppLoadPoint,
+  type AppLoadResponse,
+  type AppLoadSeries,
+  type Bucket,
+  type UsageRow,
+} from "../lib/app-load-types";
 
-type Bucket = "10s" | "1m" | "1h" | "1d";
+export type { AppLoadPoint, AppLoadSeries, Bucket, UsageRow };
 
-export type UsageRow = {
-  module: string;
-  section: string;
-  method?: string;
-  requests: number;
-};
-
-export type AppLoadPoint = {
-  t: string;
-  requests: number;
-  bytes: number;
-  errors: number;
-  latency_p95_ms: number | null;
-  usage_breakdown: UsageRow[];
-};
-
-export type AppLoadSeries = {
-  app_id: number;
-  app_name: string;
-  points: AppLoadPoint[];
-};
-
-type AppLoadResponse = {
-  bucket: Bucket;
-  from: string;
-  to: string;
-  series: AppLoadSeries[];
-};
-
-const TOTAL_COLOR = "#111827";
 const APP_COLORS = [
   "#FF2D95",
   "#00E5FF",
@@ -62,7 +49,22 @@ const REFRESH_MS: Record<Bucket, number> = {
   "1d": 120_000,
 };
 
-const PAD = { l: 42, r: 14, t: 14, b: 30 };
+type ChartRow = {
+  t: string;
+  label: string;
+  values: Record<string, number>;
+  points: Record<string, AppLoadPoint>;
+};
+
+type SelectedSlice = {
+  label: string;
+  items: Array<{
+    appId: number;
+    appName: string;
+    color: string;
+    point: AppLoadPoint;
+  }>;
+};
 
 function formatTick(iso: string, bucket: Bucket) {
   const date = new Date(iso);
@@ -72,14 +74,16 @@ function formatTick(iso: string, bucket: Bucket) {
   if (bucket === "1h") {
     return date.toLocaleString("es-EC", {
       day: "2-digit",
-      month: "short",
       hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
     });
   }
   return date.toLocaleTimeString("es-EC", {
     hour: "2-digit",
     minute: "2-digit",
     second: bucket === "10s" ? "2-digit" : undefined,
+    hourCycle: "h23",
   });
 }
 
@@ -95,17 +99,32 @@ function chipStyle(active: boolean, accent?: string) {
   };
 }
 
-function seriesColor(item: AppLoadSeries, apps: AppLoadSeries[]) {
-  if (item.app_id === 0) return TOTAL_COLOR;
-  const index = apps.findIndex((app) => app.app_id === item.app_id);
-  return APP_COLORS[(index >= 0 ? index : 0) % APP_COLORS.length];
+function seriesKey(appId: number) {
+  return `a${appId}`;
+}
+
+function okCount(point: AppLoadPoint) {
+  return Math.max(0, point.requests - point.errors);
+}
+
+/** Arriba de 0 = solo OK. Si hay un error, la línea pasa bajo 0. */
+function signedTraffic(point: AppLoadPoint) {
+  if (point.errors > 0) return -point.errors;
+  return okCount(point);
+}
+
+function formatMb(bytes: number) {
+  const mb = bytes / (1024 * 1024);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+  if (mb < 0.01) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${mb.toFixed(2)} MB`;
 }
 
 function niceMax(value: number) {
-  if (value <= 1) return 1;
-  const mag = 10 ** Math.floor(Math.log10(value));
-  const n = Math.ceil(value / mag);
-  return n * mag;
+  const abs = Math.abs(value);
+  if (abs <= 1) return 1;
+  const mag = 10 ** Math.floor(Math.log10(abs));
+  return Math.ceil(abs / mag) * mag;
 }
 
 function methodTone(method?: string) {
@@ -117,127 +136,210 @@ function methodTone(method?: string) {
   return { bg: "var(--gp-surface-muted)", color: "var(--gp-text-muted)" };
 }
 
-type Hovered = {
-  series: AppLoadSeries;
-  point: AppLoadPoint;
-  x: number;
-  y: number;
-};
+function GlowingDot({
+  cx,
+  cy,
+  stroke,
+  payload,
+  dataKey,
+  onPick,
+}: {
+  cx?: number;
+  cy?: number;
+  stroke?: string;
+  payload?: ChartRow;
+  dataKey?: string;
+  onPick: (row: ChartRow, key: string) => void;
+}) {
+  if (cx == null || cy == null || !payload || !dataKey) return null;
+  const color = stroke || "#fff";
+  return (
+    <g
+      style={{ cursor: "pointer" }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onPick(payload, String(dataKey));
+      }}
+    >
+      <circle cx={cx} cy={cy} r={14} fill={color} opacity={0.18} />
+      <circle cx={cx} cy={cy} r={9} fill={color} opacity={0.35} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={5.5}
+        fill={color}
+        stroke="#fff"
+        strokeWidth={2}
+        style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+      />
+    </g>
+  );
+}
+
+function LoadTooltip({
+  active,
+  payload,
+  onOpen,
+}: {
+  active?: boolean;
+  payload?: Array<{
+    dataKey?: string | number;
+    name?: string;
+    value?: number;
+    color?: string;
+    payload?: ChartRow;
+  }>;
+  onOpen: (row: ChartRow, key?: string) => void;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
+  return (
+    <div
+      className="min-w-[196px] rounded-lg border px-2.5 py-2 shadow-lg"
+      style={{
+        backgroundColor: "var(--gp-card-bg)",
+        borderColor: "var(--gp-card-border)",
+        color: "var(--gp-text)",
+      }}
+    >
+      <p className="text-[10px] text-[var(--gp-text-muted)]">{row.label}</p>
+      {payload.map((item) => {
+        const key = String(item.dataKey || "");
+        const point = row.points[key];
+        const ok = point ? okCount(point) : 0;
+        const errors = point?.errors ?? 0;
+        const signed = item.value ?? 0;
+        return (
+          <button
+            key={key}
+            type="button"
+            className="mt-1 w-full rounded-md px-1 py-1 text-left text-xs hover:bg-[var(--gp-surface-muted)]"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(row, key);
+            }}
+          >
+            <span className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                {item.name}
+              </span>
+              <span
+                className="font-semibold tabular-nums"
+                style={{ color: signed < 0 ? "#f87171" : undefined }}
+              >
+                {signed > 0 ? `+${signed}` : signed}
+              </span>
+            </span>
+            <span className="mt-0.5 block pl-3.5 text-[10px] text-[var(--gp-text-muted)]">
+              {ok} OK · {errors} error{errors === 1 ? "" : "es"} ·{" "}
+              {formatMb(point?.bytes ?? 0)}
+            </span>
+          </button>
+        );
+      })}
+      <p className="mt-1.5 text-[10px] text-[var(--gp-text-muted)]">
+        Con error baja de 0 · Clic para detalle
+      </p>
+    </div>
+  );
+}
 
 export function DashboardLoadChart() {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 800, h: 280 });
   const [bucket, setBucket] = useState<Bucket>("10s");
   const [appId, setAppId] = useState<number>(0);
-  const [hovered, setHovered] = useState<Hovered | null>(null);
-  const [selectedPoint, setSelectedPoint] = useState<{
-    appName: string;
-    point: AppLoadPoint;
-  } | null>(null);
+  const [selected, setSelected] = useState<SelectedSlice | null>(null);
   const detailModal = useOverlayState();
 
   const query = useQuery({
     queryKey: queryKeys.apps.load(bucket, "all"),
     queryFn: () => fetchJson<AppLoadResponse>(`/api/apps/load?bucket=${bucket}`),
     refetchInterval: REFRESH_MS[bucket],
+    staleTime: 8_000,
+    placeholderData: (prev) => prev,
   });
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return undefined;
-    const sync = () => setSize({ w: Math.max(320, el.clientWidth), h: Math.max(220, el.clientHeight) });
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const series = query.data?.series ?? [];
   const apps = useMemo(
     () => series.filter((item) => item.app_id !== 0),
     [series],
   );
-  const total = useMemo(
-    () => series.find((item) => item.app_id === 0) ?? null,
-    [series],
-  );
   const visibleSeries = useMemo(() => {
-    if (appId === 0) return [...(total ? [total] : []), ...apps];
+    if (appId === 0) return apps;
     return apps.filter((item) => item.app_id === appId);
-  }, [appId, total, apps]);
+  }, [appId, apps]);
 
-  const innerW = size.w - PAD.l - PAD.r;
-  const innerH = size.h - PAD.t - PAD.b;
-  const pointCount = visibleSeries[0]?.points.length ?? 0;
-  const maxY = useMemo(() => {
-    const raw = Math.max(
-      0,
-      ...visibleSeries.flatMap((item) => item.points.map((p) => p.requests)),
-    );
-    return niceMax(raw);
-  }, [visibleSeries]);
+  const rows = useMemo<ChartRow[]>(() => {
+    const first = visibleSeries[0];
+    if (!first) return [];
+    return first.points.map((point, index) => {
+      const values: Record<string, number> = {};
+      const points: Record<string, AppLoadPoint> = {};
+      for (const item of visibleSeries) {
+        const current = item.points[index];
+        if (!current) continue;
+        const key = seriesKey(item.app_id);
+        values[key] = signedTraffic(current);
+        points[key] = current;
+      }
+      return {
+        t: point.t,
+        label: formatTick(point.t, bucket),
+        values,
+        points,
+      };
+    });
+  }, [bucket, visibleSeries]);
 
-  const xAt = (index: number) =>
-    PAD.l + (pointCount <= 1 ? innerW / 2 : (index / (pointCount - 1)) * innerW);
-  const yAt = (value: number) => PAD.t + innerH - (maxY === 0 ? 0 : (value / maxY) * innerH);
-
-  const yTicks = useMemo(() => {
-    const steps = 4;
-    return Array.from({ length: steps + 1 }, (_, i) => Math.round((maxY * i) / steps));
-  }, [maxY]);
-
-  const xTicks = useMemo(() => {
-    if (pointCount === 0) return [];
-    const want = Math.min(6, pointCount);
-    const step = Math.max(1, Math.floor((pointCount - 1) / (want - 1)));
-    const indexes = new Set<number>();
-    for (let i = 0; i < pointCount; i += step) indexes.add(i);
-    indexes.add(pointCount - 1);
-    return [...indexes];
-  }, [pointCount]);
+  const chartData = useMemo(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        ...row.values,
+      })),
+    [rows],
+  );
 
   const hasTraffic = visibleSeries.some((item) =>
-    item.points.some((point) => point.requests > 0),
+    item.points.some((point) => point.requests > 0 || point.errors > 0),
   );
+  const yMax = useMemo(() => {
+    let maxAbs = 1;
+    for (const row of rows) {
+      for (const value of Object.values(row.values)) {
+        maxAbs = Math.max(maxAbs, Math.abs(value));
+      }
+    }
+    return niceMax(maxAbs);
+  }, [rows]);
   const bucketLabel =
     BUCKET_OPTIONS.find((item) => item.value === bucket)?.label ?? bucket;
+  const xInterval = Math.max(0, Math.ceil(rows.length / 6) - 1);
 
-  const pickNearest = (clientX: number, clientY: number): Hovered | null => {
-    const el = wrapRef.current;
-    if (!el || pointCount === 0) return null;
-    const rect = el.getBoundingClientRect();
-    const sx = ((clientX - rect.left) / rect.width) * size.w;
-    const sy = ((clientY - rect.top) / rect.height) * size.h;
-    if (sx < PAD.l - 8 || sx > size.w - PAD.r + 8) return null;
-
-    let bestIndex = 0;
-    let bestXd = Infinity;
-    for (let i = 0; i < pointCount; i += 1) {
-      const d = Math.abs(xAt(i) - sx);
-      if (d < bestXd) {
-        bestXd = d;
-        bestIndex = i;
-      }
-    }
-
-    let best: Hovered | null = null;
-    let bestYd = Infinity;
-    for (const item of visibleSeries) {
-      const point = item.points[bestIndex];
-      if (!point) continue;
-      const x = xAt(bestIndex);
-      const y = yAt(point.requests);
-      const d = Math.abs(y - sy);
-      if (!best || d < bestYd || (d === bestYd && point.requests > best.point.requests)) {
-        bestYd = d;
-        best = { series: item, point, x, y };
-      }
-    }
-    return best;
+  const colorOf = (item: AppLoadSeries) => {
+    const index = apps.findIndex((app) => app.app_id === item.app_id);
+    return APP_COLORS[(index >= 0 ? index : 0) % APP_COLORS.length];
   };
 
-  const openDetail = (item: AppLoadSeries, point: AppLoadPoint) => {
-    setSelectedPoint({ appName: item.app_name, point });
+  const openSlice = (row: ChartRow, key?: string) => {
+    const items = visibleSeries
+      .filter((item) => !key || seriesKey(item.app_id) === key)
+      .map((item) => {
+        const itemKey = seriesKey(item.app_id);
+        return {
+          appId: item.app_id,
+          appName: item.app_name,
+          color: colorOf(item),
+          point: row.points[itemKey],
+        };
+      })
+      .filter((item) => item.point);
+    if (!items.length) return;
+    setSelected({ label: row.label, items });
     detailModal.open();
   };
 
@@ -249,8 +351,8 @@ export function DashboardLoadChart() {
             Tráfico en tiempo real
           </h2>
           <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-            Hover en un punto: cuántas peticiones. Clic: método (GET/POST…) y
-            módulo/sección.
+            El 0 es el punto de partida. Arriba: solo peticiones OK. Si esa app
+            tiene un error, su línea baja de 0. Clic para ver MB y detalle.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -294,172 +396,113 @@ export function DashboardLoadChart() {
         </div>
       </div>
 
-      {query.isLoading ? (
+      {query.isLoading && !query.data ? (
         <p className={`${gp.subtitle} py-10 text-center text-sm`}>
           Cargando tráfico…
         </p>
       ) : !hasTraffic ? (
         <p className={`${gp.subtitle} py-10 text-center text-sm`}>
-          Todavía no hay tráfico reportado. Las apps enlazadas guardan un punto
-          cada 10 segundos cuando reciben peticiones.
+          Todavía no hay tráfico. EdDeli, Store y Tienda envían un punto cada 10
+          s cuando el backend está enlazado al gestor (GESTOR_SYNC_SECRET).
         </p>
       ) : (
         <div>
           <p className="mb-2 text-xs font-medium text-[var(--gp-text-muted)]">
-            Peticiones / {bucketLabel}
+            OK / errores · {bucketLabel}
           </p>
-          <div
-            ref={wrapRef}
-            className="relative h-80 w-full"
-            onMouseLeave={() => setHovered(null)}
-          >
-            <svg
-              width="100%"
-              height="100%"
-              viewBox={`0 0 ${size.w} ${size.h}`}
-              role="img"
-              aria-label="Tráfico de peticiones"
-              onMouseMove={(e) => setHovered(pickNearest(e.clientX, e.clientY))}
-              onClick={(e) => {
-                const hit = pickNearest(e.clientX, e.clientY);
-                if (hit) openDetail(hit.series, hit.point);
-              }}
-              onTouchStart={(e) => {
-                const touch = e.touches[0];
-                if (!touch) return;
-                const hit = pickNearest(touch.clientX, touch.clientY);
-                setHovered(hit);
-              }}
-              style={{ cursor: hovered ? "pointer" : "default" }}
-            >
-              {yTicks.map((tick) => {
-                const y = yAt(tick);
-                return (
-                  <g key={`y-${tick}`}>
-                    <line
-                      x1={PAD.l}
-                      x2={size.w - PAD.r}
-                      y1={y}
-                      y2={y}
-                      stroke="var(--gp-border)"
-                      strokeDasharray="3 3"
-                    />
-                    <text
-                      x={PAD.l - 6}
-                      y={y + 3}
-                      textAnchor="end"
-                      fill="var(--gp-text-muted)"
-                      fontSize="11"
-                    >
-                      {tick}
-                    </text>
-                  </g>
-                );
-              })}
-              {xTicks.map((index) => {
-                const t = visibleSeries[0]?.points[index]?.t;
-                if (!t) return null;
-                return (
-                  <text
-                    key={`x-${index}`}
-                    x={xAt(index)}
-                    y={size.h - 8}
-                    textAnchor="middle"
-                    fill="var(--gp-text-muted)"
-                    fontSize="11"
-                  >
-                    {formatTick(t, bucket)}
-                  </text>
-                );
-              })}
-
-              {hovered && (
-                <line
-                  x1={hovered.x}
-                  x2={hovered.x}
-                  y1={PAD.t}
-                  y2={PAD.t + innerH}
-                  stroke="var(--gp-text-muted)"
-                  strokeOpacity={0.35}
-                  strokeDasharray="4 4"
-                />
-              )}
-
-              {visibleSeries.map((item) => {
-                const color = seriesColor(item, apps);
-                const d = item.points
-                  .map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.requests)}`)
-                  .join(" ");
-                const dashed = item.app_id === 0;
-                return (
-                  <g key={item.app_id}>
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth={item.app_id === 0 ? 3 : 2.5}
-                      strokeDasharray={dashed ? "6 3" : undefined}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                    {item.points.map((point, index) =>
-                      point.requests > 0 ? (
-                        <circle
-                          key={`${item.app_id}-${point.t}`}
-                          cx={xAt(index)}
-                          cy={yAt(point.requests)}
-                          r={
-                            hovered?.series.app_id === item.app_id &&
-                            hovered.point.t === point.t
-                              ? 6
-                              : 3.5
-                          }
-                          fill={color}
-                          stroke="var(--gp-card-bg)"
-                          strokeWidth={2}
-                        />
-                      ) : null,
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-
-            {hovered && (
-              <div
-                className="pointer-events-none absolute z-10 min-w-[140px] rounded-lg border px-2.5 py-2 shadow-lg"
-                style={{
-                  left: Math.min(size.w - 170, Math.max(8, hovered.x + 10)),
-                  top: Math.max(8, hovered.y - 52),
-                  backgroundColor: "var(--gp-card-bg)",
-                  borderColor: "var(--gp-card-border)",
-                  color: "var(--gp-text)",
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chartData}
+                margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                onClick={(state) => {
+                  const raw = state.activeIndex ?? state.activeTooltipIndex;
+                  const index = typeof raw === "number" ? raw : Number(raw);
+                  if (!Number.isFinite(index)) return;
+                  const row = chartData[index];
+                  if (row) openSlice(row);
                 }}
               >
-                <p className="text-[10px] text-[var(--gp-text-muted)]">
-                  {formatTick(hovered.point.t, bucket)}
-                </p>
-                <p className="text-xs font-semibold">{hovered.series.app_name}</p>
-                <p className="text-sm font-bold">
-                  {hovered.point.requests}{" "}
-                  <span className="text-xs font-medium text-[var(--gp-text-muted)]">
-                    peticiones
-                  </span>
-                </p>
-                <p className="mt-0.5 text-[10px] text-[var(--gp-text-muted)]">
-                  Clic para ver método y módulo
-                </p>
-              </div>
-            )}
+                <CartesianGrid
+                  stroke="var(--gp-border)"
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="label"
+                  interval={xInterval}
+                  tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={28}
+                />
+                <YAxis
+                  tick={{ fill: "var(--gp-text-muted)", fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  allowDecimals={false}
+                  domain={[-yMax, yMax]}
+                  tickFormatter={(value: number) =>
+                    value > 0 ? `+${value}` : String(value)
+                  }
+                />
+                <ReferenceLine
+                  y={0}
+                  stroke="var(--gp-text)"
+                  strokeOpacity={0.55}
+                  strokeWidth={1.5}
+                />
+                <Tooltip
+                  shared
+                  cursor={{
+                    stroke: "var(--gp-text)",
+                    strokeOpacity: 0.45,
+                    strokeDasharray: "4 3",
+                  }}
+                  wrapperStyle={{ pointerEvents: "auto", outline: "none" }}
+                  content={<LoadTooltip onOpen={openSlice} />}
+                />
+                {visibleSeries.map((item) => {
+                  const color = colorOf(item);
+                  const key = seriesKey(item.app_id);
+                  return (
+                    <Line
+                      key={item.app_id}
+                      type="monotone"
+                      dataKey={key}
+                      name={item.app_name}
+                      stroke={color}
+                      strokeWidth={2.4}
+                      dot={false}
+                      isAnimationActive={false}
+                      activeDot={(dotProps) => (
+                        <GlowingDot
+                          cx={dotProps.cx}
+                          cy={dotProps.cy}
+                          stroke={color}
+                          payload={dotProps.payload as ChartRow}
+                          dataKey={key}
+                          onPick={openSlice}
+                        />
+                      )}
+                    />
+                  );
+                })}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-[var(--gp-text-muted)]">
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-[var(--gp-text-muted)]">
+            <span>0 = sin saldo</span>
+            <span className="text-emerald-400">↑ solo OK</span>
+            <span className="text-red-400">↓ 1 error o más</span>
             {visibleSeries.map((item) => (
               <span key={item.app_id} className="inline-flex items-center gap-1.5">
                 <span
                   className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: seriesColor(item, apps) }}
+                  style={{ backgroundColor: colorOf(item) }}
                 />
-                {item.app_id === 0 ? "Todas las peticiones" : item.app_name}
+                {item.app_name}
               </span>
             ))}
           </div>
@@ -473,64 +516,94 @@ export function DashboardLoadChart() {
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
-                  Detalle · {selectedPoint?.appName || "App"}
+                  {selected?.items.length === 1
+                    ? `Detalle · ${selected.items[0].appName}`
+                    : "Detalle de peticiones"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                {selectedPoint && (
-                  <>
-                    <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
-                      {formatTick(selectedPoint.point.t, bucket)} ·{" "}
-                      <strong>{selectedPoint.point.requests}</strong> peticiones ·{" "}
-                      {selectedPoint.point.errors} error(es)
-                      {selectedPoint.point.latency_p95_ms != null
-                        ? ` · p95 ${selectedPoint.point.latency_p95_ms} ms`
-                        : ""}
+                {selected ? (
+                  <div className="space-y-5">
+                    <p className="text-sm text-[var(--gp-text-muted)]">
+                      {selected.label}
                     </p>
-                    {selectedPoint.point.usage_breakdown.length ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--gp-text-muted)]">
-                          Tipo de petición y módulo
-                        </p>
-                        {selectedPoint.point.usage_breakdown.map((row) => {
-                          const tone = methodTone(row.method);
-                          return (
-                          <div
-                            key={`${row.method || "*"}-${row.module}-${row.section}`}
-                            className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                            style={{ borderColor: "var(--gp-border)" }}
-                          >
-                            <div className="min-w-0">
-                              <div className="mb-1 flex items-center gap-2">
-                                <span
-                                  className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
-                                  style={{ backgroundColor: tone.bg, color: tone.color }}
-                                >
-                                  {row.method || "N/D"}
-                                </span>
-                                <p className="truncate text-sm font-medium text-[var(--gp-text)]">
-                                  {row.module}
-                                </p>
-                              </div>
-                              <p className="text-xs text-[var(--gp-text-muted)]">
-                                {row.section}
-                              </p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-[var(--gp-surface-muted)] px-2 py-1 text-xs font-semibold">
-                              {row.requests}
+                    {selected.items.map((item) => (
+                      <div key={item.appId} className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--gp-text)]">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            {item.appName}
+                          </p>
+                          <p className="text-xs text-[var(--gp-text-muted)]">
+                            <span className="text-emerald-400">
+                              {okCount(item.point)} OK
                             </span>
-                          </div>
-                          );
-                        })}
+                            {" · "}
+                            <span
+                              className={
+                                item.point.errors
+                                  ? "text-red-400"
+                                  : undefined
+                              }
+                            >
+                              {item.point.errors} error
+                              {item.point.errors === 1 ? "" : "es"}
+                            </span>
+                            {" · "}
+                            <strong className="text-[var(--gp-text)]">
+                              {formatMb(item.point.bytes)}
+                            </strong>
+                            {item.point.latency_p95_ms != null
+                              ? ` · p95 ${item.point.latency_p95_ms} ms`
+                              : ""}
+                          </p>
+                        </div>
+                        {item.point.usage_breakdown.length ? (
+                          item.point.usage_breakdown.map((row) => {
+                            const tone = methodTone(row.method);
+                            return (
+                              <div
+                                key={`${item.appId}-${row.method || "*"}-${row.module}-${row.section}`}
+                                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                                style={{ borderColor: "var(--gp-border)" }}
+                              >
+                                <div className="min-w-0">
+                                  <div className="mb-1 flex items-center gap-2">
+                                    <span
+                                      className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
+                                      style={{
+                                        backgroundColor: tone.bg,
+                                        color: tone.color,
+                                      }}
+                                    >
+                                      {row.method || "N/D"}
+                                    </span>
+                                    <p className="truncate text-sm font-medium text-[var(--gp-text)]">
+                                      {row.module}
+                                    </p>
+                                  </div>
+                                  <p className="text-xs text-[var(--gp-text-muted)]">
+                                    {row.section}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 rounded-full bg-[var(--gp-surface-muted)] px-2 py-1 text-xs font-semibold">
+                                  {row.requests}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-sm text-[var(--gp-text-muted)]">
+                            Este intervalo no tiene desglose.
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-[var(--gp-text-muted)]">
-                        Este intervalo no tiene desglose. Los puntos nuevos (tras
-                        recargar las apps) incluirán GET/POST y el módulo.
-                      </p>
-                    )}
-                  </>
-                )}
+                    ))}
+                  </div>
+                ) : null}
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="secondary" slot="close">
