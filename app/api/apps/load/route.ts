@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
 import { serviceErrorResponse } from "@/src/shared/lib/api-error";
+import {
+  parseLoadBreakdown,
+  type ErrorRow,
+  type UsageRow,
+} from "@/src/features/apps/lib/ingest-app-load";
 
 const APP_PRIORITY = ["eddeli", "store", "tienda"];
 
@@ -54,29 +59,15 @@ function bucketStart(date: Date, bucket: Bucket) {
   return copy;
 }
 
-type UsageRow = { module: string; section: string; method: string; requests: number };
-
-function normalizeUsage(value: unknown): UsageRow[] {
-  if (!Array.isArray(value)) return [];
-  const totals = new Map<string, UsageRow>();
-  for (const raw of value) {
-    if (!raw || typeof raw !== "object") continue;
-    const item = raw as Record<string, unknown>;
-    const module = String(item.module || "Sistema").trim() || "Sistema";
-    const section = String(item.section || "Otros servicios").trim() || "Otros servicios";
-    const method = String(item.method || "").trim().toUpperCase();
-    const requests = toNumber(item.requests as number | bigint | null);
-    if (!requests) continue;
-    const key = `${module}::${section}::${method || "*"}`;
-    const previous = totals.get(key);
-    totals.set(key, {
-      module,
-      section,
-      method,
-      requests: (previous?.requests || 0) + requests,
-    });
+function mergeBreakdown(values: unknown[]) {
+  const usage: UsageRow[] = [];
+  const errors: ErrorRow[] = [];
+  for (const value of values) {
+    const parsed = parseLoadBreakdown(value);
+    usage.push(...parsed.usage);
+    errors.push(...parsed.errors);
   }
-  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 40);
+  return parseLoadBreakdown({ usage, errors });
 }
 
 export async function GET(request: NextRequest) {
@@ -141,6 +132,7 @@ export async function GET(request: NextRequest) {
             errors: number;
             latency_p95_ms: number | null;
             usage_breakdown: UsageRow[];
+            error_breakdown: ErrorRow[];
           }
         >;
       }
@@ -173,6 +165,7 @@ export async function GET(request: NextRequest) {
         errors: 0,
         latency_p95_ms: null as number | null,
         usage_breakdown: [] as UsageRow[],
+        error_breakdown: [] as ErrorRow[],
       };
       prev.values.push(row.requests);
       // Salud del intervalo: respuestas OK empujan hacia arriba; cada error
@@ -186,10 +179,12 @@ export async function GET(request: NextRequest) {
             ? row.latency_p95_ms
             : Math.max(prev.latency_p95_ms, row.latency_p95_ms);
       }
-      prev.usage_breakdown = normalizeUsage([
-        ...prev.usage_breakdown,
-        ...(Array.isArray(row.usage_breakdown) ? row.usage_breakdown : []),
+      const merged = mergeBreakdown([
+        { usage: prev.usage_breakdown, errors: prev.error_breakdown },
+        row.usage_breakdown,
       ]);
+      prev.usage_breakdown = merged.usage;
+      prev.error_breakdown = merged.errors;
       series.points.set(key, prev);
     }
 
@@ -232,6 +227,7 @@ export async function GET(request: NextRequest) {
             errors: point?.errors ?? 0,
             latency_p95_ms: point?.latency_p95_ms ?? null,
             usage_breakdown: point?.usage_breakdown ?? [],
+            error_breakdown: point?.error_breakdown ?? [],
           };
         }),
       }));
@@ -263,9 +259,18 @@ export async function GET(request: NextRequest) {
           if (value == null) return max;
           return max == null ? value : Math.max(max, value);
         }, null),
-        usage_breakdown: normalizeUsage(
-          appSeries.flatMap((item) => item.points[index].usage_breakdown),
-        ),
+        ...(() => {
+          const merged = mergeBreakdown(
+            appSeries.map((item) => ({
+              usage: item.points[index].usage_breakdown,
+              errors: item.points[index].error_breakdown,
+            })),
+          );
+          return {
+            usage_breakdown: merged.usage,
+            error_breakdown: merged.errors,
+          };
+        })(),
       };
     });
 

@@ -14,6 +14,34 @@ export type AppLoadSampleInput = {
     method?: string;
     requests?: number | string;
   }>;
+  error_breakdown?: Array<{
+    status?: number | string;
+    kind?: string;
+    method?: string;
+    path?: string;
+    message?: string;
+    module?: string;
+    section?: string;
+    count?: number | string;
+  }>;
+};
+
+export type UsageRow = {
+  module: string;
+  section: string;
+  method: string;
+  requests: number;
+};
+
+export type ErrorRow = {
+  status: number;
+  kind: string;
+  method: string;
+  path: string;
+  message: string;
+  module: string;
+  section: string;
+  count: number;
 };
 
 function toNonNegInt(value: unknown, fallback = 0) {
@@ -35,8 +63,6 @@ function truncateToMinute(date: Date) {
   copy.setUTCSeconds(0, 0);
   return copy;
 }
-
-type UsageRow = { module: string; section: string; method: string; requests: number };
 
 function normalizeUsage(value: unknown): UsageRow[] {
   if (!Array.isArray(value)) return [];
@@ -62,8 +88,83 @@ function normalizeUsage(value: unknown): UsageRow[] {
   return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 40);
 }
 
-function aggregateUsage(rows: Array<{ usage_breakdown: unknown }>): UsageRow[] {
-  return normalizeUsage(rows.flatMap((row) => (Array.isArray(row.usage_breakdown) ? row.usage_breakdown : [])));
+function fallbackKind(status: number) {
+  if (status === 400) return "Petición inválida";
+  if (status === 401) return "No autenticado";
+  if (status === 403) return "Sin permiso";
+  if (status === 404) return "No encontrado";
+  if (status === 409) return "Conflicto";
+  if (status === 422) return "Datos no válidos";
+  if (status === 429) return "Demasiadas peticiones";
+  if (status >= 500) return "Error del servidor";
+  if (status >= 400) return "Error del cliente";
+  return `HTTP ${status}`;
+}
+
+function normalizeErrors(value: unknown): ErrorRow[] {
+  if (!Array.isArray(value)) return [];
+  const totals = new Map<string, ErrorRow>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const status = toNonNegInt(item.status);
+    if (status < 400) continue;
+    const kind =
+      String(item.kind || "").trim().slice(0, 80) || fallbackKind(status);
+    const method = String(item.method || "").trim().toUpperCase().slice(0, 12);
+    const path = String(item.path || "/").trim().slice(0, 160) || "/";
+    const message =
+      String(item.message || kind).trim().slice(0, 180) || kind;
+    const module = String(item.module || "Sistema").trim().slice(0, 100) || "Sistema";
+    const section =
+      String(item.section || "Otros servicios").trim().slice(0, 160) || "Otros servicios";
+    const count = Math.max(1, toNonNegInt(item.count, 1));
+    const key = `${status}::${method}::${path}::${message}`;
+    const previous = totals.get(key);
+    totals.set(key, {
+      status,
+      kind,
+      method,
+      path,
+      message,
+      module,
+      section,
+      count: (previous?.count || 0) + count,
+    });
+  }
+  return [...totals.values()].sort((a, b) => b.count - a.count).slice(0, 25);
+}
+
+function packBreakdown(usage: UsageRow[], errors: ErrorRow[]) {
+  return { usage, errors };
+}
+
+export function parseLoadBreakdown(value: unknown): {
+  usage: UsageRow[];
+  errors: ErrorRow[];
+} {
+  if (Array.isArray(value)) {
+    return { usage: normalizeUsage(value), errors: [] };
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return {
+      usage: normalizeUsage(obj.usage ?? obj.usage_breakdown),
+      errors: normalizeErrors(obj.errors ?? obj.error_breakdown),
+    };
+  }
+  return { usage: [], errors: [] };
+}
+
+function aggregatePacked(rows: Array<{ usage_breakdown: unknown }>) {
+  const usage: UsageRow[] = [];
+  const errors: ErrorRow[] = [];
+  for (const row of rows) {
+    const parsed = parseLoadBreakdown(row.usage_breakdown);
+    usage.push(...parsed.usage);
+    errors.push(...parsed.errors);
+  }
+  return packBreakdown(normalizeUsage(usage), normalizeErrors(errors));
 }
 
 export async function ingestAppLoadSample(
@@ -80,6 +181,8 @@ export async function ingestAppLoadSample(
   const bytesOut = BigInt(toNonNegInt(body.bytes_out));
   const errors = toNonNegInt(body.errors);
   const usageBreakdown = normalizeUsage(body.usage_breakdown);
+  const errorBreakdown = normalizeErrors(body.error_breakdown);
+  const packed = packBreakdown(usageBreakdown, errorBreakdown);
   const latency =
     body.latency_p95_ms == null || body.latency_p95_ms === ""
       ? null
@@ -100,7 +203,7 @@ export async function ingestAppLoadSample(
       bytes_out: bytesOut,
       errors,
       latency_p95_ms: latency,
-      usage_breakdown: usageBreakdown,
+      usage_breakdown: packed,
     },
     update: {
       requests,
@@ -108,7 +211,7 @@ export async function ingestAppLoadSample(
       bytes_out: bytesOut,
       errors,
       latency_p95_ms: latency,
-      usage_breakdown: usageBreakdown,
+      usage_breakdown: packed,
     },
   });
 
@@ -130,7 +233,7 @@ export async function ingestAppLoadSample(
   const minuteLatency = latencies.length
     ? Math.max(...latencies)
     : null;
-  const minuteUsage = aggregateUsage(minuteSamples);
+  const minutePacked = aggregatePacked(minuteSamples);
 
   await prisma.appLoadMinute.upsert({
     where: {
@@ -147,7 +250,7 @@ export async function ingestAppLoadSample(
       bytes_out: minuteBytesOut,
       errors: minuteErrors,
       latency_p95_ms: minuteLatency,
-      usage_breakdown: minuteUsage,
+      usage_breakdown: minutePacked,
     },
     update: {
       requests: minuteRequests,
@@ -155,7 +258,7 @@ export async function ingestAppLoadSample(
       bytes_out: minuteBytesOut,
       errors: minuteErrors,
       latency_p95_ms: minuteLatency,
-      usage_breakdown: minuteUsage,
+      usage_breakdown: minutePacked,
     },
   });
 

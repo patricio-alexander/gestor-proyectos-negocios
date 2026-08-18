@@ -21,10 +21,11 @@ import {
   type AppLoadResponse,
   type AppLoadSeries,
   type Bucket,
+  type ErrorRow,
   type UsageRow,
 } from "../lib/app-load-types";
 
-export type { AppLoadPoint, AppLoadSeries, Bucket, UsageRow };
+export type { AppLoadPoint, AppLoadSeries, Bucket, ErrorRow, UsageRow };
 
 const APP_COLORS = [
   "#FF2D95",
@@ -125,6 +126,13 @@ function niceMax(value: number) {
   if (abs <= 1) return 1;
   const mag = 10 ** Math.floor(Math.log10(abs));
   return Math.ceil(abs / mag) * mag;
+}
+
+function errorTone(status: number) {
+  if (status >= 500) return { bg: "#fee2e2", color: "#991b1b" };
+  if (status === 404) return { bg: "#ffedd5", color: "#9a3412" };
+  if (status === 401 || status === 403) return { bg: "#fef3c7", color: "#92400e" };
+  return { bg: "#fee2e2", color: "#7f1d1d" };
 }
 
 function methodTone(method?: string) {
@@ -512,7 +520,7 @@ export function DashboardLoadChart() {
       <Modal state={detailModal}>
         <Modal.Backdrop>
           <Modal.Container>
-            <Modal.Dialog className="sm:max-w-lg">
+            <Modal.Dialog className="sm:max-w-xl">
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading>
@@ -561,6 +569,73 @@ export function DashboardLoadChart() {
                               : ""}
                           </p>
                         </div>
+                        {item.point.errors > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-red-400">
+                              Errores
+                            </p>
+                            {(item.point.error_breakdown || []).length ? (
+                              (item.point.error_breakdown || []).map((row: ErrorRow) => {
+                                const tone = errorTone(row.status);
+                                const method = methodTone(row.method);
+                                return (
+                                  <div
+                                    key={`${item.appId}-${row.status}-${row.method}-${row.path}-${row.message}`}
+                                    className="rounded-lg border px-3 py-2"
+                                    style={{
+                                      borderColor: "#f87171",
+                                      backgroundColor: "rgba(248,113,113,0.08)",
+                                    }}
+                                  >
+                                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                                      <span
+                                        className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                                        style={{
+                                          backgroundColor: tone.bg,
+                                          color: tone.color,
+                                        }}
+                                      >
+                                        {row.status} {row.kind}
+                                      </span>
+                                      <span
+                                        className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
+                                        style={{
+                                          backgroundColor: method.bg,
+                                          color: method.color,
+                                        }}
+                                      >
+                                        {row.method || "N/D"}
+                                      </span>
+                                      {row.count > 1 ? (
+                                        <span className="text-[10px] font-semibold text-red-400">
+                                          ×{row.count}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <p className="break-all font-mono text-xs text-[var(--gp-text)]">
+                                      {row.path}
+                                    </p>
+                                    <p className="mt-1 text-sm text-[var(--gp-text)]">
+                                      {row.message}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-[var(--gp-text-muted)]">
+                                      {row.module}
+                                      {row.section ? ` · ${row.section}` : ""}
+                                    </p>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-sm text-[var(--gp-text-muted)]">
+                                Hay {item.point.errors} error
+                                {item.point.errors === 1 ? "" : "es"} en este
+                                intervalo, pero todavía no llegó el detalle
+                                (ruta y mensaje). Eso empieza con tráfico nuevo
+                                después de actualizar los backends.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
                         {item.point.usage_breakdown.length ? (
                           item.point.usage_breakdown.map((row) => {
                             const tone = methodTone(row.method);

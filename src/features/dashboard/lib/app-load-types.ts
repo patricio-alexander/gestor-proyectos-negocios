@@ -7,6 +7,17 @@ export type UsageRow = {
   requests: number;
 };
 
+export type ErrorRow = {
+  status: number;
+  kind: string;
+  method?: string;
+  path: string;
+  message: string;
+  module?: string;
+  section?: string;
+  count: number;
+};
+
 export type AppLoadPoint = {
   t: string;
   requests: number;
@@ -14,6 +25,7 @@ export type AppLoadPoint = {
   errors: number;
   latency_p95_ms: number | null;
   usage_breakdown: UsageRow[];
+  error_breakdown: ErrorRow[];
 };
 
 export type AppLoadSeries = {
