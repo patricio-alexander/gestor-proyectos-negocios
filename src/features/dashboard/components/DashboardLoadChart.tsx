@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Modal, useOverlayState } from "@heroui/react";
 import {
@@ -114,11 +114,26 @@ function signedTraffic(point: AppLoadPoint) {
   return okCount(point);
 }
 
+function seriesHasTraffic(item: AppLoadSeries) {
+  return item.points.some(
+    (point) => (point.requests ?? 0) > 0 || (point.errors ?? 0) > 0,
+  );
+}
+
 function formatMb(bytes: number) {
   const mb = bytes / (1024 * 1024);
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
   if (mb < 0.01) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${mb.toFixed(2)} MB`;
+}
+
+function formatTrafficVolume(bytesIn: number, bytesOut: number) {
+  const total = Math.max(0, bytesIn) + Math.max(0, bytesOut);
+  if (total <= 0) return "0 MB";
+  const parts: string[] = [];
+  if (bytesIn > 0) parts.push(`↑ ${formatMb(bytesIn)}`);
+  if (bytesOut > 0) parts.push(`↓ ${formatMb(bytesOut)}`);
+  return `${parts.join(" · ")} · total ${formatMb(total)}`;
 }
 
 function niceMax(value: number) {
@@ -144,13 +159,14 @@ function methodTone(method?: string) {
   return { bg: "var(--gp-surface-muted)", color: "var(--gp-text-muted)" };
 }
 
-function GlowingDot({
+function PointHit({
   cx,
   cy,
   stroke,
   payload,
   dataKey,
   onPick,
+  active = false,
 }: {
   cx?: number;
   cy?: number;
@@ -158,9 +174,14 @@ function GlowingDot({
   payload?: ChartRow;
   dataKey?: string;
   onPick: (row: ChartRow, key: string) => void;
+  active?: boolean;
 }) {
   if (cx == null || cy == null || !payload || !dataKey) return null;
   const color = stroke || "#fff";
+  const value = payload.values?.[dataKey];
+  // Sin tráfico en ese instante: no estorba ni se puede clickear.
+  if (value == null || value === 0) return null;
+
   return (
     <g
       style={{ cursor: "pointer" }}
@@ -169,16 +190,22 @@ function GlowingDot({
         onPick(payload, String(dataKey));
       }}
     >
-      <circle cx={cx} cy={cy} r={14} fill={color} opacity={0.18} />
-      <circle cx={cx} cy={cy} r={9} fill={color} opacity={0.35} />
+      {/* Zona de hit amplia y exacta por serie */}
+      <circle cx={cx} cy={cy} r={16} fill="transparent" />
+      {active ? (
+        <>
+          <circle cx={cx} cy={cy} r={12} fill={color} opacity={0.16} />
+          <circle cx={cx} cy={cy} r={8} fill={color} opacity={0.32} />
+        </>
+      ) : null}
       <circle
         cx={cx}
         cy={cy}
-        r={5.5}
+        r={active ? 5.5 : 3.2}
         fill={color}
         stroke="#fff"
-        strokeWidth={2}
-        style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+        strokeWidth={active ? 2 : 1.25}
+        style={{ filter: active ? `drop-shadow(0 0 6px ${color})` : undefined }}
       />
     </g>
   );
@@ -202,6 +229,10 @@ function LoadTooltip({
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload;
   if (!row) return null;
+  // Solo apps con valor distinto de 0 en ese instante.
+  const entries = payload.filter((item) => Number(item.value ?? 0) !== 0);
+  if (!entries.length) return null;
+
   return (
     <div
       className="min-w-[196px] rounded-lg border px-2.5 py-2 shadow-lg"
@@ -212,7 +243,7 @@ function LoadTooltip({
       }}
     >
       <p className="text-[10px] text-[var(--gp-text-muted)]">{row.label}</p>
-      {payload.map((item) => {
+      {entries.map((item) => {
         const key = String(item.dataKey || "");
         const point = row.points[key];
         const ok = point ? okCount(point) : 0;
@@ -245,13 +276,13 @@ function LoadTooltip({
             </span>
             <span className="mt-0.5 block pl-3.5 text-[10px] text-[var(--gp-text-muted)]">
               {ok} OK · {errors} error{errors === 1 ? "" : "es"} ·{" "}
-              {formatMb(point?.bytes ?? 0)}
+              {formatTrafficVolume(point?.bytes_in ?? 0, point?.bytes_out ?? 0)}
             </span>
           </button>
         );
       })}
       <p className="mt-1.5 text-[10px] text-[var(--gp-text-muted)]">
-        Con error baja de 0 · Clic para detalle
+        Clic en la app del tooltip o en su punto de la línea
       </p>
     </div>
   );
@@ -276,10 +307,19 @@ export function DashboardLoadChart() {
     () => series.filter((item) => item.app_id !== 0),
     [series],
   );
+  /** Solo apps con tráfico real en la ventana (oculta Scheduly/etc. en cero). */
+  const liveApps = useMemo(() => apps.filter(seriesHasTraffic), [apps]);
+
+  useEffect(() => {
+    if (appId !== 0 && !liveApps.some((item) => item.app_id === appId)) {
+      setAppId(0);
+    }
+  }, [appId, liveApps]);
+
   const visibleSeries = useMemo(() => {
-    if (appId === 0) return apps;
-    return apps.filter((item) => item.app_id === appId);
-  }, [appId, apps]);
+    if (appId === 0) return liveApps;
+    return liveApps.filter((item) => item.app_id === appId);
+  }, [appId, liveApps]);
 
   const rows = useMemo<ChartRow[]>(() => {
     const first = visibleSeries[0];
@@ -312,9 +352,7 @@ export function DashboardLoadChart() {
     [rows],
   );
 
-  const hasTraffic = visibleSeries.some((item) =>
-    item.points.some((point) => point.requests > 0 || point.errors > 0),
-  );
+  const hasTraffic = liveApps.length > 0;
   const yMax = useMemo(() => {
     let maxAbs = 1;
     for (const row of rows) {
@@ -329,13 +367,14 @@ export function DashboardLoadChart() {
   const xInterval = Math.max(0, Math.ceil(rows.length / 6) - 1);
 
   const colorOf = (item: AppLoadSeries) => {
-    const index = apps.findIndex((app) => app.app_id === item.app_id);
+    const index = liveApps.findIndex((app) => app.app_id === item.app_id);
     return APP_COLORS[(index >= 0 ? index : 0) % APP_COLORS.length];
   };
 
   const openSlice = (row: ChartRow, key?: string) => {
+    if (!key) return; // solo clic exacto por serie
     const items = visibleSeries
-      .filter((item) => !key || seriesKey(item.app_id) === key)
+      .filter((item) => seriesKey(item.app_id) === key)
       .map((item) => {
         const itemKey = seriesKey(item.app_id);
         return {
@@ -345,7 +384,7 @@ export function DashboardLoadChart() {
           point: row.points[itemKey],
         };
       })
-      .filter((item) => item.point);
+      .filter((item) => item.point && signedTraffic(item.point) !== 0);
     if (!items.length) return;
     setSelected({ label: row.label, items });
     detailModal.open();
@@ -359,8 +398,9 @@ export function DashboardLoadChart() {
             Tráfico en tiempo real
           </h2>
           <p className="mt-1 text-xs text-[var(--gp-text-muted)]">
-            El 0 es el punto de partida. Arriba: solo peticiones OK. Si esa app
-            tiene un error, su línea baja de 0. Clic para ver MB y detalle.
+            El 0 es el punto de partida. Arriba: solo OK. Con error, la línea
+            baja de 0. Clic en el punto o en la app del tooltip. Apps en cero no
+            se muestran.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -372,7 +412,7 @@ export function DashboardLoadChart() {
           >
             Todas
           </button>
-          {apps.map((item, index) => (
+          {liveApps.map((item, index) => (
             <button
               key={item.app_id}
               type="button"
@@ -385,7 +425,9 @@ export function DashboardLoadChart() {
             >
               <span
                 className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
-                style={{ backgroundColor: APP_COLORS[index % APP_COLORS.length] }}
+                style={{
+                  backgroundColor: APP_COLORS[index % APP_COLORS.length],
+                }}
               />
               {item.app_name}
             </button>
@@ -417,19 +459,15 @@ export function DashboardLoadChart() {
         <div>
           <p className="mb-2 text-xs font-medium text-[var(--gp-text-muted)]">
             OK / errores · {bucketLabel}
+            {apps.length > liveApps.length
+              ? ` · ocultas ${apps.length - liveApps.length} en cero`
+              : ""}
           </p>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}
                 margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
-                onClick={(state) => {
-                  const raw = state.activeIndex ?? state.activeTooltipIndex;
-                  const index = typeof raw === "number" ? raw : Number(raw);
-                  if (!Number.isFinite(index)) return;
-                  const row = chartData[index];
-                  if (row) openSlice(row);
-                }}
               >
                 <CartesianGrid
                   stroke="var(--gp-border)"
@@ -482,16 +520,27 @@ export function DashboardLoadChart() {
                       name={item.app_name}
                       stroke={color}
                       strokeWidth={2.4}
-                      dot={false}
                       isAnimationActive={false}
-                      activeDot={(dotProps) => (
-                        <GlowingDot
+                      connectNulls={false}
+                      dot={(dotProps) => (
+                        <PointHit
                           cx={dotProps.cx}
                           cy={dotProps.cy}
                           stroke={color}
                           payload={dotProps.payload as ChartRow}
                           dataKey={key}
                           onPick={openSlice}
+                        />
+                      )}
+                      activeDot={(dotProps) => (
+                        <PointHit
+                          cx={dotProps.cx}
+                          cy={dotProps.cy}
+                          stroke={color}
+                          payload={dotProps.payload as ChartRow}
+                          dataKey={key}
+                          onPick={openSlice}
+                          active
                         />
                       )}
                     />
@@ -505,7 +554,10 @@ export function DashboardLoadChart() {
             <span className="text-emerald-400">↑ solo OK</span>
             <span className="text-red-400">↓ 1 error o más</span>
             {visibleSeries.map((item) => (
-              <span key={item.app_id} className="inline-flex items-center gap-1.5">
+              <span
+                key={item.app_id}
+                className="inline-flex items-center gap-1.5"
+              >
                 <span
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ backgroundColor: colorOf(item) }}
@@ -552,9 +604,7 @@ export function DashboardLoadChart() {
                             {" · "}
                             <span
                               className={
-                                item.point.errors
-                                  ? "text-red-400"
-                                  : undefined
+                                item.point.errors ? "text-red-400" : undefined
                               }
                             >
                               {item.point.errors} error
@@ -562,117 +612,115 @@ export function DashboardLoadChart() {
                             </span>
                             {" · "}
                             <strong className="text-[var(--gp-text)]">
-                              {formatMb(item.point.bytes)}
+                              {formatTrafficVolume(
+                                item.point.bytes_in ?? 0,
+                                item.point.bytes_out ?? 0,
+                              )}
                             </strong>
                             {item.point.latency_p95_ms != null
-                              ? ` · p95 ${item.point.latency_p95_ms} ms`
+                              ? ` · p95 ${Math.round(item.point.latency_p95_ms)} ms`
                               : ""}
                           </p>
                         </div>
-                        {item.point.errors > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-red-400">
+                        {item.point.error_breakdown?.length ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[11px] font-medium text-[var(--gp-text-muted)]">
                               Errores
                             </p>
-                            {(item.point.error_breakdown || []).length ? (
-                              (item.point.error_breakdown || []).map((row: ErrorRow) => {
-                                const tone = errorTone(row.status);
-                                const method = methodTone(row.method);
-                                return (
-                                  <div
-                                    key={`${item.appId}-${row.status}-${row.method}-${row.path}-${row.message}`}
-                                    className="rounded-lg border px-3 py-2"
-                                    style={{
-                                      borderColor: "#f87171",
-                                      backgroundColor: "rgba(248,113,113,0.08)",
-                                    }}
-                                  >
-                                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                                      <span
-                                        className="rounded px-1.5 py-0.5 text-[10px] font-bold"
-                                        style={{
-                                          backgroundColor: tone.bg,
-                                          color: tone.color,
-                                        }}
-                                      >
-                                        {row.status} {row.kind}
-                                      </span>
-                                      <span
-                                        className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
-                                        style={{
-                                          backgroundColor: method.bg,
-                                          color: method.color,
-                                        }}
-                                      >
-                                        {row.method || "N/D"}
-                                      </span>
-                                      {row.count > 1 ? (
-                                        <span className="text-[10px] font-semibold text-red-400">
-                                          ×{row.count}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <p className="break-all font-mono text-xs text-[var(--gp-text)]">
-                                      {row.path}
-                                    </p>
-                                    <p className="mt-1 text-sm text-[var(--gp-text)]">
-                                      {row.message}
-                                    </p>
-                                    <p className="mt-0.5 text-[11px] text-[var(--gp-text-muted)]">
-                                      {row.module}
-                                      {row.section ? ` · ${row.section}` : ""}
-                                    </p>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <p className="text-sm text-[var(--gp-text-muted)]">
-                                Hay {item.point.errors} error
-                                {item.point.errors === 1 ? "" : "es"} en este
-                                intervalo, pero todavía no llegó el detalle
-                                (ruta y mensaje). Eso empieza con tráfico nuevo
-                                después de actualizar los backends.
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
-                        {item.point.usage_breakdown.length ? (
-                          item.point.usage_breakdown.map((row) => {
-                            const tone = methodTone(row.method);
-                            return (
-                              <div
-                                key={`${item.appId}-${row.method || "*"}-${row.module}-${row.section}`}
-                                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                                style={{ borderColor: "var(--gp-border)" }}
-                              >
-                                <div className="min-w-0">
-                                  <div className="mb-1 flex items-center gap-2">
+                            {item.point.error_breakdown.map((err, idx) => {
+                              const tone = errorTone(err.status);
+                              return (
+                                <div
+                                  key={`${err.path}-${err.status}-${idx}`}
+                                  className="rounded-md border px-2.5 py-1.5 text-xs"
+                                  style={{
+                                    borderColor: "var(--gp-card-border)",
+                                    backgroundColor: "var(--gp-surface-muted)",
+                                  }}
+                                >
+                                  <div className="flex flex-wrap items-center gap-1.5">
                                     <span
-                                      className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
+                                      className="rounded px-1.5 py-0.5 font-semibold"
                                       style={{
                                         backgroundColor: tone.bg,
                                         color: tone.color,
                                       }}
                                     >
-                                      {row.method || "N/D"}
+                                      {err.status}
                                     </span>
-                                    <p className="truncate text-sm font-medium text-[var(--gp-text)]">
-                                      {row.module}
-                                    </p>
+                                    {err.method ? (
+                                      <span
+                                        className="rounded px-1.5 py-0.5 font-semibold"
+                                        style={methodTone(err.method)}
+                                      >
+                                        {err.method}
+                                      </span>
+                                    ) : null}
+                                    <span className="font-medium text-[var(--gp-text)]">
+                                      {err.kind}
+                                    </span>
+                                    <span className="text-[var(--gp-text-muted)]">
+                                      ×{err.count}
+                                    </span>
                                   </div>
-                                  <p className="text-xs text-[var(--gp-text-muted)]">
-                                    {row.section}
+                                  {(err.module || err.section) && (
+                                    <p className="mt-1 text-[11px] text-[var(--gp-text-muted)]">
+                                      {[err.module, err.section].filter(Boolean).join(" · ")}
+                                    </p>
+                                  )}
+                                  <p className="mt-0.5 font-mono text-[10px] text-[var(--gp-text-faint)]">
+                                    {err.path}
                                   </p>
+                                  {err.message ? (
+                                    <p className="mt-0.5 text-[11px] text-[var(--gp-text-muted)]">
+                                      {err.message}
+                                    </p>
+                                  ) : null}
                                 </div>
-                                <span className="shrink-0 rounded-full bg-[var(--gp-surface-muted)] px-2 py-1 text-xs font-semibold">
-                                  {row.requests}
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                        {item.point.usage_breakdown?.length ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[11px] font-medium text-[var(--gp-text-muted)]">
+                              Módulos y secciones
+                            </p>
+                            {item.point.usage_breakdown.slice(0, 10).map((u, idx) => (
+                              <div
+                                key={`${u.module}-${u.section}-${u.method}-${idx}`}
+                                className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+                                style={{
+                                  borderColor: "var(--gp-card-border)",
+                                  backgroundColor: "var(--gp-surface-muted)",
+                                }}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block font-medium text-[var(--gp-text)]">
+                                    {u.module}
+                                  </span>
+                                  <span className="block truncate text-[11px] text-[var(--gp-text-muted)]">
+                                    {u.section}
+                                    {u.method ? ` · ${u.method}` : ""}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-right tabular-nums">
+                                  <span className="block font-semibold text-[var(--gp-text)]">
+                                    {u.requests} req
+                                  </span>
+                                  <span className="block text-[10px] text-[var(--gp-text-muted)]">
+                                    {formatTrafficVolume(
+                                      u.bytes_in ?? 0,
+                                      u.bytes_out ?? 0,
+                                    )}
+                                  </span>
                                 </span>
                               </div>
-                            );
-                          })
+                            ))}
+                          </div>
                         ) : (
-                          <p className="text-sm text-[var(--gp-text-muted)]">
-                            Este intervalo no tiene desglose.
+                          <p className="text-[11px] text-[var(--gp-text-faint)]">
+                            Sin desglose por módulo en este intervalo (solo totales OK/errores).
                           </p>
                         )}
                       </div>
@@ -681,7 +729,7 @@ export function DashboardLoadChart() {
                 ) : null}
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" slot="close">
+                <Button variant="secondary" onPress={() => detailModal.close()}>
                   Cerrar
                 </Button>
               </Modal.Footer>

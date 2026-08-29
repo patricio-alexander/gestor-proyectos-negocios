@@ -92,12 +92,10 @@ function capsFromFunctions(functions = []) {
 const KEY_MAP = {
   acceso: null, // split
   operacion: "operacion",
-  "comprobantes-sri": "comprobantes_electronicos",
   ventas: "ventas",
   finanzas: "finanzas",
   inventario: "inventario",
   produccion: "produccion",
-  canal: "canal_digital",
   documentos: "documentos",
   logistica: "logistica",
   comunidad: "comunidad",
@@ -132,7 +130,7 @@ for (const group of APP_MODULE_GROUPS) {
       if (path === "/") {
         modules.push({
           key: "dashboard",
-          name: "Dashboard",
+          name: "Panel",
           description: sec.description || group.summary || "",
           status: "active",
           sections: [
@@ -168,14 +166,14 @@ for (const group of APP_MODULE_GROUPS) {
 
   // Alias extra
   const aliases = {
-    comprobantes_electronicos: [
-      { key: "/comprobantes", name: "Comprobantes (redir)", status: groupStatus },
+    operacion: [
+      { key: "/comprobantes", name: "Comprobantes (redir)", status: "maintenance" },
       {
         key: "/sistema/facturacion-electronica",
         name: "Facturación electrónica (atajo)",
-        status: groupStatus,
+        status: "maintenance",
       },
-      { key: "/facturacion/sri", name: "Config SRI (atajo)", status: groupStatus },
+      { key: "/facturacion/sri", name: "Config SRI (atajo)", status: "maintenance" },
     ],
     administracion: [
       { key: "/app-settings", name: "Ajustes de app", status: "active" },
@@ -191,7 +189,6 @@ for (const group of APP_MODULE_GROUPS) {
       { key: "/editorDefault", name: "Editor por defecto", status: "maintenance" },
       { key: "/templates", name: "Plantillas (atajo)", status: "maintenance" },
     ],
-    canal_digital: [],
   };
 
   for (const a of aliases[key] || []) {
@@ -211,19 +208,16 @@ for (const group of APP_MODULE_GROUPS) {
     }
   }
 
-  if (key === "canal_digital" || key === "marketing") {
+  if (key === "marketing") {
     for (const sec of APP_PUBLIC_SECTIONS) {
       const path = String(sec.path || "");
-      if (path.startsWith("/tv") && key === "marketing") {
+      if (path.startsWith("/tv")) {
         const def = sectionDef({ ...sec, path: "/tv" }, { statusOverride: "maintenance" });
         if (def && !seen.has(def.key)) {
           seen.add(def.key);
           sections.push(def);
         }
-      } else if (
-        (path === "/catalogo" || path === "/punto_venta") &&
-        key === "canal_digital"
-      ) {
+      } else if (path === "/catalogo" || path === "/punto_venta") {
         const def = sectionDef(sec);
         if (def && !seen.has(def.key)) {
           seen.add(def.key);

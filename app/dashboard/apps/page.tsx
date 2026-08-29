@@ -50,6 +50,7 @@ import { gp } from "@/src/shared/ui/theme";
 import { appToast } from "@/src/shared/utils/app-toast";
 import {
   formatPushSyncNote,
+  formatPushSyncSuccess,
   formatPushSyncToast,
 } from "@/src/shared/lib/push-sync-message";
 
@@ -121,7 +122,7 @@ export default function AppsPage() {
   const { apps, loading, create, update, remove, pushEntitlement, enablePlan, updateModules, refetch } =
     useApps();
   const {
-    liveStateFor,
+    healthFor,
     isFetching: syncChecking,
     refetch: refetchSyncHealth,
   } = useAppsSyncHealth(!loading);
@@ -323,16 +324,28 @@ export default function AppsPage() {
   async function handlePush(app: App) {
     setPushingIds((prev) => new Set(prev).add(app.id));
     try {
-      await pushEntitlement(app.id);
-      appToast.success(`Entitlement enviado a ${app.name || "la app"}`);
+      const result = await pushEntitlement(app.id);
+      await refetchSyncHealth();
+      const okMsg =
+        formatPushSyncSuccess(result as Parameters<typeof formatPushSyncSuccess>[0]) ??
+        `Entitlement enviado a ${app.name || "la app"}`;
+      appToast.success(okMsg);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al empujar";
-      if (/no autorizado|gestor sync/i.test(msg)) {
+      if (/no autorizado|gestor sync|secreto incorrecto/i.test(msg)) {
         appToast.error(
-          `Sync rechazado en ${app.name || "la app"}: la API Key del gestor no coincide con GESTOR_SYNC_SECRET del backend. Copiá la API Key (Editar app) al .env del backend y reiniciá.`,
+          `Sync rechazado · ${app.name || "App"}: secreto incorrecto — copiá la API Key (Editar app) a GESTOR_SYNC_SECRET del backend y reiniciá.`,
+        );
+      } else if (/sin conexión|fetch failed|ECONNREFUSED/i.test(msg)) {
+        appToast.error(
+          `Sync falló · ${app.name || "App"}: backend apagado o entitlement_url incorrecta.`,
+        );
+      } else if (/404|ruta no encontrada/i.test(msg)) {
+        appToast.error(
+          `Sync falló · ${app.name || "App"}: ruta no encontrada — la URL debe terminar en /subscription/entitlement.`,
         );
       } else {
-        appToast.error(msg);
+        appToast.error(`Sync falló · ${app.name || "App"}: ${msg}`);
       }
     } finally {
       setPushingIds((prev) => {
@@ -694,12 +707,12 @@ export default function AppsPage() {
                       </div>
                     ) : (
                       (() => {
-                        const sync = entitlementSyncSummary(
-                          app,
-                          liveStateFor(app.id),
-                        );
+                        const health =
+                          healthFor(app.id) ??
+                          (syncChecking ? ("checking" as const) : null);
+                        const sync = entitlementSyncSummary(app, health);
                         return (
-                          <div title={sync.title} className="max-w-[12rem]">
+                          <div title={sync.title} className="max-w-[14rem]">
                             <p
                               className={`text-xs font-medium ${sync.toneClass}`}
                             >
@@ -707,7 +720,12 @@ export default function AppsPage() {
                             </p>
                             {sync.secondary ? (
                               <p className="truncate text-[10px] text-[var(--gp-text-muted)]">
-                                {sync.secondary}
+                                {sync.module} · {sync.secondary}
+                              </p>
+                            ) : null}
+                            {sync.tertiary ? (
+                              <p className="line-clamp-2 text-[10px] leading-snug text-[var(--gp-text-faint)]">
+                                {sync.tertiary}
                               </p>
                             ) : null}
                           </div>
@@ -997,25 +1015,37 @@ export default function AppsPage() {
                         </>
                       ) : (
                         <>
-                          <InfoField
-                            label="Sync"
-                            value={
-                              entitlementSyncSummary(
-                                viewingApp,
-                                liveStateFor(viewingApp.id),
-                              ).primary
-                            }
-                          />
-                          <InfoField
-                            label="Host sync"
-                            value={
-                              entitlementSyncSummary(
-                                viewingApp,
-                                liveStateFor(viewingApp.id),
-                              ).secondary || "—"
-                            }
-                            mono
-                          />
+                          {(() => {
+                            const sync = entitlementSyncSummary(
+                              viewingApp,
+                              healthFor(viewingApp.id) ??
+                                (syncChecking ? "checking" : null),
+                            );
+                            return (
+                              <>
+                                <InfoField label="Sync" value={sync.primary} />
+                                <InfoField
+                                  label="Módulo / host"
+                                  value={
+                                    sync.secondary
+                                      ? `${sync.module} · ${sync.secondary}`
+                                      : sync.module
+                                  }
+                                  mono
+                                />
+                                <InfoField
+                                  label="Ruta entitlement"
+                                  value={sync.route || "—"}
+                                  mono
+                                />
+                                <InfoField
+                                  label="Detalle"
+                                  value={sync.tertiary || "—"}
+                                  wide
+                                />
+                              </>
+                            );
+                          })()}
                         </>
                       )}
                       <InfoField
@@ -1178,15 +1208,21 @@ export default function AppsPage() {
                           {(() => {
                             const sync = entitlementSyncSummary(
                               editingApp,
-                              liveStateFor(editingApp.id),
+                              healthFor(editingApp.id) ??
+                                (syncChecking ? "checking" : null),
                             );
                             return (
                               <span
                                 className={`mt-1 block text-[11px] font-medium ${sync.toneClass}`}
                                 title={sync.title}
                               >
-                                Destino actual: {sync.primary}
-                                {sync.secondary ? ` (${sync.secondary})` : ""}
+                                {sync.module}: {sync.primary}
+                                {sync.secondary ? ` · ${sync.secondary}` : ""}
+                                {sync.tertiary ? (
+                                  <span className="block font-normal text-[var(--gp-text-muted)]">
+                                    {sync.tertiary}
+                                  </span>
+                                ) : null}
                               </span>
                             );
                           })()}

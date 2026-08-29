@@ -33,6 +33,12 @@ export const BACKUP_TABLE_KEYS = [
   "Subscription",
   "EventType",
   "Event",
+  /** Noticias empujadas a apps Vite. */
+  "NewsItem",
+  "NewsAppTarget",
+  /** Telemetría de carga HTTP por app (FK → Apps). */
+  "AppLoadSample",
+  "AppLoadMinute",
   /** OTA / apps móviles (dependen de Apps vía app_id opcional). */
   "MobileApp",
   "MobileDevice",
@@ -83,6 +89,14 @@ export function backupTableDelegate(db: DbClient, key: BackupTableKey): Delegate
       return db.eventType;
     case "Event":
       return db.event;
+    case "NewsItem":
+      return db.newsItem;
+    case "NewsAppTarget":
+      return db.newsAppTarget;
+    case "AppLoadSample":
+      return db.appLoadSample;
+    case "AppLoadMinute":
+      return db.appLoadMinute;
     case "MobileApp":
       return db.mobileApp;
     case "MobileDevice":

@@ -40,10 +40,13 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
   },
   {
     title: "Monitoreo",
-    items: [{ label: "Eventos", href: "/dashboard/events" }],
+    items: [
+      { label: "Eventos", href: "/dashboard/events" },
+      { label: "Noticias", href: "/dashboard/news" },
+    ],
   },
   {
     title: "Sistema",
-    items: [{ label: "Backups JSON", href: "/dashboard/backups" }],
+    items: [{ label: "Configuración", href: "/dashboard/configuracion" }],
   },
 ];

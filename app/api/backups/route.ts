@@ -4,6 +4,7 @@ import {
   getMainBackupInfo,
   listStoredBackups,
 } from "@/src/features/backups/lib/export-database";
+import { sealStoredSecretsAtRest } from "@/src/features/backups/lib/import-database";
 
 /** Información del backup fijo + copias guardadas. */
 export async function GET() {
@@ -11,6 +12,9 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
+    // Migración lazy: cifra secretos legacy en plaintext (una pasada barata).
+    await sealStoredSecretsAtRest().catch(() => undefined);
+
     const [main, stored] = await Promise.all([
       getMainBackupInfo(),
       listStoredBackups(),

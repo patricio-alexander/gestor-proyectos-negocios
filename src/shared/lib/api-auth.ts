@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken, type JwtPayload } from "./jwt";
 import { prisma } from "./prisma";
+import { isEncryptedSecret, secretMatchesStored } from "./secret-crypto";
 
 export async function getAuthUser(): Promise<
   { user: JwtPayload; error: null } | { user: null; error: NextResponse }
@@ -43,26 +44,58 @@ export async function validateKey(
     };
   }
 
-  const rawKey = authHeader.slice(7);
+  const rawKey = authHeader.slice(7).trim();
+  if (!rawKey) {
+    return {
+      app_id: null,
+      app_hash: null,
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
 
   try {
-    const app = await prisma.apps.findFirst({
+    // Legacy / igualdad directa (plaintext o coincidencia exacta del blob cifrado).
+    const direct = await prisma.apps.findFirst({
       where: { entitlement_secret: rawKey, deleted_at: null },
       select: { id: true, hash: true },
     });
+    if (direct) {
+      return { app_id: direct.id, app_hash: direct.hash, error: null };
+    }
 
-    if (!app) {
-      return {
-        app_id: null,
-        app_hash: null,
-        error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-      };
+    // Secretos cifrados: pocas apps → comparar en memoria.
+    const encryptedApps = await prisma.apps.findMany({
+      where: {
+        deleted_at: null,
+        entitlement_secret: { startsWith: "v1:" },
+      },
+      select: { id: true, hash: true, entitlement_secret: true },
+    });
+    for (const app of encryptedApps) {
+      if (secretMatchesStored(rawKey, app.entitlement_secret)) {
+        return { app_id: app.id, app_hash: app.hash, error: null };
+      }
+    }
+
+    // Por si hay plaintext que no matcheó por encoding raro.
+    const plainApps = await prisma.apps.findMany({
+      where: {
+        deleted_at: null,
+        NOT: { entitlement_secret: null },
+      },
+      select: { id: true, hash: true, entitlement_secret: true },
+    });
+    for (const app of plainApps) {
+      if (isEncryptedSecret(app.entitlement_secret)) continue;
+      if (secretMatchesStored(rawKey, app.entitlement_secret)) {
+        return { app_id: app.id, app_hash: app.hash, error: null };
+      }
     }
 
     return {
-      app_id: app.id,
-      app_hash: app.hash,
-      error: null,
+      app_id: null,
+      app_hash: null,
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   } catch {
     return {

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { prisma } from "@/src/shared/lib/prisma";
+import { sealSecret } from "@/src/shared/lib/secret-crypto";
 import {
   BACKUP_TABLE_KEYS,
   backupTableDelegate,
@@ -40,6 +41,27 @@ function deserializeRows(rows: unknown[]): Record<string, unknown>[] {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
       out[key] = deserializeValue(value);
+    }
+    return out;
+  });
+}
+
+const BIGINT_FIELDS = new Set(["id", "bytes_in", "bytes_out"]);
+
+function reviveBigIntFields(
+  key: BackupTableKey,
+  rows: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  if (key !== "AppLoadMinute" && key !== "AppLoadSample") return rows;
+  return rows.map((row) => {
+    const out = { ...row };
+    for (const field of BIGINT_FIELDS) {
+      const v = out[field];
+      if (typeof v === "string" && /^\d+$/.test(v)) {
+        out[field] = BigInt(v);
+      } else if (typeof v === "number" && Number.isFinite(v)) {
+        out[field] = BigInt(Math.trunc(v));
+      }
     }
     return out;
   });
@@ -130,7 +152,7 @@ export async function restoreDatabaseFromBackup(
           key,
         ) as unknown as WritableDelegate;
         await delegate.createMany({
-          data: deserializeRows(rows),
+          data: reviveBigIntFields(key, deserializeRows(rows)),
         });
       }
 
@@ -138,6 +160,8 @@ export async function restoreDatabaseFromBackup(
     },
     { timeout: 120_000 },
   );
+
+  await sealStoredSecretsAfterRestore();
 
   if (options?.savePayload) {
     await ensureBackupsDir();
@@ -153,4 +177,46 @@ export async function importBackupFromJson(raw: string) {
   const data = parseBackupJson(raw);
   const summary = await restoreDatabaseFromBackup(data, { savePayload: raw });
   return summary;
+}
+
+/** Restaura desde el backup.json fijo del servidor. */
+export async function reloadFromMainBackup() {
+  const raw = await fs.readFile(MAIN_BACKUP_PATH, "utf8");
+  const data = parseBackupJson(raw);
+  return restoreDatabaseFromBackup(data);
+}
+
+/** Cifra en reposo secretos legacy en texto plano tras un restore. */
+export async function sealStoredSecretsAtRest() {
+  const apps = await prisma.apps.findMany({
+    where: { deleted_at: null, entitlement_secret: { not: null } },
+    select: { id: true, entitlement_secret: true },
+  });
+  for (const app of apps) {
+    const sealed = sealSecret(app.entitlement_secret);
+    if (sealed && sealed !== app.entitlement_secret) {
+      await prisma.apps.update({
+        where: { id: app.id },
+        data: { entitlement_secret: sealed },
+      });
+    }
+  }
+
+  const mobiles = await prisma.mobileApp.findMany({
+    where: { deleted_at: null },
+    select: { id: true, api_key: true },
+  });
+  for (const mobile of mobiles) {
+    const sealed = sealSecret(mobile.api_key);
+    if (sealed && sealed !== mobile.api_key) {
+      await prisma.mobileApp.update({
+        where: { id: mobile.id },
+        data: { api_key: sealed },
+      });
+    }
+  }
+}
+
+async function sealStoredSecretsAfterRestore() {
+  await sealStoredSecretsAtRest();
 }

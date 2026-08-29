@@ -261,8 +261,8 @@ model Apps {
   maintenance       Boolean        @default(false)
   /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
   entitlement_url    String?       @db.VarChar(500)
-  /** Secreto compartido con la app cliente (formato: gc_<hex>). */
-  entitlement_secret String?       @db.VarChar(255)
+  /** Secreto compartido con la app (plaintext o v1: AES-GCM at-rest). */
+  entitlement_secret String?       @db.VarChar(512)
   kind               AppKind        @default(deployment)
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
@@ -276,11 +276,58 @@ model Apps {
   app_sections            AppSection[]
   app_features            AppFeature[]
   mobile_app              MobileApp?
+  news_targets            NewsAppTarget[]
 
   @@index([deleted_at])
   @@index([deleted_at, created_at])
   @@index([kind, deleted_at])
   @@index([entitlement_secret])
+}
+
+/** Tipo de pieza en el “periódico” de novedades (apps Vite). */
+enum NewsKind {
+  portada
+  interior
+  breve
+  editorial
+  proximamente
+}
+
+/**
+ * Noticias / novedades del control plane.
+ * Se publican y empujan a las apps; cada app guarda su copia local.
+ */
+model NewsItem {
+  id           Int            @id @default(autoincrement())
+  title        String         @db.VarChar(220)
+  subtitle     String?        @db.VarChar(400)
+  body         String?        @db.Text
+  kind         NewsKind       @default(interior)
+  is_published Boolean        @default(false)
+  published_at DateTime?
+  sort_order   Int            @default(0)
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  deleted_at   DateTime?
+  targets      NewsAppTarget[]
+
+  @@index([kind, is_published, deleted_at])
+  @@index([is_published, published_at])
+  @@index([deleted_at])
+}
+
+/** Apps destino de una noticia (EdDeli / Store / Tienda, etc.). */
+model NewsAppTarget {
+  news_id   Int
+  app_id    Int
+  pushed_at DateTime?
+  push_ok   Boolean?
+  news      NewsItem @relation(fields: [news_id], references: [id], onDelete: Cascade)
+  app       Apps     @relation(fields: [app_id], references: [id], onDelete: Cascade)
+
+  @@id([news_id, app_id])
+  @@index([app_id])
+  @@index([news_id])
 }
 
 model Plan {
@@ -440,8 +487,8 @@ model MobileApp {
   key         String             @unique @db.VarChar(100)
   name        String             @db.VarChar(200)
   description String?            @db.Text
-  /** Secreto para GET /api/mobile/app-update (formato: ma_<hex>). */
-  api_key     String             @unique @db.VarChar(255)
+  /** Secreto OTA (plaintext o v1: AES-GCM at-rest). */
+  api_key     String             @unique @db.VarChar(512)
   /** Fila en Apps (kind=mobile) para módulos/secciones/estado. */
   app_id      Int?               @unique
   created_at  DateTime           @default(now())

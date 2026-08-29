@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
+import { revealSecret, sealSecret } from "@/src/shared/lib/secret-crypto";
 import {
   generateMobileApiKey,
   normalizeAppKey,
@@ -62,12 +63,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const plainKey = generateMobileApiKey();
     const app = await prisma.mobileApp.create({
       data: {
         key,
         name,
         description: body.description?.trim() || null,
-        api_key: generateMobileApiKey(),
+        api_key: sealSecret(plainKey)!,
       },
     });
 
@@ -79,7 +81,8 @@ export async function POST(request: Request) {
         key: app.key,
         name: app.name,
         description: app.description,
-        api_key: app.api_key,
+        api_key: revealSecret(app.api_key) || plainKey,
+        api_key_encrypted: Boolean(app.api_key?.startsWith("v1:")),
         app_id: controlAppId,
         created_at: app.created_at.toISOString(),
         updated_at: app.updated_at.toISOString(),

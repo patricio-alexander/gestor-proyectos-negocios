@@ -37,4 +37,8 @@ export const queryKeys = {
     all: ["event-types"] as const,
     list: ["event-types", "list"] as const,
   },
+  news: {
+    all: ["news"] as const,
+    list: ["news", "list"] as const,
+  },
 } as const;

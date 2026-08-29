@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
+import { revealSecret, sealSecret } from "@/src/shared/lib/secret-crypto";
 import { generateMobileApiKey } from "@/src/features/mobile-apps/lib/mobile-app-helpers";
 import { getMobileAppById } from "@/src/features/mobile-apps/lib/mobile-app-query";
 import {
@@ -49,6 +50,10 @@ export async function PATCH(request: Request, context: Ctx) {
       regenerate_api_key?: boolean;
     };
 
+    const plainKey = body.regenerate_api_key
+      ? generateMobileApiKey()
+      : null;
+
     const app = await prisma.mobileApp.update({
       where: { id },
       data: {
@@ -56,7 +61,7 @@ export async function PATCH(request: Request, context: Ctx) {
         ...(body.description !== undefined
           ? { description: body.description?.trim() || null }
           : {}),
-        ...(body.regenerate_api_key ? { api_key: generateMobileApiKey() } : {}),
+        ...(plainKey ? { api_key: sealSecret(plainKey)! } : {}),
       },
     });
 
@@ -69,7 +74,8 @@ export async function PATCH(request: Request, context: Ctx) {
       key: app.key,
       name: app.name,
       description: app.description,
-      api_key: app.api_key,
+      api_key: revealSecret(app.api_key) || plainKey || app.api_key,
+      api_key_encrypted: Boolean(app.api_key?.startsWith("v1:")),
       app_id: app.app_id,
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),

@@ -4,6 +4,8 @@ import {
   formatPushError,
   type PushEntitlementOutcome,
 } from "./push-entitlement-shared";
+import { revealSecret } from "./secret-crypto";
+import { parseEntitlementRoute } from "@/src/features/apps/lib/sync-diagnostics";
 
 export type {
   PushAppResult,
@@ -35,13 +37,22 @@ export async function pushEntitlementToApp(
   });
 
   const appName = app?.name?.trim() || appHash.slice(0, 8);
+  const routeInfo = app?.entitlement_url
+    ? parseEntitlementRoute(app.entitlement_url)
+    : null;
 
   if (!app?.entitlement_url) {
-    return { ok: true, skipped: true, app_name: appName };
+    return {
+      ok: true,
+      skipped: true,
+      app_name: appName,
+      route: routeInfo?.pushRoute,
+      module: routeInfo?.module,
+    };
   }
 
   const payload = await buildEntitlementForAppHash(appHash);
-  const secret = app.entitlement_secret || "";
+  const secret = revealSecret(app.entitlement_secret) || "";
 
   try {
     const res = await fetch(app.entitlement_url, {
@@ -65,16 +76,29 @@ export async function pushEntitlementToApp(
         status: res.status,
         error: friendly,
         app_name: appName,
+        route: routeInfo?.pushRoute,
+        module: routeInfo?.module,
       };
     }
 
     console.log(`[entitlement] push OK → ${appName} (${app.entitlement_url})`);
-    return { ok: true, app_name: appName };
+    return {
+      ok: true,
+      app_name: appName,
+      route: routeInfo?.pushRoute,
+      module: routeInfo?.module,
+    };
   } catch (err) {
     const message = formatPushError(
       err instanceof Error ? err.message : String(err),
     );
     console.error(`[entitlement] push error (${appName}):`, message);
-    return { ok: false, error: message, app_name: appName };
+    return {
+      ok: false,
+      error: message,
+      app_name: appName,
+      route: routeInfo?.pushRoute,
+      module: routeInfo?.module,
+    };
   }
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/src/shared/lib/prisma";
+import { revealSecret } from "@/src/shared/lib/secret-crypto";
 import type { MobilePlatform } from "../types";
 import { ensureMobileControlApp } from "./mobile-control-app";
 
@@ -28,7 +29,8 @@ function mapMobileApp(
     key: app.key,
     name: app.name,
     description: app.description,
-    api_key: app.api_key,
+    api_key: revealSecret(app.api_key) || app.api_key,
+    api_key_encrypted: Boolean(app.api_key?.startsWith("v1:")),
     app_id: app.app_id,
     created_at: app.created_at.toISOString(),
     updated_at: app.updated_at.toISOString(),

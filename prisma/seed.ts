@@ -15,8 +15,11 @@ import {
   mergeMarketingModule,
   pruneDeletedModulesFromApps,
   pruneMobileModulesFromWebApps,
+  retireCanalDigitalModule,
+  retireComprobantesElectronicosModule,
   retireLegacyCanalModule,
 } from "../src/features/modules/lib/cleanup-module-assignments";
+import { sealSecret } from "../src/shared/lib/secret-crypto";
 
 /** Conexión y branding del seed — valores desde .env (default: raptorsolutions). */
 const SEED_ENV = {
@@ -243,7 +246,7 @@ async function seedEdDeliApp() {
         deleted_at: null,
         entitlement_url: EDDELI_ENTITLEMENT_URL,
         ...(EDDELI_ENTITLEMENT_SECRET_ENV
-          ? { entitlement_secret: EDDELI_ENTITLEMENT_SECRET_ENV }
+          ? { entitlement_secret: sealSecret(EDDELI_ENTITLEMENT_SECRET_ENV) }
           : {}),
       },
     });
@@ -265,7 +268,9 @@ async function seedEdDeliApp() {
       email: "soporte@eddeli.com",
       kind: "deployment",
       entitlement_url: EDDELI_ENTITLEMENT_URL,
-      entitlement_secret: EDDELI_ENTITLEMENT_SECRET_ENV || EDDELI_API_KEY,
+      entitlement_secret: sealSecret(
+        EDDELI_ENTITLEMENT_SECRET_ENV || EDDELI_API_KEY,
+      ),
     },
   });
 }
@@ -280,12 +285,15 @@ async function seedStoreApp() {
       where: { id: existing.id },
       data: {
         name: "Store",
+        owner_name: existing.owner_name || "Store",
+        email: existing.email || "soporte@store.local",
+        database_name: existing.database_name || "store",
         kind: "deployment",
         deleted_at: null,
         entitlement_url: STORE_ENTITLEMENT_URL,
-        ...(STORE_ENTITLEMENT_SECRET_ENV
-          ? { entitlement_secret: STORE_ENTITLEMENT_SECRET_ENV }
-          : {}),
+        entitlement_secret: sealSecret(
+          STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
+        ),
       },
     });
     console.log(
@@ -298,19 +306,27 @@ async function seedStoreApp() {
     return updated;
   }
 
-  // Si ya existe una app "Store" creada a mano (otro hash), reutilizarla.
+  // Si ya existe una app "Store"/"store" creada a mano (otro hash), reutilizarla.
   const byName = await prisma.apps.findFirst({
-    where: { name: "Store", deleted_at: null, kind: "deployment" },
+    where: {
+      deleted_at: null,
+      kind: "deployment",
+      OR: [{ name: "Store" }, { name: "store" }],
+    },
   });
   if (byName) {
     return prisma.apps.update({
       where: { id: byName.id },
       data: {
+        name: "Store",
+        owner_name: byName.owner_name || "Store",
+        email: byName.email || "soporte@store.local",
+        database_name: byName.database_name || "store",
+        kind: "deployment",
         entitlement_url: STORE_ENTITLEMENT_URL,
-        entitlement_secret:
-          STORE_ENTITLEMENT_SECRET_ENV ||
-          byName.entitlement_secret ||
-          STORE_API_KEY,
+        entitlement_secret: sealSecret(
+          STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
+        ),
       },
     });
   }
@@ -323,7 +339,9 @@ async function seedStoreApp() {
       email: "soporte@store.local",
       kind: "deployment",
       entitlement_url: STORE_ENTITLEMENT_URL,
-      entitlement_secret: STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
+      entitlement_secret: sealSecret(
+        STORE_ENTITLEMENT_SECRET_ENV || STORE_API_KEY,
+      ),
     },
   });
 }
@@ -333,8 +351,9 @@ async function seedTiendaApp() {
     where: { hash: TIENDA_APP_HASH },
   });
 
-  const entitlementSecret =
-    TIENDA_ENTITLEMENT_SECRET_ENV || TIENDA_API_KEY;
+  const entitlementSecret = sealSecret(
+    TIENDA_ENTITLEMENT_SECRET_ENV || TIENDA_API_KEY,
+  );
 
   if (existing) {
     const updated = await prisma.apps.update({
@@ -641,7 +660,6 @@ const EDDELI_PLAN_DEFS: {
       "finanzas",
       "inventario",
       "produccion",
-      "canal_digital",
       "marketing",
       "administracion",
       "sistema",
@@ -1037,6 +1055,8 @@ async function main() {
   const tiendaApp = await seedTiendaApp();
   const sectionCount = await seedProductCatalog(EDDELI_PRODUCT_CATALOG);
   await retireLegacyCanalModule();
+  await retireCanalDigitalModule();
+  await retireComprobantesElectronicosModule();
   await mergeMarketingModule();
   await pruneMobileModulesFromWebApps();
   await pruneDeletedModulesFromApps();

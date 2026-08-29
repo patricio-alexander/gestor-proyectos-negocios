@@ -129,6 +129,8 @@ export async function GET(request: NextRequest) {
             values: number[];
             health_deltas: number[];
             bytes: number;
+            bytes_in: number;
+            bytes_out: number;
             errors: number;
             latency_p95_ms: number | null;
             usage_breakdown: UsageRow[];
@@ -162,6 +164,8 @@ export async function GET(request: NextRequest) {
         values: [] as number[],
         health_deltas: [] as number[],
         bytes: 0,
+        bytes_in: 0,
+        bytes_out: 0,
         errors: 0,
         latency_p95_ms: null as number | null,
         usage_breakdown: [] as UsageRow[],
@@ -171,7 +175,11 @@ export async function GET(request: NextRequest) {
       // Salud del intervalo: respuestas OK empujan hacia arriba; cada error
       // resta un punto. La vela representa la evolución acumulada de ese saldo.
       prev.health_deltas.push(Math.max(0, row.requests - row.errors) - row.errors);
-      prev.bytes += toNumber(row.bytes_in) + toNumber(row.bytes_out);
+      const rowBytesIn = toNumber(row.bytes_in);
+      const rowBytesOut = toNumber(row.bytes_out);
+      prev.bytes_in += rowBytesIn;
+      prev.bytes_out += rowBytesOut;
+      prev.bytes += rowBytesIn + rowBytesOut;
       prev.errors += row.errors;
       if (row.latency_p95_ms != null) {
         prev.latency_p95_ms =
@@ -224,6 +232,8 @@ export async function GET(request: NextRequest) {
             health_low: Math.min(...healthPath),
             health_close: healthPath[healthPath.length - 1],
             bytes: point?.bytes ?? 0,
+            bytes_in: point?.bytes_in ?? 0,
+            bytes_out: point?.bytes_out ?? 0,
             errors: point?.errors ?? 0,
             latency_p95_ms: point?.latency_p95_ms ?? null,
             usage_breakdown: point?.usage_breakdown ?? [],
@@ -253,6 +263,8 @@ export async function GET(request: NextRequest) {
         health_low: healthLows.reduce((sum, value) => sum + value, 0),
         health_close: healthCloses.reduce((sum, value) => sum + value, 0),
         bytes: appSeries.reduce((sum, item) => sum + item.points[index].bytes, 0),
+        bytes_in: appSeries.reduce((sum, item) => sum + item.points[index].bytes_in, 0),
+        bytes_out: appSeries.reduce((sum, item) => sum + item.points[index].bytes_out, 0),
         errors: appSeries.reduce((sum, item) => sum + item.points[index].errors, 0),
         latency_p95_ms: appSeries.reduce<number | null>((max, item) => {
           const value = item.points[index].latency_p95_ms;

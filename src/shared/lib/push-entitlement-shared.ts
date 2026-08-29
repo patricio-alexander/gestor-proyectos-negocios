@@ -6,6 +6,8 @@ export type PushEntitlementOutcome = {
   error?: string;
   status?: number;
   app_name?: string;
+  route?: string;
+  module?: string;
 };
 
 export type PushAppResult = {
@@ -14,6 +16,8 @@ export type PushAppResult = {
   skipped?: boolean;
   error?: string;
   status?: number;
+  route?: string;
+  module?: string;
 };
 
 export type PushResponseFields = {
@@ -27,17 +31,36 @@ export type PushResponseFields = {
 export function formatPushError(raw: string, status?: number): string {
   const trimmed = raw.trim();
   if (!trimmed) {
-    if (status === 404) return "HTTP 404 — ruta no encontrada";
-    if (status === 401 || status === 403) return `HTTP ${status} — no autorizado`;
-    if (status) return `HTTP ${status}`;
+    if (status === 404) {
+      return "Ruta no encontrada — revisá entitlement_url (/subscription/entitlement)";
+    }
+    if (status === 401 || status === 403) {
+      return "Secreto incorrecto — API Key del gestor ≠ GESTOR_SYNC_SECRET del backend";
+    }
+    if (status === 503) {
+      return "Backend sin GESTOR_SYNC_SECRET — configurá el .env y reiniciá";
+    }
+    if (status) return `Error HTTP ${status}`;
     return "Error desconocido";
   }
 
   if (/^<!DOCTYPE|^<html/i.test(trimmed)) {
-    if (status === 404) return "HTTP 404 — ruta no encontrada";
-    if (status === 401 || status === 403) return `HTTP ${status} — no autorizado`;
-    if (status) return `HTTP ${status} — respuesta inesperada`;
+    if (status === 404) {
+      return "Ruta no encontrada — revisá entitlement_url";
+    }
+    if (status === 401 || status === 403) {
+      return "Secreto incorrecto — API Key ≠ GESTOR_SYNC_SECRET";
+    }
+    if (status === 503) return "Backend sin GESTOR_SYNC_SECRET configurado";
+    if (status) return `HTTP ${status} — respuesta inesperada del backend`;
     return "Respuesta inesperada del servidor";
+  }
+
+  if (/no autorizado|gestor sync/i.test(trimmed)) {
+    return "Secreto incorrecto — API Key del gestor ≠ GESTOR_SYNC_SECRET del backend";
+  }
+  if (/gestor_sync_secret/i.test(trimmed)) {
+    return "Backend sin GESTOR_SYNC_SECRET — configurá el .env y reiniciá";
   }
 
   if (
@@ -45,7 +68,7 @@ export function formatPushError(raw: string, status?: number): string {
       trimmed,
     )
   ) {
-    return "Sin conexión o servidor caído";
+    return "Sin conexión — backend apagado o URL incorrecta";
   }
 
   if (trimmed.length > 120) return `${trimmed.slice(0, 117)}…`;
@@ -58,6 +81,8 @@ function outcomeToAppResult(outcome: PushEntitlementOutcome): PushAppResult {
     ok: outcome.ok,
     skipped: outcome.skipped,
     status: outcome.status,
+    route: outcome.route,
+    module: outcome.module,
     error:
       outcome.error != null
         ? formatPushError(outcome.error, outcome.status)
@@ -75,13 +100,20 @@ export function summarizePushResults(results: PushAppResult[]): string | null {
 
   const parts: string[] = [];
   if (ok.length > 0) {
-    parts.push(`OK: ${ok.map((r) => r.app_name).join(", ")}`);
+    parts.push(
+      `OK: ${ok.map((r) => `${r.app_name}${r.route ? ` (${r.route})` : ""}`).join(", ")}`,
+    );
   }
   if (skipped.length > 0) {
     parts.push(`Sin URL: ${skipped.map((r) => r.app_name).join(", ")}`);
   }
   parts.push(
-    `Falló: ${failed.map((r) => `${r.app_name} (${r.error ?? "error"})`).join("; ")}`,
+    `Falló: ${failed
+      .map((r) => {
+        const where = r.module ? `${r.module}` : r.app_name;
+        return `${where}: ${r.error ?? "error"}${r.route ? ` · ${r.route}` : ""}`;
+      })
+      .join("; ")}`,
   );
   return parts.join(". ");
 }

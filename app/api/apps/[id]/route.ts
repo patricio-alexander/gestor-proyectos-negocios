@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { revealSecret, sealSecret } from "@/src/shared/lib/secret-crypto";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -46,8 +47,11 @@ export async function GET(_request: Request, { params }: Params) {
       database_size: app.database_size,
       maintenance: app.maintenance,
       entitlement_url: app.entitlement_url,
-      entitlement_secret: app.entitlement_secret,
+      entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),
+      entitlement_secret_encrypted: Boolean(
+        app.entitlement_secret?.startsWith("v1:"),
+      ),
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: app.deleted_at?.toISOString() ?? null,
@@ -108,7 +112,7 @@ export async function PATCH(request: Request, { params }: Params) {
           entitlement_secret:
             body.entitlement_secret === null
               ? null
-              : String(body.entitlement_secret).trim(),
+              : sealSecret(String(body.entitlement_secret)),
         }),
       },
     });
@@ -146,8 +150,11 @@ export async function PATCH(request: Request, { params }: Params) {
       database_name: app.database_name,
       maintenance: app.maintenance,
       entitlement_url: app.entitlement_url,
-      entitlement_secret: app.entitlement_secret,
+      entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),
+      entitlement_secret_encrypted: Boolean(
+        app.entitlement_secret?.startsWith("v1:"),
+      ),
       created_at: app.created_at.toISOString(),
       updated_at: app.updated_at.toISOString(),
       deleted_at: null,

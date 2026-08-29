@@ -28,6 +28,7 @@ export type App = {
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
+  entitlement_secret_encrypted?: boolean;
   mobile?: AppMobileSummary | null;
   created_at: string;
   updated_at: string;

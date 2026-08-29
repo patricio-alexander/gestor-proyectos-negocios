@@ -76,6 +76,281 @@ export async function retireLegacyCanalModule() {
 }
 
 /**
+ * Retira el módulo «Comprobantes electrónicos»: las secciones SRI viven bajo Operación
+ * (Comprobantes POS). Mueve planes/apps a operacion y soft-delete el módulo.
+ */
+export async function retireComprobantesElectronicosModule() {
+  const legacy = await prisma.module.findFirst({
+    where: { key: "comprobantes_electronicos" },
+  });
+  const operacion = await prisma.module.findFirst({
+    where: { key: "operacion", deleted_at: null },
+  });
+  if (!legacy) return { retired: false, reason: "no comprobantes_electronicos" };
+  if (!operacion) return { retired: false, reason: "no operacion" };
+
+  const now = new Date();
+  const stats = {
+    retired: true,
+    movedSections: 0,
+    appsLinked: 0,
+  };
+
+  const sections = await prisma.section.findMany({
+    where: { module_id: legacy.id },
+  });
+  for (const sec of sections) {
+    if (!sec.key) {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: sec.deleted_at ?? now },
+      });
+      continue;
+    }
+    const target = await prisma.section.findFirst({
+      where: { module_id: operacion.id, key: sec.key },
+    });
+    if (target && target.id !== sec.id) {
+      const appSecs = await prisma.appSection.findMany({
+        where: { section_id: sec.id },
+      });
+      for (const as of appSecs) {
+        const already = await prisma.appSection.findUnique({
+          where: {
+            app_id_section_id: { app_id: as.app_id, section_id: target.id },
+          },
+        });
+        if (!already) {
+          await prisma.appSection.create({
+            data: {
+              app_id: as.app_id,
+              section_id: target.id,
+              status: as.status,
+            },
+          });
+        }
+        await prisma.appSection.delete({
+          where: {
+            app_id_section_id: { app_id: as.app_id, section_id: sec.id },
+          },
+        });
+      }
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: now },
+      });
+    } else {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { module_id: operacion.id, deleted_at: null },
+      });
+      stats.movedSections += 1;
+    }
+  }
+
+  const legacyAms = await prisma.appModule.findMany({
+    where: { module_id: legacy.id },
+  });
+  for (const legacyAm of legacyAms) {
+    const opAm = await prisma.appModule.upsert({
+      where: {
+        app_id_module_id: {
+          app_id: legacyAm.app_id,
+          module_id: operacion.id,
+        },
+      },
+      update: {},
+      create: { app_id: legacyAm.app_id, module_id: operacion.id },
+    });
+    stats.appsLinked += 1;
+    const planLinks = await prisma.planAppModule.findMany({
+      where: { app_module_id: legacyAm.id },
+    });
+    for (const link of planLinks) {
+      const already = await prisma.planAppModule.findUnique({
+        where: {
+          plan_id_app_module_id: {
+            plan_id: link.plan_id,
+            app_module_id: opAm.id,
+          },
+        },
+      });
+      if (!already) {
+        await prisma.planAppModule.create({
+          data: { plan_id: link.plan_id, app_module_id: opAm.id },
+        });
+      }
+      await prisma.planAppModule.delete({
+        where: {
+          plan_id_app_module_id: {
+            plan_id: link.plan_id,
+            app_module_id: legacyAm.id,
+          },
+        },
+      });
+    }
+    await prisma.appModule.delete({ where: { id: legacyAm.id } });
+  }
+
+  if (!legacy.deleted_at) {
+    await prisma.module.update({
+      where: { id: legacy.id },
+      data: { deleted_at: now },
+    });
+  }
+
+  return stats;
+}
+
+/**
+ * Retira Canal digital: catálogo/grupos → marketing; locales → inventario;
+ * productos-destacados se archiva (soft-delete de sección).
+ */
+export async function retireCanalDigitalModule() {
+  const legacy = await prisma.module.findFirst({
+    where: { key: "canal_digital" },
+  });
+  if (!legacy) return { retired: false, reason: "no canal_digital" };
+
+  const marketing = await prisma.module.findFirst({
+    where: { key: "marketing", deleted_at: null },
+  });
+  const inventario = await prisma.module.findFirst({
+    where: { key: "inventario", deleted_at: null },
+  });
+  if (!marketing || !inventario) {
+    return { retired: false, reason: "missing marketing or inventario" };
+  }
+
+  const now = new Date();
+  const stats = {
+    retired: true,
+    movedSections: 0,
+    archivedFeatured: 0,
+    appsLinked: 0,
+  };
+
+  const targetForKey = (key) => {
+    if (key === "/canal/locales" || key === "/administracion/sucursales") {
+      return inventario;
+    }
+    if (key === "/canal/productos-destacados") return null; // archive
+    return marketing;
+  };
+
+  const sections = await prisma.section.findMany({
+    where: { module_id: legacy.id },
+  });
+  for (const sec of sections) {
+    const targetMod = targetForKey(sec.key || "");
+    if (!targetMod) {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: sec.deleted_at ?? now },
+      });
+      stats.archivedFeatured += 1;
+      continue;
+    }
+    if (!sec.key) {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: sec.deleted_at ?? now },
+      });
+      continue;
+    }
+    const target = await prisma.section.findFirst({
+      where: { module_id: targetMod.id, key: sec.key },
+    });
+    if (target && target.id !== sec.id) {
+      const appSecs = await prisma.appSection.findMany({
+        where: { section_id: sec.id },
+      });
+      for (const as of appSecs) {
+        const already = await prisma.appSection.findUnique({
+          where: {
+            app_id_section_id: { app_id: as.app_id, section_id: target.id },
+          },
+        });
+        if (!already) {
+          await prisma.appSection.create({
+            data: {
+              app_id: as.app_id,
+              section_id: target.id,
+              status: as.status,
+            },
+          });
+        }
+        await prisma.appSection.delete({
+          where: {
+            app_id_section_id: { app_id: as.app_id, section_id: sec.id },
+          },
+        });
+      }
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { deleted_at: now },
+      });
+    } else {
+      await prisma.section.update({
+        where: { id: sec.id },
+        data: { module_id: targetMod.id, deleted_at: null },
+      });
+      stats.movedSections += 1;
+    }
+  }
+
+  const legacyAms = await prisma.appModule.findMany({
+    where: { module_id: legacy.id },
+  });
+  for (const legacyAm of legacyAms) {
+    for (const mod of [marketing, inventario]) {
+      const am = await prisma.appModule.upsert({
+        where: {
+          app_id_module_id: {
+            app_id: legacyAm.app_id,
+            module_id: mod.id,
+          },
+        },
+        update: {},
+        create: { app_id: legacyAm.app_id, module_id: mod.id },
+      });
+      stats.appsLinked += 1;
+      const planLinks = await prisma.planAppModule.findMany({
+        where: { app_module_id: legacyAm.id },
+      });
+      for (const link of planLinks) {
+        const already = await prisma.planAppModule.findUnique({
+          where: {
+            plan_id_app_module_id: {
+              plan_id: link.plan_id,
+              app_module_id: am.id,
+            },
+          },
+        });
+        if (!already) {
+          await prisma.planAppModule.create({
+            data: { plan_id: link.plan_id, app_module_id: am.id },
+          });
+        }
+      }
+    }
+    await prisma.planAppModule.deleteMany({
+      where: { app_module_id: legacyAm.id },
+    });
+    await prisma.appModule.delete({ where: { id: legacyAm.id } });
+  }
+
+  if (!legacy.deleted_at) {
+    await prisma.module.update({
+      where: { id: legacy.id },
+      data: { deleted_at: now },
+    });
+  }
+
+  return stats;
+}
+
+/**
  * Los módulos mobile_* no deben aparecer en apps web (EdDeli/Store/Tienda).
  */
 export async function pruneMobileModulesFromWebApps() {

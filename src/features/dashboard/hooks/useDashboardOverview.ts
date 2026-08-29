@@ -26,7 +26,13 @@ export type DashboardOverview = {
   onlineDevices: number;
   plans: number;
   modules: number;
-  syncHealth: Record<AppSyncHealthState, number>;
+  syncHealth: {
+    online: number;
+    offline: number;
+    withIssues: number;
+    not_configured: number;
+    no_secret: number;
+  };
   syncByAppId: Record<number, AppSyncHealthRow>;
   subscriptions: {
     total: number;
@@ -53,7 +59,7 @@ const EMPTY: DashboardOverview = {
   onlineDevices: 0,
   plans: 0,
   modules: 0,
-  syncHealth: { not_configured: 0, no_secret: 0, online: 0, offline: 0 },
+  syncHealth: { online: 0, offline: 0, withIssues: 0, not_configured: 0, no_secret: 0 },
   syncByAppId: {},
   subscriptions: { total: 0, active: 0, expired: 0, canceled: 0 },
   offers: { total: 0, active: 0, upcoming: 0, expired: 0 },
@@ -79,15 +85,31 @@ async function fetchDashboardOverview(): Promise<DashboardOverview> {
   const subs = subscriptions;
   const offs = offers;
   const syncHealth: DashboardOverview["syncHealth"] = {
-    not_configured: 0,
-    no_secret: 0,
     online: 0,
     offline: 0,
+    withIssues: 0,
+    not_configured: 0,
+    no_secret: 0,
   };
   const syncByAppId: DashboardOverview["syncByAppId"] = {};
   for (const result of syncHealthResponse.results) {
-    syncHealth[result.state] += 1;
     syncByAppId[result.app_id] = result;
+    if (result.state === "online") {
+      syncHealth.online += 1;
+    } else if (result.state === "not_configured") {
+      syncHealth.not_configured += 1;
+    } else if (result.state === "no_secret") {
+      syncHealth.no_secret += 1;
+    } else if (
+      result.state === "offline" ||
+      result.state === "auth_failed" ||
+      result.state === "backend_no_secret" ||
+      result.state === "route_not_found"
+    ) {
+      syncHealth.offline += 1;
+    } else {
+      syncHealth.withIssues += 1;
+    }
   }
 
   const expiringSubscriptions = subs

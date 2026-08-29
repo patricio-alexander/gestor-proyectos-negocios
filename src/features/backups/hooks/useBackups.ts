@@ -160,6 +160,33 @@ export function useBackups() {
     }
   }
 
+  async function reloadFromMain() {
+    setBusy(true);
+    try {
+      const res = await fetch(apiUrl("/api/backups/reload"), {
+        method: "POST",
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        message?: string;
+        totalRows?: number;
+      };
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Error al recargar");
+      }
+      await refresh();
+      appToast.success(
+        `BD recargada desde backup.json · ${data.totalRows ?? 0} filas`,
+      );
+      return data;
+    } catch (err) {
+      appToast.error(err instanceof Error ? err.message : "Error al recargar");
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return {
     main,
     stored,
@@ -171,5 +198,6 @@ export function useBackups() {
     downloadMain,
     downloadStored,
     importFromFile,
+    reloadFromMain,
   };
 }

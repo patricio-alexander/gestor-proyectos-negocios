@@ -9,6 +9,7 @@ import {
   useOverlayState,
 } from "@heroui/react";
 import ArrowDownToLine from "@gravity-ui/icons/ArrowDownToLine";
+import ArrowRotateLeft from "@gravity-ui/icons/ArrowRotateLeft";
 import ArrowUpFromSquare from "@gravity-ui/icons/ArrowUpFromSquare";
 import ArrowsRotateLeft from "@gravity-ui/icons/ArrowsRotateLeft";
 import Clock from "@gravity-ui/icons/Clock";
@@ -63,7 +64,12 @@ function previewBackupJson(raw: string) {
   return { counts, totalRows };
 }
 
-export function BackupsManager() {
+type BackupsManagerProps = {
+  /** Embebido en Configuración (sin PageHeader propio). */
+  embedded?: boolean;
+};
+
+export function BackupsManager({ embedded = false }: BackupsManagerProps) {
   const {
     main,
     stored,
@@ -75,10 +81,12 @@ export function BackupsManager() {
     downloadMain,
     downloadStored,
     importFromFile,
+    reloadFromMain,
   } = useBackups();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importState = useOverlayState();
+  const reloadState = useOverlayState();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<{
     counts: Record<string, number>;
@@ -144,16 +152,71 @@ export function BackupsManager() {
     setPreviewError("");
   }
 
+  async function confirmReload() {
+    try {
+      await reloadFromMain();
+      reloadState.close();
+    } catch {
+      /* toast */
+    }
+  }
+
   if (loading) {
     return (
-      <div className={`${gp.page} items-center justify-center`}>
+      <div
+        className={
+          embedded
+            ? "flex min-h-[40vh] items-center justify-center"
+            : `${gp.page} items-center justify-center`
+        }
+      >
         <Spinner size="lg" />
       </div>
     );
   }
 
+  const actions = (
+    <div className="flex flex-wrap gap-2">
+      <Button isDisabled={busy} onPress={() => void refresh()}>
+        <ArrowsRotateLeft width={16} height={16} />
+        Actualizar
+      </Button>
+      <Button
+        isDisabled={busy}
+        variant="secondary"
+        onPress={() => fileInputRef.current?.click()}
+      >
+        <ArrowUpFromSquare width={16} height={16} />
+        Subir JSON
+      </Button>
+      <Button isDisabled={busy} onPress={() => void onSave()}>
+        <FloppyDisk width={16} height={16} />
+        Guardar en servidor
+      </Button>
+      <Button
+        isDisabled={busy || !main?.exists}
+        variant="secondary"
+        onPress={() => reloadState.open()}
+      >
+        <ArrowRotateLeft width={16} height={16} />
+        Recargar BD
+      </Button>
+      <Button
+        isDisabled={busy}
+        style={{
+          backgroundColor: "var(--gp-primary)",
+          color: "var(--gp-primary-text)",
+        }}
+        onPress={() => void onExport()}
+      >
+        <ArrowDownToLine width={16} height={16} />
+        Exportar BD (JSON)
+      </Button>
+    </div>
+  );
+
   return (
-    <div className={gp.page}>
+    <div className={embedded ? "flex flex-col gap-6" : gp.page}>
       <input
         ref={fileInputRef}
         type="file"
@@ -162,42 +225,22 @@ export function BackupsManager() {
         onChange={(e) => void handleFileChange(e)}
       />
 
-      <PageHeader
-        title="Backups JSON"
-        description="Exporta, guarda o restaura la base de datos del gestor desde JSON (como EdDeli)."
-        Icon={Database}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button isDisabled={busy} onPress={() => void refresh()}>
-              <ArrowsRotateLeft width={16} height={16} />
-              Actualizar
-            </Button>
-            <Button
-              isDisabled={busy}
-              variant="secondary"
-              onPress={() => fileInputRef.current?.click()}
-            >
-              <ArrowUpFromSquare width={16} height={16} />
-              Subir JSON
-            </Button>
-            <Button isDisabled={busy} onPress={() => void onSave()}>
-              <FloppyDisk width={16} height={16} />
-              Guardar en servidor
-            </Button>
-            <Button
-              isDisabled={busy}
-              style={{
-                backgroundColor: "var(--gp-primary)",
-                color: "var(--gp-primary-text)",
-              }}
-              onPress={() => void onExport()}
-            >
-              <ArrowDownToLine width={16} height={16} />
-              Exportar BD (JSON)
-            </Button>
-          </div>
-        }
-      />
+      {embedded ? (
+        <>
+          <p className="text-sm text-[var(--gp-text-muted)]">
+            Exporta, importa o recarga la base del gestor desde JSON. Incluye
+            las 25 tablas (apps, planes, móviles, telemetría, etc.).
+          </p>
+          {actions}
+        </>
+      ) : (
+        <PageHeader
+          title="Backups JSON"
+          description="Exporta, guarda o restaura la base de datos del gestor desde JSON."
+          Icon={Database}
+          action={actions}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -232,8 +275,9 @@ export function BackupsManager() {
         <p className="mb-4 text-sm text-[var(--gp-text-muted)]">
           Se actualiza al <strong>Exportar BD</strong>,{" "}
           <strong>Guardar en servidor</strong> o{" "}
-          <strong>Subir JSON</strong>. Queda en la carpeta{" "}
-          <code>backups/</code> del proyecto.
+          <strong>Subir JSON</strong>.{" "}
+          <strong>Recargar BD</strong> restaura desde este archivo sin subir
+          otro.
         </p>
         {main?.exists ? (
           <p className="mb-4 text-sm text-[var(--gp-text)]">
@@ -262,6 +306,14 @@ export function BackupsManager() {
           >
             <ArrowUpFromSquare width={16} height={16} />
             Restaurar desde JSON
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={!main?.exists || busy}
+            onPress={() => reloadState.open()}
+          >
+            <ArrowRotateLeft width={16} height={16} />
+            Recargar BD
           </Button>
         </div>
       </div>
@@ -360,6 +412,49 @@ export function BackupsManager() {
                   onPress={() => void confirmImport()}
                 >
                   {busy ? <Spinner size="sm" /> : "Restaurar y reemplazar"}
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      <Modal state={reloadState}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog className="max-w-md">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>Recargar BD desde backup.json</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="space-y-3">
+                <Alert status="warning">
+                  <Alert.Description>
+                    Se reemplazará <strong>toda la base actual</strong> con el
+                    contenido de <code>backups/backup.json</code> del servidor.
+                    Tras el restore, los secretos se vuelven a cifrar en reposo.
+                  </Alert.Description>
+                </Alert>
+                {main?.exists ? (
+                  <p className="text-sm text-[var(--gp-text-muted)]">
+                    {summaryLine(main.counts)} · {main.totalRows} filas ·{" "}
+                    {formatSize(main.sizeMB, main.sizeBytes)}
+                  </p>
+                ) : null}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button
+                  variant="secondary"
+                  onPress={() => reloadState.close()}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  isDisabled={busy || !main?.exists}
+                  onPress={() => void confirmReload()}
+                >
+                  {busy ? <Spinner size="sm" /> : "Recargar BD"}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

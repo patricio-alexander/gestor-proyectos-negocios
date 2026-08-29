@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
+import { isEncryptedSecret, secretMatchesStored } from "@/src/shared/lib/secret-crypto";
 
 export async function validateMobileApiKey(
   request: NextRequest,
@@ -20,30 +21,26 @@ export async function validateMobileApiKey(
       error: NextResponse;
     }
 > {
+  const unauthorized = {
+    mobile_app_id: null as null,
+    app_key: null as null,
+    control_app_id: null as null,
+    control_app_hash: null as null,
+    error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+  };
+
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return {
-      mobile_app_id: null,
-      app_key: null,
-      control_app_id: null,
-      control_app_hash: null,
-      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
+    return unauthorized;
   }
 
   const rawKey = authHeader.slice(7).trim();
   if (!rawKey) {
-    return {
-      mobile_app_id: null,
-      app_key: null,
-      control_app_id: null,
-      control_app_hash: null,
-      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
+    return unauthorized;
   }
 
   try {
-    const app = await prisma.mobileApp.findFirst({
+    const direct = await prisma.mobileApp.findFirst({
       where: { api_key: rawKey, deleted_at: null },
       select: {
         id: true,
@@ -53,33 +50,39 @@ export async function validateMobileApiKey(
       },
     });
 
-    if (!app) {
+    const resolve = (app: NonNullable<typeof direct>) => {
+      const controlOk = app.app && !app.app.deleted_at;
       return {
-        mobile_app_id: null,
-        app_key: null,
-        control_app_id: null,
-        control_app_hash: null,
-        error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+        mobile_app_id: app.id,
+        app_key: app.key,
+        control_app_id: controlOk ? app.app!.id : app.app_id,
+        control_app_hash: controlOk ? app.app!.hash : null,
+        error: null as null,
       };
+    };
+
+    if (direct) return resolve(direct);
+
+    const candidates = await prisma.mobileApp.findMany({
+      where: { deleted_at: null },
+      select: {
+        id: true,
+        key: true,
+        app_id: true,
+        api_key: true,
+        app: { select: { id: true, hash: true, deleted_at: true } },
+      },
+    });
+
+    for (const app of candidates) {
+      if (!isEncryptedSecret(app.api_key) && app.api_key !== rawKey) continue;
+      if (!secretMatchesStored(rawKey, app.api_key)) continue;
+      return resolve(app);
     }
 
-    const controlOk = app.app && !app.app.deleted_at;
-
-    return {
-      mobile_app_id: app.id,
-      app_key: app.key,
-      control_app_id: controlOk ? app.app!.id : app.app_id,
-      control_app_hash: controlOk ? app.app!.hash : null,
-      error: null,
-    };
+    return unauthorized;
   } catch {
-    return {
-      mobile_app_id: null,
-      app_key: null,
-      control_app_id: null,
-      control_app_hash: null,
-      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
+    return unauthorized;
   }
 }
 

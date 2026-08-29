@@ -37,6 +37,10 @@ export function useAppsSyncHealth(enabled = true) {
     return map;
   }, [query.data]);
 
+  function healthFor(appId: number): AppSyncHealthRow | null {
+    return byAppId.get(appId) ?? null;
+  }
+
   function liveStateFor(appId: number): AppLiveSyncState {
     const row = byAppId.get(appId);
     if (!row) {
@@ -48,6 +52,7 @@ export function useAppsSyncHealth(enabled = true) {
 
   return {
     byAppId,
+    healthFor,
     liveStateFor,
     loading: query.isLoading,
     isFetching: query.isFetching,

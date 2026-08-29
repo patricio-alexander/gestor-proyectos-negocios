@@ -29,10 +29,26 @@ export function formatPushSyncToast(
   return null;
 }
 
+/** Mensaje cuando el sync fue exitoso (null si no aplica). */
+export function formatPushSyncSuccess(data: PushSyncPayload): string | null {
+  if (!data.push_ok || data.push_skipped) return null;
+  const results = data.push_results?.filter((r) => r.ok && !r.skipped) ?? [];
+  if (results.length === 0) return "Sync OK · Entitlement enviado al backend";
+  if (results.length === 1) {
+    const r = results[0];
+    const where = r.module ? `${r.module}` : r.app_name;
+    return `Sync OK · ${where}${r.route ? ` · ${r.route}` : ""}`;
+  }
+  return `Sync OK · ${results.map((r) => `${r.app_name}${r.route ? ` (${r.route})` : ""}`).join(", ")}`;
+}
+
 /** Variante corta para notas inline (tabla de apps, planes). */
 export function formatPushSyncNote(data: PushSyncPayload): string {
-  if (data.push_ok) return " · sync OK";
-  if (data.push_skipped) return " · sync omitido (sin URL)";
+  if (data.push_ok) {
+    const ok = formatPushSyncSuccess(data);
+    return ok ? ` · ${ok}` : " · sync OK";
+  }
+  if (data.push_skipped) return " · sync omitido (sin URL entitlement)";
   const toast = formatPushSyncToast(data, "sync");
   return toast ? ` · ${toast}` : " · sync falló";
 }

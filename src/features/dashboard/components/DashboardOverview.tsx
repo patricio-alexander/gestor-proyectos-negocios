@@ -21,6 +21,7 @@ import { gp } from "@/src/shared/ui/theme";
 import { formatDate, daysUntil } from "@/src/shared/utils/format-display";
 import { NavIcon } from "@/src/shared/config/dashboard-nav-icons";
 import type { App } from "@/src/features/apps/types";
+import type { AppSyncHealthRow } from "@/src/features/apps/lib/probe-entitlement";
 
 const QUICK_LINKS = [
   { href: "/dashboard/apps", label: "Gestionar apps" },
@@ -40,11 +41,27 @@ function appPriority(app: App) {
   return index === -1 ? APP_PRIORITY.length : index;
 }
 
-function syncLabel(app: App, state: string | undefined) {
+function syncLabel(app: App, row?: AppSyncHealthRow) {
   if (app.kind === "mobile") return { label: "Móvil", tone: "info" as const };
+  const state = row?.state;
   if (state === "online") return { label: "En línea", tone: "success" as const };
+  if (state === "subscription_expired") {
+    return { label: "Suscripción vencida", tone: "danger" as const };
+  }
+  if (state === "subscription_inactive" || state === "no_subscription") {
+    return { label: "Sin suscripción", tone: "warning" as const };
+  }
+  if (state === "maintenance") {
+    return { label: "Mantenimiento", tone: "warning" as const };
+  }
+  if (state === "auth_failed" || state === "backend_no_secret") {
+    return { label: "Secreto incorrecto", tone: "danger" as const };
+  }
+  if (state === "route_not_found") {
+    return { label: "Ruta incorrecta", tone: "danger" as const };
+  }
   if (state === "offline") return { label: "Sin conexión", tone: "danger" as const };
-  if (state === "no_secret") return { label: "Sin secreto", tone: "warning" as const };
+  if (state === "no_secret") return { label: "Sin API Key", tone: "warning" as const };
   return { label: "Sin configurar", tone: "neutral" as const };
 }
 
@@ -118,7 +135,7 @@ export function DashboardOverview() {
           icon={AntennaSignal}
           label="Sync en línea"
           value={data.syncHealth.online}
-          hint={`${data.syncHealth.offline} con incidencia`}
+          hint={`${data.syncHealth.offline} sin conexión · ${data.syncHealth.withIssues} con incidencia`}
           featured={data.syncHealth.offline === 0 && data.syncHealth.online > 0}
         />
       </div>
@@ -168,7 +185,7 @@ export function DashboardOverview() {
                 </thead>
                 <tbody>
                   {priorityApps.map((app) => {
-                    const sync = syncLabel(app, data.syncByAppId[app.id]?.state);
+                    const sync = syncLabel(app, data.syncByAppId[app.id]);
                     return (
                       <tr
                         key={app.id}

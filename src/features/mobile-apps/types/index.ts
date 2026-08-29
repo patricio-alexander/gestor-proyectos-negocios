@@ -6,6 +6,7 @@ export type MobileApp = {
   name: string;
   description: string | null;
   api_key: string;
+  api_key_encrypted?: boolean;
   /** Fila Apps (kind=mobile) para control de módulos/secciones. */
   app_id: number | null;
   created_at: string;

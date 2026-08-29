@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { revealSecret, sealSecret } from "@/src/shared/lib/secret-crypto";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -104,8 +105,11 @@ export async function GET() {
           database_size: a.database_size,
           maintenance: a.maintenance,
           entitlement_url: a.entitlement_url,
-          entitlement_secret: a.entitlement_secret,
+          entitlement_secret: revealSecret(a.entitlement_secret),
           has_entitlement_secret: Boolean(a.entitlement_secret),
+          entitlement_secret_encrypted: Boolean(
+            a.entitlement_secret?.startsWith("v1:"),
+          ),
           mobile: mobileRow
             ? {
                 mobile_app_id: mobileRow.id,
@@ -210,7 +214,7 @@ export async function POST(request: Request) {
         database_size: database_size ?? null,
         maintenance: maintenance ?? false,
         entitlement_url: entitlement_url?.trim() || null,
-        entitlement_secret: entitlement_secret?.trim() || null,
+        entitlement_secret: sealSecret(entitlement_secret),
         kind: "deployment",
         app_modules: {
           create: await prisma.module
@@ -242,8 +246,11 @@ export async function POST(request: Request) {
         database_size: app.database_size,
         maintenance: app.maintenance,
         entitlement_url: app.entitlement_url,
-        entitlement_secret: app.entitlement_secret,
+        entitlement_secret: revealSecret(app.entitlement_secret),
         has_entitlement_secret: Boolean(app.entitlement_secret),
+        entitlement_secret_encrypted: Boolean(
+          app.entitlement_secret?.startsWith("v1:"),
+        ),
         created_at: app.created_at.toISOString(),
         updated_at: app.updated_at.toISOString(),
         deleted_at: null,

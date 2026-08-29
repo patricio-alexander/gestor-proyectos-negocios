@@ -5,6 +5,8 @@ export type UsageRow = {
   section: string;
   method?: string;
   requests: number;
+  bytes_in?: number;
+  bytes_out?: number;
 };
 
 export type ErrorRow = {
@@ -22,6 +24,8 @@ export type AppLoadPoint = {
   t: string;
   requests: number;
   bytes: number;
+  bytes_in: number;
+  bytes_out: number;
   errors: number;
   latency_p95_ms: number | null;
   usage_breakdown: UsageRow[];

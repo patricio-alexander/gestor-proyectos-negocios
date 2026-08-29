@@ -1,5 +1,6 @@
-import { BackupsManager } from "@/src/features/backups/components/BackupsManager";
+import { redirect } from "next/navigation";
 
+/** Backups vive en Configuración → pestaña Backups. */
 export default function BackupsPage() {
-  return <BackupsManager />;
+  redirect("/dashboard/configuracion?tab=backups");
 }

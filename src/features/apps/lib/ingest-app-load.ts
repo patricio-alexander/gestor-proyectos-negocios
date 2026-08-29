@@ -13,6 +13,8 @@ export type AppLoadSampleInput = {
     section?: string;
     method?: string;
     requests?: number | string;
+    bytes_in?: number | string;
+    bytes_out?: number | string;
   }>;
   error_breakdown?: Array<{
     status?: number | string;
@@ -31,6 +33,8 @@ export type UsageRow = {
   section: string;
   method: string;
   requests: number;
+  bytes_in: number;
+  bytes_out: number;
 };
 
 export type ErrorRow = {
@@ -75,7 +79,9 @@ function normalizeUsage(value: unknown): UsageRow[] {
       String(item.section || "Otros servicios").trim().slice(0, 160) || "Otros servicios";
     const method = String(item.method || "").trim().toUpperCase().slice(0, 12);
     const requests = toNonNegInt(item.requests);
-    if (!requests) continue;
+    const bytesIn = toNonNegInt(item.bytes_in);
+    const bytesOut = toNonNegInt(item.bytes_out);
+    if (!requests && !bytesIn && !bytesOut) continue;
     const key = `${module}::${section}::${method || "*"}`;
     const previous = totals.get(key);
     totals.set(key, {
@@ -83,9 +89,13 @@ function normalizeUsage(value: unknown): UsageRow[] {
       section,
       method,
       requests: (previous?.requests || 0) + requests,
+      bytes_in: (previous?.bytes_in || 0) + bytesIn,
+      bytes_out: (previous?.bytes_out || 0) + bytesOut,
     });
   }
-  return [...totals.values()].sort((a, b) => b.requests - a.requests).slice(0, 40);
+  return [...totals.values()]
+    .sort((a, b) => b.requests - a.requests || b.bytes_out - a.bytes_out)
+    .slice(0, 40);
 }
 
 function fallbackKind(status: number) {
