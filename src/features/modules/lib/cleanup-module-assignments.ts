@@ -230,7 +230,7 @@ export async function retireCanalDigitalModule() {
     appsLinked: 0,
   };
 
-  const targetForKey = (key) => {
+  const targetForKey = (key: string) => {
     if (key === "/canal/locales" || key === "/administracion/sucursales") {
       return inventario;
     }
