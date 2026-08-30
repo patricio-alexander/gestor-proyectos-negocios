@@ -148,16 +148,41 @@ export async function ensureBackupsDir() {
   await fs.mkdir(BACKUPS_DIR, { recursive: true });
 }
 
+function isMissingTableError(error: unknown): boolean {
+  const msg =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error ?? "");
+  return /does not exist|P2021|Unknown table|no such table|ER_NO_SUCH_TABLE/i.test(
+    msg,
+  );
+}
+
 /** Vuelca las tablas del control plane + OTA móvil a un objeto JSON plano. */
-export async function dumpDatabaseToJson(): Promise<Record<string, unknown[]>> {
+export async function dumpDatabaseToJson(): Promise<{
+  data: Record<string, unknown[]>;
+  warnings: string[];
+}> {
   const data: Record<string, unknown[]> = {};
+  const warnings: string[] = [];
 
   for (const entry of BACKUP_TABLE_ENTRIES) {
-    const rows = await entry.get().findMany();
-    data[entry.key] = serializeValue(rows) as unknown[];
+    try {
+      const rows = await entry.get().findMany();
+      data[entry.key] = serializeValue(rows) as unknown[];
+    } catch (error) {
+      if (isMissingTableError(error)) {
+        warnings.push(`${entry.key}: tabla no existe en la BD (ejecutá prisma migrate deploy)`);
+        data[entry.key] = [];
+        continue;
+      }
+      throw error;
+    }
   }
 
-  return data;
+  return { data, warnings };
 }
 
 function timestampSuffix(date = new Date()) {
@@ -175,7 +200,7 @@ export async function saveBackup(options?: { updateMain?: boolean }) {
   const updateMain = options?.updateMain ?? true;
   await ensureBackupsDir();
 
-  const data = await dumpDatabaseToJson();
+  const { data, warnings } = await dumpDatabaseToJson();
   const payload = JSON.stringify(data, null, 2);
   const filename = `backup-gestor-${timestampSuffix()}.json`;
   const storedPath = path.join(BACKUPS_DIR, filename);
@@ -191,6 +216,7 @@ export async function saveBackup(options?: { updateMain?: boolean }) {
     storedPath,
     mainPath: MAIN_BACKUP_PATH,
     sizeBytes: Buffer.byteLength(payload, "utf8"),
+    warnings,
     ...summary,
   };
 }

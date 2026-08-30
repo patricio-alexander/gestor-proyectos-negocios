@@ -53,6 +53,8 @@ else
   echo "==> seed omitido (datos actuales intactos). Para forzar: RUN_SEED=1 npm run deploy"
 fi
 
+mkdir -p backups
+
 echo "==> next build"
 npm run build
 

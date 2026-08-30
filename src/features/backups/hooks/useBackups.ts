@@ -32,6 +32,10 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function fetchOpts(init?: RequestInit): RequestInit {
+  return { credentials: "include", ...init };
+}
+
 export function useBackups() {
   const [main, setMain] = useState<BackupMainInfo | null>(null);
   const [stored, setStored] = useState<StoredBackup[]>([]);
@@ -41,7 +45,7 @@ export function useBackups() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/backups"));
+      const res = await fetch(apiUrl("/api/backups"), fetchOpts());
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al listar backups");
       setMain(data.main);
@@ -60,7 +64,7 @@ export function useBackups() {
   async function exportAndDownload() {
     setBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/backups/export"));
+      const res = await fetch(apiUrl("/api/backups/export"), fetchOpts());
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Error al exportar");
@@ -82,11 +86,19 @@ export function useBackups() {
   async function saveOnly() {
     setBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/backups/export"), { method: "POST" });
+      const res = await fetch(
+        apiUrl("/api/backups/export"),
+        fetchOpts({ method: "POST" }),
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
       await refresh();
-      appToast.success("Backup guardado en el servidor");
+      const warnCount = Array.isArray(data.warnings) ? data.warnings.length : 0;
+      appToast.success(
+        warnCount
+          ? `Backup guardado (${warnCount} tabla(s) omitida(s) — revisá migraciones)`
+          : "Backup guardado en el servidor",
+      );
       return data;
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al guardar");
@@ -99,7 +111,7 @@ export function useBackups() {
   async function downloadMain() {
     setBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/backups/main/download"));
+      const res = await fetch(apiUrl("/api/backups/main/download"), fetchOpts());
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No hay backup.json");
@@ -120,6 +132,7 @@ export function useBackups() {
     try {
       const res = await fetch(
         apiUrl(`/api/backups/stored/${encodeURIComponent(filename)}/download`),
+        fetchOpts(),
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -141,10 +154,10 @@ export function useBackups() {
     try {
       const formData = new FormData();
       formData.set("file", file);
-      const res = await fetch(apiUrl("/api/backups/import"), {
+      const res = await fetch(apiUrl("/api/backups/import"), fetchOpts({
         method: "POST",
         body: formData,
-      });
+      }));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al importar");
       await refresh();
@@ -163,9 +176,9 @@ export function useBackups() {
   async function reloadFromMain() {
     setBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/backups/reload"), {
+      const res = await fetch(apiUrl("/api/backups/reload"), fetchOpts({
         method: "POST",
-      });
+      }));
       const data = (await res.json()) as {
         error?: string;
         message?: string;

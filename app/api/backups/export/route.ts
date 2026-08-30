@@ -27,10 +27,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[backups/export]", error);
-    return NextResponse.json(
-      { error: "Error al exportar la base de datos" },
-      { status: 500 },
-    );
+    const message =
+      error instanceof Error ? error.message : "Error al exportar la base de datos";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -48,12 +47,12 @@ export async function POST() {
       sizeBytes: result.sizeBytes,
       totalRows: result.totalRows,
       counts: result.counts,
+      warnings: result.warnings ?? [],
     });
   } catch (error) {
     console.error("[backups/export POST]", error);
-    return NextResponse.json(
-      { error: "Error al guardar el backup" },
-      { status: 500 },
-    );
+    const message =
+      error instanceof Error ? error.message : "Error al guardar el backup";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
