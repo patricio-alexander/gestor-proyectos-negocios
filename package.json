@@ -17,6 +17,8 @@
     "db:migrate:status": "prisma migrate status",
     "db:sync-catalog": "tsx scripts/sync-product-catalog.mjs",
     "db:sync": "prisma generate && prisma migrate deploy && npm run seed",
+    "news:import": "tsx scripts/import-news-json.ts",
+    "news:export": "tsx scripts/export-news-json.ts",
     "db:reset": "prisma generate && prisma migrate reset --force && npm run seed",
     "worker:usage": "tsx workers/usage-reset-worker.ts",
     "worker:listener-folders": "tsx workers/listener-folder-worker.ts",

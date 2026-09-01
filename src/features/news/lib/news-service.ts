@@ -352,8 +352,67 @@ export type NewsImportItem = {
   sort_order?: number;
   is_published?: boolean;
   published_at?: string | null;
+  /** IDs numéricos (solo si coinciden con apps del gestor). */
   app_ids?: number[];
+  /** Nombres de app: EdDeli, Store, Tienda (recomendado para importar entre entornos). */
+  app_names?: string[];
 };
+
+const VITE_DEPLOYMENT_NAMES = new Set(["eddeli", "store", "tienda"]);
+
+async function listDeploymentApps() {
+  return prisma.apps.findMany({
+    where: { deleted_at: null, kind: "deployment" },
+    select: { id: true, name: true },
+    orderBy: { id: "asc" },
+  });
+}
+
+/** Resuelve destino: app_names → app_ids válidos → default → EdDeli/Store/Tienda. */
+async function resolveNewsTargetAppIds(
+  raw: NewsImportItem,
+  defaultAppIds: number[] = [],
+) {
+  const apps = await listDeploymentApps();
+  const byName = new Map(
+    apps.map((a) => [String(a.name || "").trim().toLowerCase(), a.id]),
+  );
+  const validIds = new Set(apps.map((a) => a.id));
+
+  const fromNames = [
+    ...new Set(
+      (Array.isArray(raw.app_names) ? raw.app_names : [])
+        .map((n) => byName.get(String(n).trim().toLowerCase()))
+        .filter((id): id is number => Number.isFinite(id)),
+    ),
+  ];
+  if (fromNames.length) return fromNames;
+
+  const fromIds = [
+    ...new Set(
+      (Array.isArray(raw.app_ids) ? raw.app_ids : [])
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0 && validIds.has(n)),
+    ),
+  ];
+  if (fromIds.length) return fromIds;
+
+  const fromDefaults = [
+    ...new Set(
+      defaultAppIds.map(Number).filter((n) => Number.isFinite(n) && n > 0 && validIds.has(n)),
+    ),
+  ];
+  if (fromDefaults.length) return fromDefaults;
+
+  const viteDefaults = apps
+    .filter((a) => VITE_DEPLOYMENT_NAMES.has(String(a.name || "").trim().toLowerCase()))
+    .map((a) => a.id);
+  if (viteDefaults.length) return viteDefaults;
+
+  throw new Error(
+    "No hay apps destino (EdDeli/Store/Tienda). Revisá Apps en el gestor o usá app_names en el JSON.",
+  );
+}
 
 /** Reemplaza el lote actual con el JSON importado (soft-delete + create). */
 export async function importNewsFromJson(
@@ -381,13 +440,7 @@ export async function importNewsFromJson(
     if (!isNewsKind(raw?.kind)) {
       throw new Error(`kind inválido: ${String(raw?.kind)}`);
     }
-    const appIds = [
-      ...new Set(
-        (Array.isArray(raw.app_ids) ? raw.app_ids : defaultAppIds)
-          .map(Number)
-          .filter((n) => Number.isFinite(n) && n > 0),
-      ),
-    ];
+    const appIds = await resolveNewsTargetAppIds(raw, defaultAppIds);
     if (!appIds.length) {
       throw new Error(`«${title}» no tiene apps destino`);
     }
