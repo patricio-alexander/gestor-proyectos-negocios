@@ -1478,7 +1478,43 @@ body {
   }
 }
 
+/* Noticias — portada vertical del gestor */
+@keyframes news-board-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes news-board-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.news-board-cover {
+  animation: news-board-fade 0.55s ease-out both;
+}
+
+.news-board-card {
+  animation: news-board-rise 0.45s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .news-board-cover,
+  .news-board-card {
+    animation: none !important;
+  }
+
   .landing-page,
   .landing-page__eyebrow,
   .landing-page__headline,

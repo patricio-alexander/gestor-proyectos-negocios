@@ -55,6 +55,10 @@ fi
 
 mkdir -p backups
 
+# Turbopack/.next en dev puede crecer varios GB; build limpio evita cache corrupto o inflado.
+echo "==> limpiando .next (cache de build)"
+rm -rf .next tsconfig.tsbuildinfo
+
 echo "==> next build"
 npm run build
 

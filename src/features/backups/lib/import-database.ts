@@ -162,6 +162,8 @@ export async function restoreDatabaseFromBackup(
   );
 
   await sealStoredSecretsAfterRestore();
+  // No realinear URLs/secretos locales aquí: en producción el backup ya trae
+  // los entitlement correctos. Para dev local: npx tsx scripts/realign-local-entitlements.ts
 
   if (options?.savePayload) {
     await ensureBackupsDir();

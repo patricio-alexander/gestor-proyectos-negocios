@@ -22,8 +22,44 @@ const TIENDA = {
     "http://127.0.0.1:3004/tiendaapi/subscription/entitlement",
   secret:
     process.env.TIENDA_ENTITLEMENT_SECRET?.trim() ||
-    "tienda_gestor_sync_local_dev",
+    "gc_7c3e91a2b8f04d55e6a1c09d4f2b87e0",
 };
+
+const EDDELI = {
+  url:
+    process.env.EDDELI_ENTITLEMENT_URL?.trim() ||
+    "http://127.0.0.1:3001/eddeliapi/subscription/entitlement",
+  secret:
+    process.env.EDDELI_ENTITLEMENT_SECRET?.trim() ||
+    "gc_4a177c0295a4cb88d52cea1035b9e9a5",
+};
+
+async function alignEdDeli() {
+  const app = await prisma.apps.findFirst({
+    where: { deleted_at: null, name: { in: ["EdDeli", "eddeli"] } },
+  });
+  if (!app) throw new Error("No encontré app EdDeli");
+
+  const updated = await prisma.apps.update({
+    where: { id: app.id },
+    data: {
+      name: "EdDeli",
+      kind: "deployment",
+      entitlement_url: EDDELI.url,
+      entitlement_secret: sealSecret(EDDELI.secret),
+      maintenance: false,
+      deleted_at: null,
+    },
+  });
+  console.log(`EdDeli #${updated.id} → ${updated.entitlement_url}`);
+  const push = await pushEntitlementToApp(updated.hash);
+  console.log(
+    push.ok
+      ? "  push entitlement: OK"
+      : `  push entitlement: FAIL ${push.error}`,
+  );
+  return updated;
+}
 
 async function alignStore() {
   const app =
@@ -93,9 +129,9 @@ async function alignTienda() {
 }
 
 async function main() {
-  console.log("==> Alinear Sync Store = EdDeli (local)");
+  console.log("==> Alinear Sync local (EdDeli + Store + Tienda)");
+  await alignEdDeli();
   await alignStore();
-  console.log("==> Alinear Sync Tienda");
   await alignTienda();
   console.log("Listo. Recargá /dashboard/apps — Sync debe decir Desarrollo · En línea");
 }

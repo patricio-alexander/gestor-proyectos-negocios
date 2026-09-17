@@ -1,21 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ChevronLeft from "@gravity-ui/icons/ChevronLeft";
-import ChevronRight from "@gravity-ui/icons/ChevronRight";
-import Pause from "@gravity-ui/icons/Pause";
-import Play from "@gravity-ui/icons/Play";
-import { buildNewsPages, type NewsPageItem, type NewsPageModel } from "../lib/build-news-pages";
-
-const PAPER = "#ebe9e4";
-const PAPER_EDGE = "#d5d1c8";
-const BOX = "#f4f2ed";
-const BOX_BORDER = "#cfc9bc";
-const INK = "#1c1b19";
-const INK_MUTED = "#5c5852";
-const ACCENT = "#3d4a3a";
-const AUTO_MS = 10_000;
-const PAUSE_KEY = "raptor.gestor.news.autoplayPaused";
+import {
+  buildNewsBoard,
+  type NewsBoardSection,
+  type NewsBoardSectionId,
+  type NewsPageItem,
+} from "../lib/build-news-board";
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "";
@@ -30,225 +21,286 @@ function formatDate(value: string | null | undefined) {
   }
 }
 
-function CoverCard({ item }: { item: NewsPageItem }) {
+function sectionDomId(id: string) {
+  return `news-sec-${id}`;
+}
+
+function SectionAccent(id: NewsBoardSection["id"] | "portada") {
+  switch (id) {
+    case "portada":
+      return {
+        bar: "var(--accent)",
+        soft: "color-mix(in srgb, var(--accent) 16%, transparent)",
+        label: "Portada",
+      };
+    case "novedades":
+      return {
+        bar: "var(--accent)",
+        soft: "color-mix(in srgb, var(--accent) 14%, transparent)",
+        label: "Nuevo",
+      };
+    case "sistema":
+      return {
+        bar: "var(--success)",
+        soft: "color-mix(in srgb, var(--success) 12%, transparent)",
+        label: "Listo",
+      };
+    case "proximamente":
+      return {
+        bar: "var(--warning)",
+        soft: "color-mix(in srgb, var(--warning) 14%, transparent)",
+        label: "Próximo",
+      };
+    default:
+      return {
+        bar: "var(--accent)",
+        soft: "color-mix(in srgb, var(--accent) 10%, transparent)",
+        label: "",
+      };
+  }
+}
+
+type NavNote = {
+  id: NewsBoardSectionId | "portada";
+  title: string;
+  hint: string;
+  count: number;
+};
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(sectionDomId(id));
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function CoverHero({ item }: { item: NewsPageItem }) {
   return (
-    <div
-      className="flex h-full min-h-0 items-center gap-1.5 overflow-hidden rounded border px-1.5 py-1"
-      style={{ background: BOX, borderColor: BOX_BORDER }}
+    <section
+      id={sectionDomId("portada")}
+      className="news-board-cover scroll-mt-20 relative overflow-hidden rounded-2xl border border-[var(--gp-border)]"
+      style={{
+        background:
+          "linear-gradient(145deg, color-mix(in srgb, var(--accent) 22%, var(--gp-surface)) 0%, var(--gp-surface) 48%, color-mix(in srgb, var(--accent) 8%, var(--gp-surface-muted)) 100%)",
+      }}
     >
       <div
-        className="flex size-7 shrink-0 items-center justify-center rounded text-[0.7rem]"
-        style={{ background: "#dfe6dc", color: ACCENT }}
+        className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full opacity-40 blur-3xl"
+        style={{ background: "var(--accent)" }}
         aria-hidden
-      >
-        ▢
-      </div>
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <p
-          className="truncate text-[0.62rem] font-extrabold leading-tight"
-          style={{ color: INK, fontFamily: "Georgia, serif" }}
-        >
-          {item.title}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-24 left-10 size-48 rounded-full opacity-25 blur-3xl"
+        style={{ background: "var(--warning)" }}
+        aria-hidden
+      />
+
+      <div className="relative px-5 py-7 md:px-8 md:py-10">
+        <p className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[var(--gp-text-muted)]">
+          Primera plana
+          {item.publishedAt ? ` · ${formatDate(item.publishedAt)}` : ""}
         </p>
+        <h2 className="max-w-3xl text-3xl font-extrabold leading-[1.1] tracking-tight text-[var(--gp-text)] md:text-4xl">
+          {item.title}
+        </h2>
         {item.subtitle ? (
-          <p
-            className="truncate text-[0.55rem] font-semibold leading-tight"
-            style={{ color: ACCENT }}
-          >
+          <p className="mt-3 max-w-2xl text-base font-medium text-[var(--gp-text-muted)] md:text-lg">
             {item.subtitle}
           </p>
         ) : null}
         {item.body ? (
-          <p
-            className="line-clamp-2 text-[0.55rem] leading-snug"
-            style={{ color: INK_MUTED }}
-          >
+          <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-[var(--gp-text)]/85 md:text-[0.95rem]">
             {item.body}
           </p>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }
 
-function CoverLayout({
-  page,
+function NewsCard({
+  item,
+  accent,
+  index,
 }: {
-  page: Extract<NewsPageModel, { layout: "cover" }>;
+  item: NewsPageItem;
+  accent: ReturnType<typeof SectionAccent>;
+  index: number;
 }) {
-  const rows = page.coverVariant === "grid" ? 3 : 2;
+  const [open, setOpen] = useState(false);
+  const hasBody = Boolean(item.body?.trim());
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden">
-      {page.hero ? (
-        <div
-          className="flex max-h-[34%] shrink-0 items-center gap-2 rounded border-l-4 px-2.5 py-1.5"
-          style={{
-            background: BOX,
-            borderColor: BOX_BORDER,
-            borderLeftColor: ACCENT,
-          }}
-        >
-          <div
-            className="flex size-12 shrink-0 items-center justify-center rounded text-xl"
-            style={{ background: "#dfe6dc", color: ACCENT }}
-            aria-hidden
-          >
-            📰
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p
-              className="mb-0.5 text-[0.52rem] font-bold uppercase tracking-wider"
-              style={{ color: ACCENT }}
-            >
-              Titular
-              {page.hero.publishedAt ? ` · ${formatDate(page.hero.publishedAt)}` : ""}
-            </p>
-            <h2
-              className="mb-0.5 line-clamp-2 text-[0.88rem] font-extrabold leading-tight md:text-[0.95rem]"
-              style={{ color: INK, fontFamily: "Georgia, serif" }}
-            >
-              {page.hero.title}
-            </h2>
-            {page.hero.subtitle ? (
-              <p
-                className="mb-0.5 line-clamp-1 text-[0.62rem] font-semibold"
-                style={{ color: INK_MUTED }}
-              >
-                {page.hero.subtitle}
-              </p>
-            ) : null}
-            {page.hero.body ? (
-              <p
-                className="line-clamp-2 text-[0.6rem] leading-snug"
-                style={{ color: INK, fontFamily: "Georgia, serif" }}
-              >
-                {page.hero.body}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {page.lead ? (
-        <p
-          className="shrink-0 text-[0.55rem] font-extrabold uppercase tracking-wider"
-          style={{ color: INK_MUTED }}
-        >
-          {page.lead}
-        </p>
-      ) : null}
-
-      <div
-        className="grid min-h-0 flex-1 gap-1.5"
-        style={{
-          gridTemplateColumns: "1fr 1fr",
-          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        }}
-      >
-        {page.summaries.slice(0, rows * 2).map((item) => (
-          <CoverCard key={item.id} item={item} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FeatureLayout({
-  page,
-}: {
-  page: Extract<NewsPageModel, { layout: "feature" }>;
-}) {
-  const item = page.item;
-  const isLead = item.kind === "portada";
-  const isSoon = item.kind === "proximamente";
-  return (
-    <div
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded border-l-4 p-4"
-      style={{
-        background: BOX,
-        borderColor: BOX_BORDER,
-        borderLeftColor: isSoon ? "#5a4a6a" : ACCENT,
-      }}
+    <article
+      id={`news-item-${item.id}`}
+      className="news-board-card scroll-mt-20 group relative overflow-hidden rounded-xl border border-[var(--gp-border)] bg-[var(--gp-surface)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md"
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
-      <div className="mb-3 flex shrink-0 gap-3">
-        <div
-          className="flex shrink-0 items-center justify-center rounded text-2xl"
-          style={{
-            width: isLead ? 72 : 56,
-            height: isLead ? 72 : 56,
-            background: "#dfe6dc",
-            color: ACCENT,
-          }}
-          aria-hidden
-        >
-          {isSoon ? "✨" : isLead ? "📰" : "▸"}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p
-            className="mb-1 text-[0.6rem] font-extrabold uppercase tracking-wider"
-            style={{ color: isSoon ? "#5a4a6a" : ACCENT }}
+      <div
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ background: accent.bar }}
+        aria-hidden
+      />
+      <div className="px-4 py-3.5 pl-5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+          <span
+            className="rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide"
+            style={{ background: accent.soft, color: "var(--gp-text)" }}
           >
-            {page.accentLabel}
-            {item.publishedAt ? ` · ${formatDate(item.publishedAt)}` : ""}
-          </p>
-          <h2
-            className={`mb-1 font-extrabold leading-tight ${isLead ? "text-xl md:text-2xl" : "text-lg md:text-xl"}`}
-            style={{ color: INK, fontFamily: "Georgia, serif" }}
-          >
-            {item.title}
-          </h2>
-          {item.subtitle ? (
-            <p className="text-sm font-semibold" style={{ color: INK_MUTED }}>
-              {item.subtitle}
-            </p>
+            {accent.label}
+          </span>
+          {item.publishedAt ? (
+            <span className="text-[0.7rem] text-[var(--gp-text-muted)]">
+              {formatDate(item.publishedAt)}
+            </span>
           ) : null}
         </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden border-t pt-3" style={{ borderColor: BOX_BORDER }}>
-        {item.body ? (
-          <p
-            className="whitespace-pre-wrap text-[0.88rem] leading-relaxed"
-            style={{ color: INK, fontFamily: "Georgia, serif" }}
-          >
-            {item.body}
+        <h3 className="text-[0.98rem] font-bold leading-snug text-[var(--gp-text)]">
+          {item.title}
+        </h3>
+        {item.subtitle ? (
+          <p className="mt-1 text-sm font-medium text-[var(--gp-text-muted)]">
+            {item.subtitle}
           </p>
         ) : null}
+        {hasBody ? (
+          <>
+            <p
+              className={`mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--gp-text)]/80 ${
+                open ? "" : "line-clamp-3"
+              }`}
+            >
+              {item.body}
+            </p>
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? "Ver menos" : "Leer más"}
+            </button>
+          </>
+        ) : null}
       </div>
-    </div>
+    </article>
   );
 }
 
-function PaperPage({ page, pageNumber }: { page: NewsPageModel | null; pageNumber: number }) {
+function BoardSection({ section }: { section: NewsBoardSection }) {
+  const accent = SectionAccent(section.id);
+  if (!section.items.length) return null;
+
   return (
-    <div
-      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden px-3 py-2.5 md:px-4"
-      style={{ background: PAPER }}
+    <section
+      id={sectionDomId(section.id)}
+      className="scroll-mt-20 space-y-3"
     >
-      <div
-        className="mb-2 flex shrink-0 items-baseline justify-between border-b-2 pb-1.5"
-        style={{ borderColor: INK }}
-      >
-        <span
-          className="text-[0.7rem] font-extrabold uppercase tracking-[0.1em]"
-          style={{ color: INK, fontFamily: "Georgia, serif" }}
+      <header className="flex items-end justify-between gap-3 border-b border-[var(--gp-border)] pb-2">
+        <div>
+          <p
+            className="text-[0.68rem] font-bold uppercase tracking-[0.16em]"
+            style={{ color: accent.bar }}
+          >
+            {section.eyebrow}
+          </p>
+          <h2 className="text-xl font-extrabold tracking-tight text-[var(--gp-text)] md:text-2xl">
+            {section.title}
+          </h2>
+          <p className="mt-0.5 text-sm text-[var(--gp-text-muted)]">
+            {section.description}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[var(--gp-surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--gp-text-muted)]">
+          {section.items.length}
+        </span>
+      </header>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {section.items.map((item, index) => (
+          <NewsCard key={item.id} item={item} accent={accent} index={index} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FloatingNotes({
+  notes,
+  activeId,
+  onJump,
+}: {
+  notes: NavNote[];
+  activeId: string;
+  onJump: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="pointer-events-none fixed bottom-5 right-4 z-40 flex flex-col items-end gap-2 md:bottom-8 md:right-6">
+      {open ? (
+        <nav
+          aria-label="Secciones de noticias"
+          className="pointer-events-auto flex w-[11.5rem] flex-col gap-1.5 rounded-2xl border border-[var(--gp-border)] p-2 shadow-xl backdrop-blur-md sm:w-48"
+          style={{
+            background:
+              "color-mix(in srgb, var(--gp-surface) 88%, transparent)",
+          }}
         >
-          {page?.heading || "—"}
-        </span>
-        <span className="text-[0.65rem]" style={{ color: INK_MUTED }}>
-          Pág. {pageNumber}
-        </span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {!page ? (
-          <div className="flex h-full items-center justify-center italic" style={{ color: INK_MUTED }}>
-            Página en blanco
-          </div>
-        ) : page.layout === "cover" ? (
-          <CoverLayout page={page} />
-        ) : (
-          <FeatureLayout page={page} />
-        )}
-      </div>
+          <p className="px-1.5 pb-0.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--gp-text-muted)]">
+            Ir a
+          </p>
+          {notes.map((note) => {
+            const accent = SectionAccent(note.id);
+            const active = activeId === note.id;
+            return (
+              <button
+                key={note.id}
+                type="button"
+                onClick={() => onJump(note.id)}
+                className={`relative rounded-xl border px-2.5 py-2 text-left transition-[transform,background] duration-200 hover:-translate-y-0.5 ${
+                  active ? "shadow-sm" : ""
+                }`}
+                style={{
+                  background: active
+                    ? accent.soft
+                    : "color-mix(in srgb, var(--gp-surface) 70%, transparent)",
+                  borderColor: active ? accent.bar : "var(--gp-border)",
+                  boxShadow: active
+                    ? `inset 3px 0 0 ${accent.bar}`
+                    : undefined,
+                }}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-[0.7rem] font-bold uppercase tracking-wide"
+                    style={{ color: accent.bar }}
+                  >
+                    {note.title}
+                  </span>
+                  <span className="text-[0.65rem] font-semibold text-[var(--gp-text-muted)]">
+                    {note.count}
+                  </span>
+                </span>
+                <span className="mt-0.5 line-clamp-1 block text-[0.7rem] leading-snug text-[var(--gp-text-muted)]">
+                  {note.hint}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      ) : null}
+
+      <button
+        type="button"
+        className="pointer-events-auto rounded-full border border-[var(--gp-border)] px-3.5 py-2 text-xs font-bold shadow-lg backdrop-blur-md"
+        style={{
+          background: "color-mix(in srgb, var(--accent) 22%, var(--gp-surface))",
+          color: "var(--gp-text)",
+        }}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Ocultar índice de noticias" : "Mostrar índice de noticias"}
+      >
+        {open ? "Ocultar" : "Secciones"}
+      </button>
     </div>
   );
 }
@@ -258,121 +310,97 @@ type Props = {
 };
 
 export function NewspaperPreview({ items }: Props) {
-  const pages = useMemo(() => buildNewsPages(items), [items]);
-  const spreads = useMemo(() => {
-    const pairs: Array<[NewsPageModel | null, NewsPageModel | null]> = [];
-    for (let i = 0; i < pages.length; i += 2) {
-      pairs.push([pages[i] || null, pages[i + 1] || null]);
+  const board = useMemo(() => buildNewsBoard(items), [items]);
+  const [activeId, setActiveId] = useState<string>("portada");
+
+  const notes = useMemo<NavNote[]>(() => {
+    const list: NavNote[] = [
+      {
+        id: "portada",
+        title: "Portada",
+        hint: board.cover?.title || "Primera plana",
+        count: board.cover ? 1 : 0,
+      },
+    ];
+    for (const section of board.sections) {
+      if (!section.items.length) continue;
+      list.push({
+        id: section.id,
+        title: section.title,
+        hint: section.eyebrow,
+        count: section.items.length,
+      });
     }
-    return pairs;
-  }, [pages]);
+    return list;
+  }, [board]);
 
-  const [spreadIndex, setSpreadIndex] = useState(0);
-  const [paused, setPaused] = useState(() => {
-    try {
-      return localStorage.getItem(PAUSE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  const totalSpreads = spreads.length || 1;
-  const safeIndex = Math.min(spreadIndex, totalSpreads - 1);
-  const [left, right] = spreads[safeIndex] || [null, null];
-  const leftNum = safeIndex * 2 + 1;
-  const rightNum = safeIndex * 2 + 2;
-
-  useEffect(() => {
-    setSpreadIndex(0);
-  }, [pages]);
-
-  useEffect(() => {
-    if (paused || totalSpreads <= 1) return undefined;
-    const id = window.setInterval(() => {
-      setSpreadIndex((i) => (i + 1) % totalSpreads);
-    }, AUTO_MS);
-    return () => window.clearInterval(id);
-  }, [paused, totalSpreads, safeIndex]);
-
-  const togglePaused = useCallback(() => {
-    setPaused((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(PAUSE_KEY, next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+  const onJump = useCallback((id: string) => {
+    setActiveId(id);
+    scrollToSection(id);
   }, []);
+
+  useEffect(() => {
+    const ids = notes.map((n) => n.id);
+    const nodes = ids
+      .map((id) => document.getElementById(sectionDomId(id)))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (!nodes.length) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const top = visible[0]?.target?.id?.replace(/^news-sec-/, "");
+        if (top) setActiveId(top);
+      },
+      { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.35, 0.6] },
+    );
+
+    for (const node of nodes) observer.observe(node);
+    return () => observer.disconnect();
+  }, [notes]);
 
   if (!items.length) {
     return (
-      <div
-        className="rounded-lg border px-6 py-16 text-center text-sm"
-        style={{ background: PAPER, borderColor: PAPER_EDGE, color: INK_MUTED }}
-      >
+      <div className="rounded-2xl border border-[var(--gp-border)] bg-[var(--gp-surface)] px-6 py-16 text-center text-sm text-[var(--gp-text-muted)]">
         Todavía no hay noticias para previsualizar. Usá «Gestionar» para crearlas.
       </div>
     );
   }
 
-  return (
-    <div className="w-full">
-      <div
-        className="flex overflow-hidden rounded border shadow-lg"
-        style={{
-          background: PAPER,
-          borderColor: PAPER_EDGE,
-          height: "min(62vh, 520px)",
-          minHeight: 360,
-        }}
-      >
-        <PaperPage page={left} pageNumber={leftNum} />
-        <div className="w-0.5 shrink-0 shadow" style={{ background: PAPER_EDGE }} />
-        <PaperPage page={right} pageNumber={rightNum} />
-      </div>
+  const hasAnySection = board.sections.some((s) => s.items.length > 0);
 
-      <div className="mt-3 flex items-center justify-center gap-2">
-        <button
-          type="button"
-          className="rounded-full border p-1.5 disabled:opacity-40"
-          style={{ background: PAPER, borderColor: PAPER_EDGE, color: INK }}
-          disabled={totalSpreads <= 1}
-          onClick={() => setSpreadIndex((i) => (i - 1 + totalSpreads) % totalSpreads)}
-          aria-label="Anterior"
+  return (
+    <div className="news-board space-y-8">
+      {board.cover ? (
+        <CoverHero item={board.cover} />
+      ) : (
+        <section
+          id={sectionDomId("portada")}
+          className="scroll-mt-20 rounded-2xl border border-dashed border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/50 px-5 py-8 text-center"
         >
-          <ChevronLeft className="size-4" />
-        </button>
-        <button
-          type="button"
-          className="rounded-full border p-1.5"
-          style={{
-            background: paused ? INK : PAPER,
-            borderColor: PAPER_EDGE,
-            color: paused ? PAPER : INK,
-          }}
-          onClick={togglePaused}
-          aria-label={paused ? "Reanudar" : "Pausar"}
-        >
-          {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
-        </button>
-        <button
-          type="button"
-          className="rounded-full border p-1.5 disabled:opacity-40"
-          style={{ background: PAPER, borderColor: PAPER_EDGE, color: INK }}
-          disabled={totalSpreads <= 1}
-          onClick={() => setSpreadIndex((i) => (i + 1) % totalSpreads)}
-          aria-label="Siguiente"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
-      <p className="mt-1 text-center text-xs" style={{ color: INK_MUTED }}>
-        Páginas {leftNum}–{rightNum} de {pages.length}
-        {!paused && totalSpreads > 1 ? " · Avanza sola cada 10 s" : ""}
-        {paused ? " · Pausado" : ""}
-      </p>
+          <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--gp-text-muted)]">
+            Primera plana
+          </p>
+          <p className="mt-2 text-sm text-[var(--gp-text-muted)]">
+            Creá una pieza tipo «Portada» para el titular principal.
+          </p>
+        </section>
+      )}
+
+      {hasAnySection ? (
+        board.sections.map((section) => (
+          <BoardSection key={section.id} section={section} />
+        ))
+      ) : (
+        <p className="text-center text-sm text-[var(--gp-text-muted)]">
+          Solo hay portada. Agregá breves o «próximamente» para llenar las
+          secciones.
+        </p>
+      )}
+
+      <FloatingNotes notes={notes} activeId={activeId} onJump={onJump} />
     </div>
   );
 }

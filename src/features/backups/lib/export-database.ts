@@ -36,7 +36,7 @@ export const BACKUP_TABLE_KEYS = [
   /** Noticias empujadas a apps Vite. */
   "NewsItem",
   "NewsAppTarget",
-  /** Telemetría de carga HTTP por app (FK → Apps). */
+  /** Telemetría de carga HTTP por app (FK → Apps). No se exporta por defecto (infla el JSON). */
   "AppLoadSample",
   "AppLoadMinute",
   /** OTA / apps móviles (dependen de Apps vía app_id opcional). */
@@ -46,6 +46,13 @@ export const BACKUP_TABLE_KEYS = [
 ] as const;
 
 export type BackupTableKey = (typeof BACKUP_TABLE_KEYS)[number];
+
+/** Tablas de telemetría: se importan si vienen en el JSON, pero no se vuelcan en export normal. */
+export const TELEMETRY_BACKUP_KEYS: readonly BackupTableKey[] = [
+  "AppLoadSample",
+  "AppLoadMinute",
+  "Event",
+];
 
 export function backupTableDelegate(db: DbClient, key: BackupTableKey): Delegate {
   switch (key) {
@@ -161,14 +168,24 @@ function isMissingTableError(error: unknown): boolean {
 }
 
 /** Vuelca las tablas del control plane + OTA móvil a un objeto JSON plano. */
-export async function dumpDatabaseToJson(): Promise<{
+export async function dumpDatabaseToJson(options?: {
+  includeTelemetry?: boolean;
+}): Promise<{
   data: Record<string, unknown[]>;
   warnings: string[];
 }> {
+  const includeTelemetry = options?.includeTelemetry === true;
+  const skipTelemetry = new Set<string>(
+    includeTelemetry ? [] : TELEMETRY_BACKUP_KEYS,
+  );
   const data: Record<string, unknown[]> = {};
   const warnings: string[] = [];
 
   for (const entry of BACKUP_TABLE_ENTRIES) {
+    if (skipTelemetry.has(entry.key)) {
+      data[entry.key] = [];
+      continue;
+    }
     try {
       const rows = await entry.get().findMany();
       data[entry.key] = serializeValue(rows) as unknown[];
@@ -196,12 +213,18 @@ function timestampSuffix(date = new Date()) {
 /**
  * Exporta la BD a JSON, guarda copia fechada y actualiza backup.json principal.
  */
-export async function saveBackup(options?: { updateMain?: boolean }) {
+export async function saveBackup(options?: {
+  updateMain?: boolean;
+  includeTelemetry?: boolean;
+}) {
   const updateMain = options?.updateMain ?? true;
   await ensureBackupsDir();
 
-  const { data, warnings } = await dumpDatabaseToJson();
-  const payload = JSON.stringify(data, null, 2);
+  const { data, warnings } = await dumpDatabaseToJson({
+    includeTelemetry: options?.includeTelemetry === true,
+  });
+  // Compacto: sin indentación (mucho más liviano al subir/bajar)
+  const payload = JSON.stringify(data);
   const filename = `backup-gestor-${timestampSuffix()}.json`;
   const storedPath = path.join(BACKUPS_DIR, filename);
 
@@ -256,7 +279,7 @@ export async function listStoredBackups() {
   const stored = [];
 
   for (const name of names) {
-    if (name === "backup.json" || !name.endsWith(".json")) continue;
+    if (name === "backup.json" || name === ".uploads" || !name.endsWith(".json")) continue;
     if (!name.startsWith("backup-gestor-") && !name.startsWith("backup-gestor-import-")) continue;
     const full = path.join(BACKUPS_DIR, name);
     const st = await fs.stat(full);

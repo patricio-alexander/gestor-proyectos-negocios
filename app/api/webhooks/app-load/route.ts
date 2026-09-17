@@ -4,7 +4,7 @@ import { serviceErrorResponse } from "@/src/shared/lib/api-error";
 import { ingestAppLoadSample } from "@/src/features/apps/lib/ingest-app-load";
 
 /**
- * Webhook de carga cada 10 segundos. No crea Event (es telemetría agregada).
+ * Webhook de carga agregada (solo cuando la app tuvo tráfico real).
  * Auth: Authorization: Bearer {entitlement_secret}
  */
 export async function POST(request: NextRequest) {
@@ -18,6 +18,14 @@ export async function POST(request: NextRequest) {
     }
 
     const row = await ingestAppLoadSample(auth.app_id, body);
+    if (!row) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "empty_sample",
+        app_id: auth.app_id,
+      });
+    }
     return NextResponse.json(
       {
         ok: true,

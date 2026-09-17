@@ -4,7 +4,7 @@
     {
       "title": "Llegó la nueva sección de Noticias",
       "subtitle": "Para enterarte de las novedades y mantenerte informado",
-      "body": "Desde hoy el sistema tiene un espacio tipo periódico con las novedades.\n\nEn portada verás el resumen de lo más útil y lo reciente. En las páginas siguientes, cada tema tiene su propia hoja con más detalle: primero lo del día a día (Caja, turnos, Cobranzas, Pedidos), luego esta misma sección de Noticias ampliada, lo que se mejoró en Operación y Caja, y al final lo que se viene.",
+      "body": "Desde hoy el sistema tiene un espacio de novedades con portada principal.\n\nArriba va la primera plana. Debajo: lo nuevo, lo que ya funciona en el día a día, y al final lo que se viene.",
       "kind": "portada",
       "sort_order": 0,
       "is_published": true,

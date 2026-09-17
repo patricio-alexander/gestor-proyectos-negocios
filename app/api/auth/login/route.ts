@@ -67,11 +67,14 @@ export async function POST(request: Request) {
 
     const res = NextResponse.json(response);
 
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const cookiePath = basePath || "/";
+
     res.cookies.set("token", token, {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/",
+      path: cookiePath,
       maxAge: 60 * 60 * 24 * 7,
     });
 

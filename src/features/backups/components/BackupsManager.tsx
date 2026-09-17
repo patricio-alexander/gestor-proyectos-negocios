@@ -22,6 +22,8 @@ import { StatCard } from "@/src/shared/components/StatCard";
 import { gp } from "@/src/shared/ui/theme";
 import { useBackups } from "../hooks/useBackups";
 
+const PREVIEW_MAX_BYTES = 8 * 1024 * 1024;
+
 function formatSize(mb: number, bytes: number) {
   if (mb >= 0.01) return `${mb} MB`;
   if (bytes > 0) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -65,7 +67,6 @@ function previewBackupJson(raw: string) {
 }
 
 type BackupsManagerProps = {
-  /** Embebido en Configuración (sin PageHeader propio). */
   embedded?: boolean;
 };
 
@@ -75,12 +76,15 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
     stored,
     loading,
     busy,
+    importProgress,
+    resetImportProgress,
     refresh,
     exportAndDownload,
     saveOnly,
     downloadMain,
     downloadStored,
     importFromFile,
+    importFromServerFile,
     reloadFromMain,
   } = useBackups();
 
@@ -93,6 +97,11 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
     totalRows: number;
   } | null>(null);
   const [previewError, setPreviewError] = useState("");
+  const [previewSkipped, setPreviewSkipped] = useState(false);
+
+  const isImporting =
+    importProgress.phase === "uploading" ||
+    importProgress.phase === "restoring";
 
   async function onExport() {
     try {
@@ -117,8 +126,16 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
 
     setPreviewError("");
     setPendingFile(file);
+    setPendingPreview(null);
+    setPreviewSkipped(false);
+    resetImportProgress();
 
     try {
+      if (file.size > PREVIEW_MAX_BYTES) {
+        setPreviewSkipped(true);
+        importState.open();
+        return;
+      }
       const text = await file.text();
       setPendingPreview(previewBackupJson(text));
       importState.open();
@@ -136,20 +153,28 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
     if (!pendingFile) return;
     try {
       await importFromFile(pendingFile);
-      importState.close();
-      setPendingFile(null);
-      setPendingPreview(null);
-      setPreviewError("");
     } catch {
-      /* toast en hook */
+      /* toast + progress error en hook */
     }
   }
 
   function cancelImport() {
+    if (isImporting) return;
     importState.close();
     setPendingFile(null);
     setPendingPreview(null);
     setPreviewError("");
+    setPreviewSkipped(false);
+    resetImportProgress();
+  }
+
+  function closeImportDone() {
+    importState.close();
+    setPendingFile(null);
+    setPendingPreview(null);
+    setPreviewError("");
+    setPreviewSkipped(false);
+    resetImportProgress();
   }
 
   async function confirmReload() {
@@ -228,15 +253,15 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
       {embedded ? (
         <>
           <p className="text-sm text-[var(--gp-text-muted)]">
-            Exporta, importa o recarga la base del gestor desde JSON. Incluye
-            las 25 tablas (apps, planes, móviles, telemetría, etc.).
+            Exporta / importa la BD del gestor. La subida va por partes (chunks)
+            con barra de progreso — así no falla el límite de 10&nbsp;MB de Next.
           </p>
           {actions}
         </>
       ) : (
         <PageHeader
           title="Backups JSON"
-          description="Exporta, guarda o restaura la base de datos del gestor desde JSON."
+          description="Subida por chunks con progreso. Export sin telemetría pesada."
           Icon={Database}
           action={actions}
         />
@@ -348,13 +373,23 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
                   <td>{formatDate(row.modifiedAt)}</td>
                   <td>{formatSize(row.sizeMB, row.sizeBytes)}</td>
                   <td className="text-right">
-                    <Button
-                      size="sm"
-                      isDisabled={busy}
-                      onPress={() => void downloadStored(row.filename)}
-                    >
-                      Descargar
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        isDisabled={busy}
+                        onPress={() => void importFromServerFile(row.filename)}
+                      >
+                        Restaurar
+                      </Button>
+                      <Button
+                        size="sm"
+                        isDisabled={busy}
+                        onPress={() => void downloadStored(row.filename)}
+                      >
+                        Descargar
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -367,52 +402,132 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
         <Modal.Backdrop>
           <Modal.Container>
             <Modal.Dialog className="max-w-md">
-              <Modal.CloseTrigger />
+              {!isImporting && importProgress.phase !== "done" ? (
+                <Modal.CloseTrigger />
+              ) : null}
               <Modal.Header>
-                <Modal.Heading>Restaurar desde JSON</Modal.Heading>
+                <Modal.Heading>
+                  {importProgress.phase === "done"
+                    ? "Restauración completa"
+                    : isImporting
+                      ? "Subiendo y restaurando…"
+                      : "Restaurar desde JSON"}
+                </Modal.Heading>
               </Modal.Header>
               <Modal.Body className="space-y-3">
                 {previewError ? (
                   <Alert status="danger">
                     <Alert.Description>{previewError}</Alert.Description>
                   </Alert>
-                ) : (
-                  <>
-                    <Alert status="warning">
-                      <Alert.Description>
-                        Se borrarán <strong>todos los datos actuales</strong> de
-                        la base de datos y se reemplazarán por el contenido del
-                        archivo. Esta acción no se puede deshacer.
-                      </Alert.Description>
-                    </Alert>
-                    {pendingFile && (
-                      <p className="text-sm text-[var(--gp-text)]">
-                        Archivo:{" "}
-                        <span className="font-mono">{pendingFile.name}</span>
-                        {" · "}
-                        {formatSize(0, pendingFile.size)}
+                ) : null}
+
+                {importProgress.phase === "error" ? (
+                  <Alert status="danger">
+                    <Alert.Description>{importProgress.label}</Alert.Description>
+                  </Alert>
+                ) : null}
+
+                {(isImporting || importProgress.phase === "done") && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[var(--gp-text-muted)]">
+                        {importProgress.label || "Procesando…"}
+                      </span>
+                      <span className="font-mono tabular-nums">
+                        {importProgress.percent}%
+                      </span>
+                    </div>
+                    <div
+                      className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--gp-border)]"
+                      role="progressbar"
+                      aria-valuenow={importProgress.percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <div
+                        className="h-full rounded-full transition-[width] duration-300 ease-out"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, importProgress.percent))}%`,
+                          backgroundColor:
+                            importProgress.phase === "done"
+                              ? "#16a34a"
+                              : "var(--gp-primary)",
+                        }}
+                      />
+                    </div>
+                    {importProgress.totalChunks ? (
+                      <p className="text-xs text-[var(--gp-text-muted)]">
+                        Parte {importProgress.chunk ?? 0} de{" "}
+                        {importProgress.totalChunks}
                       </p>
-                    )}
-                    {pendingPreview && (
-                      <p className="text-sm text-[var(--gp-text-muted)]">
-                        {summaryLine(pendingPreview.counts)} ·{" "}
-                        {pendingPreview.totalRows} filas totales
-                      </p>
-                    )}
-                  </>
+                    ) : null}
+                  </div>
                 )}
+
+                {!isImporting &&
+                  importProgress.phase !== "done" &&
+                  !previewError && (
+                    <>
+                      <Alert status="warning">
+                        <Alert.Description>
+                          Se borrarán <strong>todos los datos actuales</strong>{" "}
+                          de la base de datos y se reemplazarán por el contenido
+                          del archivo. Esta acción no se puede deshacer.
+                        </Alert.Description>
+                      </Alert>
+                      {pendingFile && (
+                        <p className="text-sm text-[var(--gp-text)]">
+                          Archivo:{" "}
+                          <span className="font-mono">{pendingFile.name}</span>
+                          {" · "}
+                          {formatSize(0, pendingFile.size)}
+                        </p>
+                      )}
+                      {previewSkipped ? (
+                        <p className="text-sm text-[var(--gp-text-muted)]">
+                          Archivo grande: la vista previa se omite; se valida al
+                          subir por partes.
+                        </p>
+                      ) : null}
+                      {pendingPreview && (
+                        <p className="text-sm text-[var(--gp-text-muted)]">
+                          {summaryLine(pendingPreview.counts)} ·{" "}
+                          {pendingPreview.totalRows} filas totales
+                        </p>
+                      )}
+                    </>
+                  )}
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onPress={cancelImport}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="danger"
-                  isDisabled={busy || !!previewError || !pendingFile}
-                  onPress={() => void confirmImport()}
-                >
-                  {busy ? <Spinner size="sm" /> : "Restaurar y reemplazar"}
-                </Button>
+                {importProgress.phase === "done" ? (
+                  <Button onPress={closeImportDone}>Cerrar</Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="secondary"
+                      isDisabled={isImporting}
+                      onPress={cancelImport}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="danger"
+                      isDisabled={
+                        busy ||
+                        !!previewError ||
+                        !pendingFile ||
+                        isImporting
+                      }
+                      onPress={() => void confirmImport()}
+                    >
+                      {isImporting ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        "Restaurar y reemplazar"
+                      )}
+                    </Button>
+                  </>
+                )}
               </Modal.Footer>
             </Modal.Dialog>
           </Modal.Container>

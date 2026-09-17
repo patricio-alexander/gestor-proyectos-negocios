@@ -5,18 +5,25 @@ import { useEffect } from "react";
 /**
  * HeroUI toast / Next View Transitions a veces lanzan:
  * InvalidStateError: Transition was aborted because of invalid state
- * (pestaña en segundo plano, HMR stale, Strict Mode). Es benigno.
+ * (pestaña en segundo plano, HMR stale, Strict Mode, cerrar modal + toast).
+ * Es benigno: lo silenciamos para que Next no muestre overlay rojo.
  */
 export function ViewTransitionErrorGuard() {
   useEffect(() => {
     const isBenign = (reason: unknown) => {
-      if (!reason || typeof reason !== "object") return false;
+      if (!reason) return false;
+      if (typeof reason === "string") {
+        return /transition was aborted|invalid state|visibility state is hidden/i.test(
+          reason,
+        );
+      }
+      if (typeof reason !== "object") return false;
       const err = reason as { name?: string; message?: string };
+      const msg = String(err.message || "");
       return (
-        err.name === "InvalidStateError" &&
-        typeof err.message === "string" &&
+        err.name === "InvalidStateError" ||
         /transition was aborted|invalid state|visibility state is hidden/i.test(
-          err.message,
+          msg,
         )
       );
     };
@@ -29,17 +36,18 @@ export function ViewTransitionErrorGuard() {
     };
 
     const onError = (event: ErrorEvent) => {
-      if (isBenign(event.error)) {
+      if (isBenign(event.error) || isBenign(event.message)) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
     };
 
-    window.addEventListener("unhandledrejection", onRejection);
-    window.addEventListener("error", onError);
+    // Capas que Next/Turbopack usan además de window
+    window.addEventListener("unhandledrejection", onRejection, true);
+    window.addEventListener("error", onError, true);
     return () => {
-      window.removeEventListener("unhandledrejection", onRejection);
-      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection, true);
+      window.removeEventListener("error", onError, true);
     };
   }, []);
 

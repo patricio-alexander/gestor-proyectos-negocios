@@ -283,7 +283,7 @@ export function NewsManager() {
           <div className="min-w-0">
             <h1 className={gp.title}>Noticias</h1>
             <p className="truncate text-xs opacity-70">
-              Vista del periódico · gestionar, JSON y envío a apps
+              Portada y novedades · gestionar, JSON y envío a apps
             </p>
           </div>
         </div>
@@ -342,24 +342,16 @@ export function NewsManager() {
           <Spinner />
         </div>
       ) : (
-        <div
-          className="rounded-xl p-3 md:p-4"
-          style={{
-            background:
-              "linear-gradient(180deg, #d9d6cf 0%, #cfcbc2 50%, #d9d6cf 100%)",
-          }}
-        >
-          <div className="mb-2 flex items-center gap-2">
-            <BookOpen className="size-5" style={{ color: "#1c1b19" }} />
+        <div className="space-y-4 rounded-2xl border border-[var(--gp-border)] bg-[var(--gp-surface-muted)]/35 p-3 md:p-5">
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-5 text-[var(--gp-text)]" />
             <div>
-              <h2
-                className="text-base font-extrabold leading-tight"
-                style={{ color: "#1c1b19", fontFamily: "Georgia, serif" }}
-              >
-                El Diario del Sistema
+              <h2 className="text-base font-extrabold leading-tight text-[var(--gp-text)]">
+                Portada Raptor Solutions
               </h2>
-              <p className="text-xs" style={{ color: "#5c5852" }}>
-                Vista previa · {items.length} pieza(s)
+              <p className="text-xs text-[var(--gp-text-muted)]">
+                Primera plana · novedades · sistema · próximos · {items.length}{" "}
+                pieza(s)
               </p>
             </div>
           </div>
@@ -498,7 +490,7 @@ export function NewsManager() {
                       onChange={(e) => setSortOrder(e.target.value)}
                     />
                     <span className="mt-1 block text-xs opacity-70">
-                      Portada: 0 · Sistema (pág.1): 10–13 · Hechos (pág.2): 20–23 ·
+                      Portada: 0 · Ya funciona: 10–19 · Novedades: 20–29 ·
                       Próximamente: 90+
                     </span>
                   </label>

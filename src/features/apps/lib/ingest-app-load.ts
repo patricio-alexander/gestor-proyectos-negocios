@@ -190,6 +190,12 @@ export async function ingestAppLoadSample(
   const bytesIn = BigInt(toNonNegInt(body.bytes_in));
   const bytesOut = BigInt(toNonNegInt(body.bytes_out));
   const errors = toNonNegInt(body.errors);
+
+  // No persistir ventanas vacías (evita inflar BD / backups)
+  if (requests <= 0 && errors <= 0 && bytesIn === BigInt(0) && bytesOut === BigInt(0)) {
+    return null;
+  }
+
   const usageBreakdown = normalizeUsage(body.usage_breakdown);
   const errorBreakdown = normalizeErrors(body.error_breakdown);
   const packed = packBreakdown(usageBreakdown, errorBreakdown);
