@@ -385,13 +385,6 @@ async function buildScheduly() {
   return code;
 }
 
-async function buildGestor() {
-  process.stdout.write(c.clear + c.show);
-  const code = run("npm", ["run", "build"], GESTOR_ROOT);
-  await waitEnter();
-  return code;
-}
-
 async function syncCatalog() {
   process.stdout.write(c.clear + c.show);
   const code = run("npm", ["run", "db:sync-catalog"], GESTOR_ROOT);
@@ -605,32 +598,25 @@ function menuRows() {
       danger: "high",
     },
     {
-      id: "deploy-gestor",
-      title: "Deploy gestor (local)",
-      desc: "scripts/deploy.sh: pull + install + migrate + build + pm2.",
-      color: "cyan",
-      danger: "high",
-    },
-    {
       id: "sep-build",
-      title: "── Build / catálogo ──",
-      desc: "Compilaciones sueltas.",
+      title: "── Compilar / deploy ──",
+      desc: "Compilaciones y deploy del gestor.",
       color: "white",
       kind: "sep",
     },
     {
       id: "build-scheduly",
-      title: "Build Scheduly",
+      title: "Compilar Scheduly",
       desc: "npm run build en Scheduly.",
       color: "cyan",
       danger: "low",
     },
     {
-      id: "build-gestor",
-      title: "Build gestor (Next)",
-      desc: "npm run build en Raptor Solutions.",
+      id: "deploy-gestor",
+      title: "Deploy gestor (Raptor Solutions)",
+      desc: "scripts/deploy.sh: pull + install + migrate + build + pm2.",
       color: "cyan",
-      danger: "low",
+      danger: "high",
     },
     {
       id: "sync-catalog",
@@ -730,10 +716,6 @@ async function main() {
     }
     if (row.id === "build-scheduly") {
       await buildScheduly();
-      continue;
-    }
-    if (row.id === "build-gestor") {
-      await buildGestor();
       continue;
     }
     if (row.id === "sync-catalog") {
