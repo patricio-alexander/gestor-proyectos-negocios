@@ -319,7 +319,8 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "finanzas",
     name: "Finanzas",
-    description: "Ingresos, gastos, cobranzas, préstamos y gastos recurrentes.",
+    description:
+      "Ingresos, egresos, cobranzas, préstamos, egresos recurrentes y reporte financiero.",
     status: "active",
     sections: [
       {
@@ -357,7 +358,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       },
       {
         key: "/finanzas/gastos-recurrentes",
-        name: "Gastos recurrentes",
+        name: "Egresos recurrentes",
         status: "active",
         capabilities: [
           { code: "generar_cuotas", name: "Generar cuotas" },
@@ -366,6 +367,16 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "ajustar_monto_variable", name: "Ajustar monto variable" },
           { code: "registrar_pago", name: "Registrar pago" },
           { code: "omitir_periodo", name: "Omitir período" },
+        ],
+      },
+      {
+        key: "/finanzas/reporte-financiero",
+        name: "Reporte financiero",
+        status: "planned",
+        capabilities: [
+          { code: "resumen_del_periodo", name: "Resumen del periodo" },
+          { code: "filtros", name: "Filtros" },
+          { code: "exportar", name: "Exportar" },
         ],
       },
     ],

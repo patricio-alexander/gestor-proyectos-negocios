@@ -61,16 +61,21 @@ export function DashboardTopBar({
               <Bars width={18} height={18} />
             </button>
           )}
-          <h1 className="gp-topbar-title truncate">{activeRoleName}</h1>
+          <h1 className="gp-topbar-title truncate">Panel</h1>
         </div>
 
         <div className="flex items-center gap-1">
           <NotificationsPopover />
           <ThemeSwitcher />
 
-          <span className={`${gp.subtitle} mx-1 hidden max-w-[140px] truncate sm:block`}>
-            {label}
-          </span>
+          <div className="mx-1 hidden min-w-0 max-w-[180px] flex-col items-end sm:flex">
+            <span className="truncate text-sm font-semibold leading-tight text-[var(--gp-text)]">
+              {label}
+            </span>
+            <span className="truncate text-[0.7rem] font-medium leading-tight text-[var(--gp-text-muted)]">
+              {activeRoleName}
+            </span>
+          </div>
 
           <Dropdown>
             <Dropdown.Trigger aria-label="Menú de usuario" className={gp.avatarTrigger}>

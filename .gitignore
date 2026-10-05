@@ -59,3 +59,6 @@ backup-gestor-*.json
 **/backup.json
 !**/backup.json.example
 *.bak
+
+# graphify
+graphify-out/

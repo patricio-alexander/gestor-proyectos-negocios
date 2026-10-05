@@ -11,10 +11,6 @@ export type DashboardNavGroup = {
 /** Navegación esencial del gestor (licencias + acceso). */
 export const DASHBOARD_NAV: DashboardNavGroup[] = [
   {
-    title: "Dashboard",
-    items: [{ label: "Resumen general", href: "/dashboard" }],
-  },
-  {
     title: "Aplicaciones",
     items: [
       { label: "Todas", href: "/dashboard/apps" },
