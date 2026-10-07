@@ -38,6 +38,7 @@ export type EntitlementPlan = {
 
 export type EntitlementPayload = {
   maintenance: boolean;
+  updating: boolean;
   subscribed: boolean;
   features: EntitlementFeature[];
   plans: EntitlementPlan[];
@@ -145,12 +146,13 @@ export async function buildEntitlementForAppHash(
 ): Promise<EntitlementPayload> {
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
-    select: { id: true, maintenance: true, kind: true },
+    select: { id: true, maintenance: true, updating: true, kind: true },
   });
 
   if (!app) {
     return {
       maintenance: false,
+      updating: false,
       subscribed: false,
       features: [],
       plans: [],
@@ -327,6 +329,7 @@ export async function buildEntitlementForAppHash(
 
   return {
     maintenance: app.maintenance,
+    updating: Boolean(app.updating),
     subscribed: subscription?.status === "ACTIVE",
     features,
     plans,

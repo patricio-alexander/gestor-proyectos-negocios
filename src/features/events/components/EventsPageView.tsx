@@ -31,7 +31,7 @@ export function EventsPageView() {
   const [detailEvent, setDetailEvent] = useState<EventRecord | null>(null);
   const detailState = useOverlayState();
 
-  const { events, apps, loading, isFetching, refetch } = useEvents(range);
+  const { events, apps, modules, loading, isFetching, refetch } = useEvents(range);
   const realtimeStatus = useRealtimeStatus();
   const {
     types: eventTypes,
@@ -139,7 +139,12 @@ export function EventsPageView() {
 
       {tab === "activity" ? (
         <>
-          <EventsOverview events={events} apps={apps} typesCount={eventTypes.length} />
+          <EventsOverview
+            events={events}
+            apps={apps}
+            modules={modules}
+            typesCount={eventTypes.length}
+          />
           <EventsList events={events} appNames={appNames} onSelect={openDetail} />
         </>
       ) : (

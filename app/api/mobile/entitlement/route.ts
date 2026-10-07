@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     app_key: auth.app_key,
     channel: "mobile",
     maintenance: payload.maintenance,
+    updating: payload.updating,
     subscribed: payload.subscribed,
     features: payload.features,
     plans: payload.plans,

@@ -20,6 +20,22 @@ export function formatDate(
   });
 }
 
+/** Fecha + hora (campos DateTime de BD). */
+export function formatDateTime(
+  dateStr: string | null | undefined,
+  options?: Intl.DateTimeFormatOptions,
+) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("es-PE", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    ...options,
+  });
+}
+
 export function formatDateTimeLocal(iso: string | null | undefined) {
   if (!iso) return "";
   const d = new Date(iso);

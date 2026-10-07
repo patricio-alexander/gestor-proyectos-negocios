@@ -12,19 +12,43 @@ type AppStats = {
   types: Array<{ type_name: string; count: number }>;
 };
 
+export type ModuleUsageStats = {
+  app_id: number;
+  app_name: string;
+  modules: Array<{
+    module_key: string;
+    module_name: string;
+    count: number;
+    sections: Array<{
+      section_key: string;
+      section_name: string;
+      count: number;
+    }>;
+  }>;
+};
+
 type EventsStatsResponse = {
   apps?: AppStats[];
+  modules?: ModuleUsageStats[];
+};
+
+type EventsStats = {
+  apps: AppStats[];
+  modules: ModuleUsageStats[];
 };
 
 async function fetchEvents(range: string): Promise<EventRecord[]> {
   return fetchJson<EventRecord[]>(`/api/events?range=${encodeURIComponent(range)}`);
 }
 
-async function fetchEventsStats(range: string): Promise<AppStats[]> {
+async function fetchEventsStats(range: string): Promise<EventsStats> {
   const data = await fetchJson<EventsStatsResponse>(
     `/api/events/stats?range=${encodeURIComponent(range)}`,
   );
-  return data.apps ?? [];
+  return {
+    apps: data.apps ?? [],
+    modules: data.modules ?? [],
+  };
 }
 
 export function useEvents(range: string = "TODO") {
@@ -70,7 +94,8 @@ export function useEvents(range: string = "TODO") {
 
   return {
     events: eventsQuery.data ?? [],
-    apps: statsQuery.data ?? [],
+    apps: statsQuery.data?.apps ?? [],
+    modules: statsQuery.data?.modules ?? [],
     loading: eventsQuery.isPending || statsQuery.isPending,
     isFetching: eventsQuery.isFetching || statsQuery.isFetching,
     create,

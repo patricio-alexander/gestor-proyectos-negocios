@@ -259,6 +259,8 @@ model Apps {
   images_size       Float?
   database_size     Float?
   maintenance       Boolean        @default(false)
+  /** App en actualización (overlay distinto a mantenimiento). */
+  updating          Boolean        @default(false)
   /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
   entitlement_url    String?       @db.VarChar(500)
   /** Secreto compartido con la app (plaintext o v1: AES-GCM at-rest). */

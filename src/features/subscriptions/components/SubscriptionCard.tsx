@@ -10,7 +10,7 @@ import {
   StatusBadge,
   subscriptionStatusTone,
 } from "@/src/shared/components/StatusBadge";
-import { formatDate, formatPrice, daysUntil } from "@/src/shared/utils/format-display";
+import { formatDateTime, formatPrice, daysUntil } from "@/src/shared/utils/format-display";
 
 type SubscriptionCardProps = {
   subscription: Subscription;
@@ -97,9 +97,9 @@ export function SubscriptionCard({
         </div>
 
         <div className="mt-4 flex-1 space-y-1 text-xs text-[var(--gp-text-muted)]">
-          <p>Inicio: {formatDate(sub.start_at)}</p>
+          <p>Inicio: {formatDateTime(sub.start_at)}</p>
           <p>
-            Vence: {formatDate(sub.expires_at)}
+            Vence: {formatDateTime(sub.expires_at)}
             {expiringSoon && daysLeft != null && (
               <span className="ml-1 font-medium text-[var(--gp-badge-text)]">
                 · {daysLeft} días

@@ -76,6 +76,128 @@ const GIT_REPOS = [
 const TRIO_IDS = new Set(["eddeli", "store", "tienda"]);
 const VITE_IDS = ["eddeli", "store", "tienda"];
 
+/** Backends de las 3 apps Vite (para npm run db:* en las tres). */
+const TRIO_BACKENDS = [
+  {
+    id: "eddeli",
+    title: "EdDeli",
+    cwd: path.join(APPSWEB, "eddeli", "backend"),
+  },
+  {
+    id: "store",
+    title: "Store",
+    cwd: path.join(APPSWEB, "store", "backend"),
+  },
+  {
+    id: "tienda",
+    title: "Tienda",
+    cwd: path.join(APPSWEB, "tienda", "backend"),
+  },
+];
+
+/** Scripts npm db:* comunes a EdDeli / Store / Tienda. */
+const TRIO_DB_SCRIPTS = [
+  {
+    id: "db:check-backup",
+    title: "db:check-backup",
+    desc: "Resumen de backup.json en cada app.",
+    danger: "low",
+  },
+  {
+    id: "db:verify:backup-json",
+    title: "db:verify:backup-json",
+    desc: "Detecta JSON corrupto en backup.",
+    danger: "low",
+  },
+  {
+    id: "db:seed:roles:dry",
+    title: "db:seed:roles:dry",
+    desc: "Simula roles canónicos en las 3 BDs.",
+    danger: "low",
+  },
+  {
+    id: "db:seed:roles",
+    title: "db:seed:roles",
+    desc: "Aplica Propietario/Admin/Empleado/Programador/Proveedor en las 3.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:sync",
+    title: "db:sync",
+    desc: "Solo tablas/columnas (ALTER). Sin bodega, stock ni limpieza de IDs.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:prepare",
+    title: "db:prepare",
+    desc: "Bodega/cajas/migración de stock/FK en las 3. No es sync de esquema.",
+    danger: "high",
+    write: true,
+  },
+  {
+    id: "db:sync:categories",
+    title: "db:sync:categories",
+    desc: "ALTER solo categorías en las 3.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:sync:editor",
+    title: "db:sync:editor",
+    desc: "ALTER solo editor_templates en las 3.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:fix:expense-reference-fk",
+    title: "db:fix:expense-reference-fk",
+    desc: "Quita FK incorrecta de expenses en las 3.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:diagnose:supplier-pay",
+    title: "db:diagnose:supplier-pay",
+    desc: "Diagnóstico de pagos a proveedor (solo lee).",
+    danger: "low",
+  },
+  {
+    id: "db:audit:json-fields",
+    title: "db:audit:json-fields",
+    desc: "Audita JSON mal guardado.",
+    danger: "low",
+  },
+  {
+    id: "db:repair:json-fields",
+    title: "db:repair:json-fields",
+    desc: "Repara JSON mal escapados.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:patch:backup",
+    title: "db:patch:backup",
+    desc: "Normaliza backup.json al esquema actual.",
+    danger: "med",
+    write: true,
+  },
+  {
+    id: "db:images:report",
+    title: "db:images:report",
+    desc: "Reporte barcodes/imágenes en las 3.",
+    danger: "low",
+  },
+  {
+    id: "db:reset",
+    title: "db:reset",
+    desc: "RESET destructivo desde backup.json en las 3. Cuidado.",
+    danger: "high",
+    write: true,
+  },
+];
+
 const APPS = [
   {
     id: "scheduly",
@@ -392,6 +514,85 @@ async function syncCatalog() {
   return code;
 }
 
+async function runNpmOnTrio(scriptId) {
+  process.stdout.write(c.clear + c.show);
+  const meta = TRIO_DB_SCRIPTS.find((s) => s.id === scriptId);
+  console.log(
+    `${c.brightCyan}${c.bold}npm run ${scriptId}${c.reset}  ${c.dim}en EdDeli + Store + Tienda${c.reset}\n`,
+  );
+  if (meta?.desc) console.log(`${c.white}${meta.desc}${c.reset}\n`);
+  if (meta?.write) {
+    console.log(
+      `${c.yellow}${c.bold}Esta acción puede escribir en las 3 bases de datos.${c.reset}\n`,
+    );
+  }
+  if (meta?.danger === "high") {
+    console.log(
+      `${c.red}${c.bold}ATENCIÓN: operación sensible / potencialmente destructiva.${c.reset}\n`,
+    );
+  }
+
+  const ok = await askConfirm(
+    `${c.brightGreen}¿Correr «npm run ${scriptId}» en las 3 apps Vite?${c.reset}`,
+  );
+  if (!ok) {
+    console.log(`${c.dim}Cancelado.${c.reset}`);
+    await waitEnter();
+    return 1;
+  }
+
+  let worst = 0;
+  for (const app of TRIO_BACKENDS) {
+    if (!fs.existsSync(path.join(app.cwd, "package.json"))) {
+      console.log(
+        `\n${c.red}✗ ${app.title}: no hay package.json en ${app.cwd}${c.reset}`,
+      );
+      worst = Math.max(worst, 1);
+      continue;
+    }
+    console.log(`\n${c.cyan}══ ${app.title} · npm run ${scriptId} ══${c.reset}`);
+    const code = run("npm", ["run", scriptId], app.cwd);
+    worst = Math.max(worst, code);
+  }
+  console.log(
+    `\n${worst === 0 ? c.green : c.yellow}Listo (peor exit=${worst}).${c.reset}`,
+  );
+  await waitEnter();
+  return worst;
+}
+
+async function trioDbMenu() {
+  while (true) {
+    const rows = [
+      ...TRIO_DB_SCRIPTS.map((s) => ({
+        id: s.id,
+        title: s.title,
+        desc: s.desc,
+        color:
+          s.danger === "high"
+            ? "red"
+            : s.danger === "med"
+              ? "yellow"
+              : "green",
+        danger: s.danger,
+      })),
+      {
+        id: "back",
+        title: "← Volver al hub",
+        desc: "Regresa al menú principal.",
+        color: "white",
+      },
+    ];
+    const row = await selectList(
+      "BD · las 3 Vite",
+      "Mismo npm run db:* en EdDeli + Store + Tienda",
+      rows,
+    );
+    if (!row || row.id === "back") return;
+    await runNpmOnTrio(row.id);
+  }
+}
+
 async function deployGestor() {
   process.stdout.write(c.clear + c.show);
   const ok = await askConfirm(
@@ -542,6 +743,55 @@ function menuRows() {
       danger: "med",
     },
     {
+      id: "sep-db-trio",
+      title: "── BD · las 3 Vite ──",
+      desc: "db:sync, roles, backup… en EdDeli + Store + Tienda.",
+      color: "white",
+      kind: "sep",
+    },
+    {
+      id: "db-trio-menu",
+      title: "BD · scripts npm en las 3 apps",
+      desc: "Elegí db:sync, db:seed:roles, db:reset, etc. y corre en las tres.",
+      color: "cyan",
+      danger: "med",
+    },
+    {
+      id: "db-trio-sync",
+      title: "db:sync · las 3",
+      desc: "Solo tablas/columnas en EdDeli, Store y Tienda.",
+      color: "yellow",
+      danger: "med",
+    },
+    {
+      id: "db-trio-prepare",
+      title: "db:prepare · las 3",
+      desc: "Bodega/cajas/stock/FK en las 3 (después de db:sync).",
+      color: "red",
+      danger: "high",
+    },
+    {
+      id: "db-trio-seed-roles-dry",
+      title: "db:seed:roles:dry · las 3",
+      desc: "Simula roles canónicos sin escribir.",
+      color: "green",
+      danger: "low",
+    },
+    {
+      id: "db-trio-seed-roles",
+      title: "db:seed:roles · las 3",
+      desc: "Aplica roles canónicos en las 3 BDs.",
+      color: "yellow",
+      danger: "med",
+    },
+    {
+      id: "db-trio-check-backup",
+      title: "db:check-backup · las 3",
+      desc: "Resumen de backup.json en cada app.",
+      color: "green",
+      danger: "low",
+    },
+    {
       id: "sep-vite",
       title: "── Vite · compilar y subir ──",
       desc: "Front de EdDeli / Store / Tienda.",
@@ -614,9 +864,9 @@ function menuRows() {
     {
       id: "deploy-gestor",
       title: "Deploy gestor (Raptor Solutions)",
-      desc: "scripts/deploy.sh: pull + install + migrate + build + pm2.",
+      desc: "pull + install + migrate + build + pm2. No borra la BD (el seed solo va con RUN_SEED=1).",
       color: "cyan",
-      danger: "high",
+      danger: "med",
     },
     {
       id: "sync-catalog",
@@ -684,6 +934,30 @@ async function main() {
     }
     if (row.id === "git-push-gestor") {
       await gitPush(new Set(["gestor"]));
+      continue;
+    }
+    if (row.id === "db-trio-menu") {
+      await trioDbMenu();
+      continue;
+    }
+    if (row.id === "db-trio-sync") {
+      await runNpmOnTrio("db:sync");
+      continue;
+    }
+    if (row.id === "db-trio-prepare") {
+      await runNpmOnTrio("db:prepare");
+      continue;
+    }
+    if (row.id === "db-trio-seed-roles-dry") {
+      await runNpmOnTrio("db:seed:roles:dry");
+      continue;
+    }
+    if (row.id === "db-trio-seed-roles") {
+      await runNpmOnTrio("db:seed:roles");
+      continue;
+    }
+    if (row.id === "db-trio-check-backup") {
+      await runNpmOnTrio("db:check-backup");
       continue;
     }
     if (row.id === "vite-push-all") {

@@ -37,6 +37,7 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
   {
     title: "Monitoreo",
     items: [
+      { label: "Panel", href: "/dashboard" },
       { label: "Eventos", href: "/dashboard/events" },
       { label: "Noticias", href: "/dashboard/news" },
     ],

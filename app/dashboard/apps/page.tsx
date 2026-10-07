@@ -22,7 +22,6 @@ import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
 import ArrowsRotateLeft from "@gravity-ui/icons/ArrowsRotateLeft";
 import Eye from "@gravity-ui/icons/Eye";
-import CircleCheck from "@gravity-ui/icons/CircleCheck";
 import CircleExclamation from "@gravity-ui/icons/CircleExclamation";
 import { AppModulesModal } from "@/src/features/apps/components/AppModulesModal";
 import { useState, useMemo, type ReactNode } from "react";
@@ -301,6 +300,26 @@ export default function AppsPage() {
       const pushMsg = formatPushSyncToast(
         updated as Parameters<typeof formatPushSyncToast>[0],
         "Mantenimiento guardado, pero sync incompleto",
+      );
+      if (pushMsg) appToast.warning(pushMsg);
+    } catch (err) {
+      appToast.error(err instanceof Error ? err.message : "Error al cambiar estado");
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(app.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleToggleUpdating(app: App) {
+    setTogglingIds((prev) => new Set(prev).add(app.id));
+    try {
+      const updated = await update(app.id, { updating: !app.updating });
+      const pushMsg = formatPushSyncToast(
+        updated as Parameters<typeof formatPushSyncToast>[0],
+        "Actualización guardada, pero sync incompleto",
       );
       if (pushMsg) appToast.warning(pushMsg);
     } catch (err) {
@@ -719,11 +738,11 @@ export default function AppsPage() {
                         data-tip={
                           isMobileApp(app)
                             ? app.maintenance
-                              ? "Estado: en mantenimiento"
-                              : "Estado: activa"
+                              ? "Mantenimiento: activo"
+                              : "Mantenimiento: off"
                             : app.maintenance
-                              ? "Estado: en mantenimiento — clic para activar"
-                              : "Estado: activa — clic para poner en mantenimiento"
+                              ? "En mantenimiento — clic para quitar"
+                              : "Poner en mantenimiento"
                         }
                       >
                         <Button
@@ -731,8 +750,8 @@ export default function AppsPage() {
                           variant="ghost"
                           aria-label={
                             app.maintenance
-                              ? "Estado: en mantenimiento"
-                              : "Estado: activa"
+                              ? "Quitar mantenimiento"
+                              : "Poner en mantenimiento"
                           }
                           isDisabled={
                             togglingIds.has(app.id) || isMobileApp(app)
@@ -746,17 +765,60 @@ export default function AppsPage() {
                         >
                           {togglingIds.has(app.id) ? (
                             <Spinner size="sm" />
-                          ) : app.maintenance ? (
+                          ) : (
                             <CircleExclamation
                               width={14}
                               height={14}
-                              className="text-red-500"
+                              className={
+                                app.maintenance
+                                  ? "text-red-500"
+                                  : "text-[var(--gp-text-faint)]"
+                              }
                             />
+                          )}
+                        </Button>
+                      </span>
+                      <span
+                        className="gp-tip inline-flex"
+                        data-tip={
+                          isMobileApp(app)
+                            ? app.updating
+                              ? "Actualizando: activo"
+                              : "Actualizando: off"
+                            : app.updating
+                              ? "Actualizando — clic para quitar"
+                              : "Marcar como actualizando"
+                        }
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={
+                            app.updating
+                              ? "Quitar modo actualizando"
+                              : "Poner en actualizando"
+                          }
+                          isDisabled={
+                            togglingIds.has(app.id) || isMobileApp(app)
+                          }
+                          className={
+                            togglingIds.has(app.id) || isMobileApp(app)
+                              ? "pointer-events-none"
+                              : undefined
+                          }
+                          onPress={() => handleToggleUpdating(app)}
+                        >
+                          {togglingIds.has(app.id) ? (
+                            <Spinner size="sm" />
                           ) : (
-                            <CircleCheck
+                            <ArrowsRotateRight
                               width={14}
                               height={14}
-                              className="text-emerald-600"
+                              className={
+                                app.updating
+                                  ? "text-amber-500"
+                                  : "text-[var(--gp-text-faint)]"
+                              }
                             />
                           )}
                         </Button>
@@ -935,8 +997,13 @@ export default function AppsPage() {
                             </span>
                           ) : null}
                           {viewingApp.maintenance ? (
-                            <span className="inline-flex rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-100">
+                            <span className="inline-flex rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-800 dark:text-red-100">
                               En mantenimiento
+                            </span>
+                          ) : null}
+                          {viewingApp.updating ? (
+                            <span className="inline-flex rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-100">
+                              Actualizando
                             </span>
                           ) : null}
                         </div>

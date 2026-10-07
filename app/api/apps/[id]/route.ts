@@ -46,6 +46,7 @@ export async function GET(_request: Request, { params }: Params) {
       images_size: app.images_size,
       database_size: app.database_size,
       maintenance: app.maintenance,
+      updating: Boolean(app.updating),
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),
@@ -101,7 +102,14 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(body.database_name !== undefined && { database_name: body.database_name === null ? null : String(body.database_name).trim() }),
         ...(body.images_size !== undefined && { images_size: Number(body.images_size) }),
         ...(body.database_size !== undefined && { database_size: Number(body.database_size) }),
-        ...(body.maintenance !== undefined && { maintenance: Boolean(body.maintenance) }),
+        ...(body.maintenance !== undefined && {
+          maintenance: Boolean(body.maintenance),
+          ...(Boolean(body.maintenance) ? { updating: false } : {}),
+        }),
+        ...(body.updating !== undefined && {
+          updating: Boolean(body.updating),
+          ...(Boolean(body.updating) ? { maintenance: false } : {}),
+        }),
         ...(body.entitlement_url !== undefined && {
           entitlement_url:
             body.entitlement_url === null
@@ -126,6 +134,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const shouldPush =
       body.maintenance !== undefined ||
+      body.updating !== undefined ||
       body.entitlement_url !== undefined ||
       body.entitlement_secret !== undefined;
 
@@ -149,6 +158,7 @@ export async function PATCH(request: Request, { params }: Params) {
       path: app.path,
       database_name: app.database_name,
       maintenance: app.maintenance,
+      updating: Boolean(app.updating),
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),

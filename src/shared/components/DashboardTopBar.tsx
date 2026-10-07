@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Dropdown } from "@heroui/react";
 import Person from "@gravity-ui/icons/Person";
 import ArrowRightFromSquare from "@gravity-ui/icons/ArrowRightFromSquare";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
 import Bars from "@gravity-ui/icons/Bars";
+import ChartLine from "@gravity-ui/icons/ChartLine";
 import type { AuthUser } from "@/src/features/auth/types";
 import { ThemeSwitcher } from "@/src/shared/components/ThemeSwitcher";
 import { NotificationsPopover } from "@/src/shared/components/NotificationsPopover";
@@ -39,10 +41,12 @@ export function DashboardTopBar({
   onLogout,
 }: DashboardTopBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const label = displayLabel(user);
   const initial = label.charAt(0).toUpperCase();
   const hasMultipleRoles = (user.roles?.length ?? 0) > 1;
+  const onPanelHome = pathname === "/dashboard";
 
   return (
     <>
@@ -61,7 +65,17 @@ export function DashboardTopBar({
               <Bars width={18} height={18} />
             </button>
           )}
-          <h1 className="gp-topbar-title truncate">Panel</h1>
+          <Link
+            href="/dashboard"
+            aria-current={onPanelHome ? "page" : undefined}
+            title="Ir al panel de monitoreo"
+            className={`gp-topbar-title inline-flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 transition-colors hover:bg-[var(--gp-trigger-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gp-primary)] ${
+              onPanelHome ? "text-[var(--gp-primary)]" : ""
+            }`}
+          >
+            <ChartLine width={18} height={18} className="shrink-0" />
+            <span className="truncate">Panel</span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-1">

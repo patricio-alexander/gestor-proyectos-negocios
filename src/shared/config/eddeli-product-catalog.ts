@@ -372,7 +372,7 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
       {
         key: "/finanzas/reporte-financiero",
         name: "Reporte financiero",
-        status: "planned",
+        status: "active",
         capabilities: [
           { code: "resumen_del_periodo", name: "Resumen del periodo" },
           { code: "filtros", name: "Filtros" },

@@ -37,6 +37,7 @@ export async function buildEntitlementForAppId(appId: number) {
   if (!app) {
     return {
       maintenance: false,
+      updating: false,
       subscribed: false,
       features: [],
       plans: [],

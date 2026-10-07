@@ -47,7 +47,9 @@ export function useApps() {
     });
 
     queryClient.setQueryData<App[]>(queryKeys.apps.list, (current) =>
-      current?.map((item) => (item.id === id ? app : item)) ?? [app],
+      current?.map((item) => (item.id === id ? { ...item, ...app } : item)) ?? [
+        app,
+      ],
     );
     return app;
   }

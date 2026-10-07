@@ -11,10 +11,12 @@ import {
 function formatDate(value: string | null | undefined) {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleDateString("es-EC", {
+    return new Date(value).toLocaleString("es-EC", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return "";

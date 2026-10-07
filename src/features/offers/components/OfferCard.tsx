@@ -12,7 +12,7 @@ import {
   offerRangeTone,
 } from "@/src/shared/components/StatusBadge";
 import {
-  formatDate,
+  formatDateTime,
   formatPrice,
   getDateRangeStatus,
   daysUntil,
@@ -95,7 +95,7 @@ export function OfferCard({ offer, onEdit, onDelete }: OfferCardProps) {
           <OfferStatBlock label="Precio" value={formatPrice(offer.price) ?? "Gratis"} />
           <OfferStatBlock
             label="Vence"
-            value={formatDate(offer.expires_at)}
+            value={formatDateTime(offer.expires_at)}
             hint={
               rangeStatus === "active" && daysLeft != null && daysLeft <= 14
                 ? `${daysLeft} días restantes`
@@ -111,7 +111,7 @@ export function OfferCard({ offer, onEdit, onDelete }: OfferCardProps) {
         </div>
 
         <p className="mt-3 text-xs text-[var(--gp-text-muted)]">
-          {formatDate(offer.start_at)} — {formatDate(offer.expires_at)}
+          {formatDateTime(offer.start_at)} — {formatDateTime(offer.expires_at)}
         </p>
 
         {offer.modules.length > 0 ? (

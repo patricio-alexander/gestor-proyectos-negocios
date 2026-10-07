@@ -18,7 +18,7 @@ import {
   subscriptionStatusTone,
 } from "@/src/shared/components/StatusBadge";
 import { gp } from "@/src/shared/ui/theme";
-import { formatDate, daysUntil } from "@/src/shared/utils/format-display";
+import { formatDateTime, daysUntil } from "@/src/shared/utils/format-display";
 import { NavIcon } from "@/src/shared/config/dashboard-nav-icons";
 import type { App } from "@/src/features/apps/types";
 import type { AppSyncHealthRow } from "@/src/features/apps/lib/probe-entitlement";
@@ -274,7 +274,7 @@ export function DashboardOverview() {
           items={data.recentSubscriptions.map((sub) => ({
             id: sub.id,
             primary: `${sub.app_name || "—"} · ${sub.plan_name || "Plan"}`,
-            secondary: `Vence ${formatDate(sub.expires_at)}`,
+            secondary: `Vence ${formatDateTime(sub.expires_at)}`,
             status: sub.status,
           }))}
           href="/dashboard/subscriptions"

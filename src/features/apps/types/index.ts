@@ -25,6 +25,7 @@ export type App = {
   images_size: number | null;
   database_size: number | null;
   maintenance: boolean;
+  updating: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
@@ -66,6 +67,7 @@ export type CreateAppInput = {
   images_size?: number | null;
   database_size?: number | null;
   maintenance?: boolean;
+  updating?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
@@ -82,6 +84,7 @@ export type UpdateAppInput = {
   images_size?: number | null;
   database_size?: number | null;
   maintenance?: boolean;
+  updating?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
