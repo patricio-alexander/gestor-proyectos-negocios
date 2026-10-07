@@ -103,17 +103,17 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
     importProgress.phase === "uploading" ||
     importProgress.phase === "restoring";
 
-  async function onExport() {
+  async function onExport(includeTelemetry = false) {
     try {
-      await exportAndDownload();
+      await exportAndDownload({ includeTelemetry });
     } catch {
       /* toast en hook */
     }
   }
 
-  async function onSave() {
+  async function onSave(includeTelemetry = false) {
     try {
-      await saveOnly();
+      await saveOnly({ includeTelemetry });
     } catch {
       /* toast en hook */
     }
@@ -214,7 +214,7 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
         <ArrowUpFromSquare width={16} height={16} />
         Subir JSON
       </Button>
-      <Button isDisabled={busy} onPress={() => void onSave()}>
+      <Button isDisabled={busy} onPress={() => void onSave(false)}>
         <FloppyDisk width={16} height={16} />
         Guardar en servidor
       </Button>
@@ -232,10 +232,18 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
           backgroundColor: "var(--gp-primary)",
           color: "var(--gp-primary-text)",
         }}
-        onPress={() => void onExport()}
+        onPress={() => void onExport(false)}
       >
         <ArrowDownToLine width={16} height={16} />
         Exportar BD (JSON)
+      </Button>
+      <Button
+        isDisabled={busy}
+        variant="secondary"
+        onPress={() => void onExport(true)}
+      >
+        <ArrowDownToLine width={16} height={16} />
+        Exportar completo (+ eventos)
       </Button>
     </div>
   );
@@ -253,15 +261,16 @@ export function BackupsManager({ embedded = false }: BackupsManagerProps) {
       {embedded ? (
         <>
           <p className="text-sm text-[var(--gp-text-muted)]">
-            Exporta / importa la BD del gestor. La subida va por partes (chunks)
-            con barra de progreso — así no falla el límite de 10&nbsp;MB de Next.
+            Export normal ≈ catálogo (usuarios, apps, planes… ~cientos de KB).
+            «Exportar completo» incluye Event + AppLoad* (puede pasar de 40&nbsp;MB).
+            La subida va por chunks.
           </p>
           {actions}
         </>
       ) : (
         <PageHeader
           title="Backups JSON"
-          description="Subida por chunks con progreso. Export sin telemetría pesada."
+          description="Export liviano = catálogo. Completo = + eventos/telemetría (decenas de MB)."
           Icon={Database}
           action={actions}
         />

@@ -76,10 +76,12 @@ export function useBackups() {
     void refresh();
   }, [refresh]);
 
-  async function exportAndDownload() {
+  async function exportAndDownload(options?: { includeTelemetry?: boolean }) {
     setBusy(true);
+    const includeTelemetry = options?.includeTelemetry === true;
     try {
-      const res = await fetch(apiUrl("/api/backups/export"), fetchOpts());
+      const qs = includeTelemetry ? "?includeTelemetry=1" : "";
+      const res = await fetch(apiUrl(`/api/backups/export${qs}`), fetchOpts());
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Error al exportar");
@@ -87,9 +89,17 @@ export function useBackups() {
       const blob = await res.blob();
       const cd = res.headers.get("Content-Disposition") || "";
       const match = /filename="?([^"]+)"?/.exec(cd);
-      triggerBlobDownload(blob, match?.[1] || "backup-gestor.json");
+      const fallback = includeTelemetry
+        ? "backup-RAPTOR-SOLUTIONS-full.json"
+        : "backup-RAPTOR-SOLUTIONS.json";
+      triggerBlobDownload(blob, match?.[1] || fallback);
       await refresh();
-      appToast.success("Backup exportado");
+      const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
+      appToast.success(
+        includeTelemetry
+          ? `Backup completo exportado (${sizeMb} MB, con eventos/telemetría)`
+          : `Backup exportado (${sizeMb} MB, catálogo sin telemetría)`,
+      );
     } catch (err) {
       appToast.error(err instanceof Error ? err.message : "Error al exportar");
       throw err;
@@ -98,21 +108,29 @@ export function useBackups() {
     }
   }
 
-  async function saveOnly() {
+  async function saveOnly(options?: { includeTelemetry?: boolean }) {
     setBusy(true);
+    const includeTelemetry = options?.includeTelemetry === true;
     try {
       const res = await fetch(
         apiUrl("/api/backups/export"),
-        fetchOpts({ method: "POST" }),
+        fetchOpts({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ includeTelemetry }),
+        }),
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar");
       await refresh();
-      const warnCount = Array.isArray(data.warnings) ? data.warnings.length : 0;
+      const sizeMb =
+        typeof data.sizeBytes === "number"
+          ? (data.sizeBytes / (1024 * 1024)).toFixed(2)
+          : "?";
       appToast.success(
-        warnCount
-          ? `Backup guardado (${warnCount} tabla(s) omitida(s) — revisá migraciones)`
-          : "Backup guardado en el servidor",
+        includeTelemetry
+          ? `Backup completo guardado (${sizeMb} MB)`
+          : `Backup guardado (${sizeMb} MB, sin telemetría)`,
       );
       return data;
     } catch (err) {

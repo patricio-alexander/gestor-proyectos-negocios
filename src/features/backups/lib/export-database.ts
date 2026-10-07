@@ -182,8 +182,8 @@ export async function dumpDatabaseToJson(options?: {
   const warnings: string[] = [];
 
   for (const entry of BACKUP_TABLE_ENTRIES) {
+    // Sin telemetría: omitir la clave (no poner []). Así un restore no borra Event/AppLoad*.
     if (skipTelemetry.has(entry.key)) {
-      data[entry.key] = [];
       continue;
     }
     try {
@@ -197,6 +197,12 @@ export async function dumpDatabaseToJson(options?: {
       }
       throw error;
     }
+  }
+
+  if (!includeTelemetry) {
+    warnings.push(
+      "Sin telemetría (Event, AppLoadSample, AppLoadMinute). Usá includeTelemetry=1 para el JSON completo (~decenas de MB).",
+    );
   }
 
   return { data, warnings };

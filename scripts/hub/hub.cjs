@@ -6,8 +6,8 @@
  *
  * Uso (desde gestor-proyectos-negocios/):
  *   npm run scripts
- *   npm run update:all        # pull → deploy gestor si cambió → 3 Vite → pm2 restart all
- *   npm run update:all:yes    # igual, sin confirmación
+ *   npm run pull:all          # bajar: pull → deploy gestor si cambió → pm2 restart all
+ *   npm run push:all          # subir: compilar 3 Vite + push · push gestor · sin pm2
  */
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -423,22 +423,23 @@ async function gitPull(filterIds = null) {
 }
 
 /**
- * Pipeline: pull todos → si gestor cambió deploy → actualizar 3 Vite → pm2 restart all.
+ * Bajar todo: pull → deploy gestor si cambió → pm2 restart all.
+ * (No compila ni sube.)
  * @param {{ confirm?: boolean }} opts
  */
-async function fullSyncAndDeploy({ confirm = true } = {}) {
+async function pullAllDeploy({ confirm = true } = {}) {
   process.stdout.write(c.clear + c.show);
   console.log(
-    `${c.brightMagenta}${c.bold}Actualizar todo${c.reset}\n\n` +
+    `${c.brightGreen}${c.bold}Bajar todo${c.reset}\n\n` +
       `${c.dim}1.${c.reset} git pull en todos los repos\n` +
       `${c.dim}2.${c.reset} si Raptor Solutions (gestor) bajó cambios → deploy.sh\n` +
-      `${c.dim}3.${c.reset} actualizar / recompilar las 3 apps Vite\n` +
-      `${c.dim}4.${c.reset} pm2 restart all\n`,
+      `${c.dim}3.${c.reset} pm2 restart all\n` +
+      `${c.dim}(no compila ni hace push)${c.reset}\n`,
   );
 
   if (confirm) {
     const ok = await askConfirm(
-      `${c.brightGreen}¿Correr el flujo completo?${c.reset}`,
+      `${c.brightGreen}¿Bajar cambios + deploy gestor + pm2 restart all?${c.reset}`,
     );
     if (!ok) {
       console.log(`${c.dim}Cancelado.${c.reset}`);
@@ -458,8 +459,6 @@ async function fullSyncAndDeploy({ confirm = true } = {}) {
   }
 
   const gestorUpdated = pull.updated.has("gestor");
-  const anyUpdated = pull.updated.size > 0;
-
   let deployCode = 0;
   if (gestorUpdated) {
     console.log(
@@ -474,62 +473,104 @@ async function fullSyncAndDeploy({ confirm = true } = {}) {
     deployCode = r.status ?? 1;
     if (deployCode !== 0) {
       console.log(
-        `${c.red}Deploy del gestor falló (código ${deployCode}). Sigo con Vite/PM2.${c.reset}`,
+        `${c.red}Deploy del gestor falló (código ${deployCode}). Sigo con PM2.${c.reset}`,
       );
     }
   } else {
     console.log(
-      `\n${c.dim}══ 2) Deploy gestor omitido (sin cambios nuevos) ══${c.reset}\n`,
-    );
-  }
-
-  let viteCode = 0;
-  console.log(
-    `\n${c.brightCyan}${c.bold}══ 3) Las 3 apps Vite (EdDeli / Store / Tienda) ══${c.reset}\n`,
-  );
-  // Re-pull de las 3 por si el paso 1 dejó alguna atrás
-  const trioPull = pullReposNow(TRIO_IDS);
-  viteCode = Math.max(viteCode, trioPull.worst);
-
-  const trioTouched = new Set([
-    ...[...TRIO_IDS].filter((id) => pull.updated.has(id)),
-    ...trioPull.updated,
-  ]);
-  const needViteBuild =
-    pull.updated.has("raptor") || trioTouched.size > 0;
-
-  for (const be of TRIO_BACKENDS) {
-    if (!trioTouched.has(be.id)) continue;
-    if (!fs.existsSync(path.join(be.cwd, "package.json"))) continue;
-    console.log(`${c.cyan}→ npm install (${be.title} backend)${c.reset}`);
-    viteCode = Math.max(viteCode, run("npm", ["install"], be.cwd));
-  }
-
-  if (needViteBuild) {
-    console.log(
-      `${c.cyan}→ Compilar fronts desde raptor/frontend → las 3 apps${c.reset}`,
-    );
-    viteCode = Math.max(viteCode, await compileBeforePush(TRIO_IDS));
-  } else {
-    console.log(
-      `${c.dim}Raptor front / las 3 sin commits nuevos: no recompilo.${c.reset}`,
+      `\n${c.dim}══ 2) Deploy gestor omitido (sin cambios nuevos en gestor) ══${c.reset}\n`,
     );
   }
 
   console.log(
-    `\n${c.brightMagenta}${c.bold}══ 4) pm2 restart all ══${c.reset}\n`,
+    `\n${c.brightMagenta}${c.bold}══ 3) pm2 restart all ══${c.reset}\n`,
   );
   const pm2Code = run("pm2", ["restart", "all"], GESTOR_ROOT);
   run("pm2", ["save"], GESTOR_ROOT);
 
-  const worst = Math.max(pull.worst, deployCode, viteCode, pm2Code);
+  const worst = Math.max(pull.worst, deployCode, pm2Code);
   console.log(
-    `\n${worst === 0 ? c.brightGreen : c.yellow}${c.bold}Fin actualizar todo` +
+    `\n${worst === 0 ? c.brightGreen : c.yellow}${c.bold}Fin bajar todo` +
       `${c.reset}` +
-      (anyUpdated
-        ? ` · actualizados: ${pull.titles.join(", ")}`
+      (pull.updated.size
+        ? ` · bajaron: ${pull.titles.join(", ")}`
         : " · sin commits nuevos") +
-      `  (pull:${pull.worst} deploy:${deployCode} vite:${viteCode} pm2:${pm2Code})\n`,
+      `  (pull:${pull.worst} deploy:${deployCode} pm2:${pm2Code})\n`,
+  );
+  if (confirm) await waitEnter();
+  return worst;
+}
+
+/**
+ * Subir todo: compilar 3 Vite + push de las 3 + push del gestor (sin compile).
+ * NO hace pm2 restart all.
+ * @param {{ confirm?: boolean }} opts
+ */
+async function pushAllUpload({ confirm = true } = {}) {
+  process.stdout.write(c.clear + c.show);
+  console.log(
+    `${c.brightYellow}${c.bold}Subir todo${c.reset}\n\n` +
+      `${c.dim}1.${c.reset} Compilar las 3 apps Vite (desde raptor/frontend)\n` +
+      `${c.dim}2.${c.reset} Commit + push de EdDeli / Store / Tienda\n` +
+      `${c.dim}3.${c.reset} Commit + push del gestor (solo subir, sin compile Vite)\n` +
+      `${c.dim}(sin pm2 restart all)${c.reset}\n`,
+  );
+
+  if (confirm) {
+    const ok = await askConfirm(
+      `${c.brightGreen}¿Compilar las 3 Vite, subirlas y subir el gestor?${c.reset}`,
+    );
+    if (!ok) {
+      console.log(`${c.dim}Cancelado.${c.reset}`);
+      await waitEnter();
+      return 1;
+    }
+  }
+
+  const defaultMsg = `update ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+  let msg = defaultMsg;
+  if (confirm) {
+    msg =
+      (await askText(
+        `${c.brightCyan}Mensaje del commit (3 Vite + gestor)${c.reset}`,
+        defaultMsg,
+      )) || defaultMsg;
+  }
+
+  console.log(
+    `\n${c.brightCyan}${c.bold}══ 1) Compilar las 3 Vite ══${c.reset}\n`,
+  );
+  const built = await compileBeforePush(TRIO_IDS);
+  if (built !== 0) {
+    console.log(`${c.red}Compilación falló. No se sube nada.${c.reset}`);
+    if (confirm) await waitEnter();
+    return built;
+  }
+
+  console.log(
+    `\n${c.brightYellow}${c.bold}══ 2) Subir las 3 apps Vite ══${c.reset}\n`,
+  );
+  const viteCode = await gitPush(TRIO_IDS, {
+    compile: false,
+    confirm: false,
+    message: msg,
+    skipWait: true,
+  });
+
+  console.log(
+    `\n${c.brightMagenta}${c.bold}══ 3) Subir Raptor Solutions (gestor) ══${c.reset}\n`,
+  );
+  const gestorCode = await gitPush(new Set(["gestor"]), {
+    compile: false,
+    confirm: false,
+    message: msg,
+    skipWait: true,
+  });
+
+  const worst = Math.max(viteCode, gestorCode);
+  console.log(
+    `\n${worst === 0 ? c.brightGreen : c.yellow}${c.bold}Fin subir todo` +
+      `${c.reset}  (vite:${viteCode} gestor:${gestorCode}) · sin pm2\n`,
   );
   if (confirm) await waitEnter();
   return worst;
@@ -576,39 +617,55 @@ async function compileBeforePush(filterIds) {
   return 0;
 }
 
-async function gitPush(filterIds = null, { compile = false } = {}) {
-  printGitStatus(filterIds);
+/**
+ * @param {Set|null} filterIds
+ * @param {{ compile?: boolean, confirm?: boolean, message?: string, skipWait?: boolean }} opts
+ */
+async function gitPush(
+  filterIds = null,
+  { compile = false, confirm = true, message = null, skipWait = false } = {},
+) {
+  if (confirm) printGitStatus(filterIds);
   if (compile) {
     const labels = [...(filterIds || TRIO_IDS)].join(", ");
-    const go = await askConfirm(
-      `${c.brightGreen}¿Compilar Vite (${labels}) y luego subir?${c.reset}`,
-    );
-    if (!go) {
-      console.log(`${c.dim}Cancelado.${c.reset}`);
-      await waitEnter();
-      return 1;
+    if (confirm) {
+      const go = await askConfirm(
+        `${c.brightGreen}¿Compilar Vite (${labels}) y luego subir?${c.reset}`,
+      );
+      if (!go) {
+        console.log(`${c.dim}Cancelado.${c.reset}`);
+        if (!skipWait) await waitEnter();
+        return 1;
+      }
     }
     const built = await compileBeforePush(filterIds || TRIO_IDS);
     if (built !== 0) {
-      await waitEnter();
+      if (!skipWait && confirm) await waitEnter();
       return built;
     }
   }
 
   const repos = listGitRepos(filterIds);
   const dirty = repos.filter((r) => repoShortStatus(r.root).dirty);
+  const defaultMsg =
+    message ||
+    `update ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
 
   if (!dirty.length) {
     console.log(
       `\n${c.yellow}Ningún repo tiene cambios para commitear.${c.reset}`,
     );
-    const pushClean = await askConfirm(
-      `${c.brightGreen}¿Hacer push de la rama actual igual?${c.reset}`,
-    );
-    if (!pushClean) {
-      console.log(`${c.dim}Cancelado.${c.reset}`);
-      await waitEnter();
-      return 1;
+    if (confirm) {
+      const pushClean = await askConfirm(
+        `${c.brightGreen}¿Hacer push de la rama actual igual?${c.reset}`,
+      );
+      if (!pushClean) {
+        console.log(`${c.dim}Cancelado.${c.reset}`);
+        if (!skipWait) await waitEnter();
+        return 1;
+      }
+    } else {
+      console.log(`${c.dim}Push de rama actual (sin commit nuevo)…${c.reset}`);
     }
     let worst = 0;
     for (const repo of repos) {
@@ -618,29 +675,31 @@ async function gitPush(filterIds = null, { compile = false } = {}) {
       });
       worst = Math.max(worst, r.status ?? 1);
     }
-    await waitEnter();
+    if (!skipWait && confirm) await waitEnter();
     return worst;
   }
 
   console.log(
     `\n${c.dim}Repos con cambios:${c.reset} ${dirty.map((r) => r.title).join(", ")}`,
   );
-  const msg = await askText(
-    `${c.brightCyan}Mensaje del commit${c.reset}`,
-    `update ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
-  );
-  if (!msg) {
-    console.log(`${c.dim}Cancelado.${c.reset}`);
-    await waitEnter();
-    return 1;
-  }
-  const ok = await askConfirm(
-    `${c.brightGreen}¿Commit + push en ${dirty.length} repo(s) con «${msg}»?${c.reset}`,
-  );
-  if (!ok) {
-    console.log(`${c.dim}Cancelado.${c.reset}`);
-    await waitEnter();
-    return 1;
+  let msg = defaultMsg;
+  if (confirm) {
+    msg =
+      (await askText(`${c.brightCyan}Mensaje del commit${c.reset}`, defaultMsg)) ||
+      "";
+    if (!msg) {
+      console.log(`${c.dim}Cancelado.${c.reset}`);
+      if (!skipWait) await waitEnter();
+      return 1;
+    }
+    const ok = await askConfirm(
+      `${c.brightGreen}¿Commit + push en ${dirty.length} repo(s) con «${msg}»?${c.reset}`,
+    );
+    if (!ok) {
+      console.log(`${c.dim}Cancelado.${c.reset}`);
+      if (!skipWait) await waitEnter();
+      return 1;
+    }
   }
 
   let worst = 0;
@@ -652,7 +711,11 @@ async function gitPush(filterIds = null, { compile = false } = {}) {
       console.log(
         `${c.yellow}Commit falló o no había cambios staged en ${repo.title}.${c.reset}`,
       );
-      worst = Math.max(worst, commit.status ?? 1);
+      // Puede ser "nothing to commit" tras stage: intentar push igual
+      const pushAnyway = git(["push", "-u", "origin", "HEAD"], repo.root, {
+        inherit: true,
+      });
+      worst = Math.max(worst, pushAnyway.status ?? 1);
       continue;
     }
     const push = git(["push", "-u", "origin", "HEAD"], repo.root, {
@@ -660,7 +723,7 @@ async function gitPush(filterIds = null, { compile = false } = {}) {
     });
     worst = Math.max(worst, push.status ?? 1);
   }
-  await waitEnter();
+  if (!skipWait && confirm) await waitEnter();
   return worst;
 }
 
@@ -1076,10 +1139,17 @@ async function deployMenu() {
       "Gestor (raptorsolutions) · local o servidor",
       [
         {
-          id: "update-all",
-          title: "★ Actualizar todo",
-          desc: "pull todos → deploy gestor si cambió → 3 Vite → pm2 restart all.",
-          color: "magenta",
+          id: "pull-all",
+          title: "★ Bajar todo",
+          desc: "pull todos → deploy gestor si cambió → pm2 restart all.",
+          color: "green",
+          danger: "high",
+        },
+        {
+          id: "push-all",
+          title: "★ Subir todo",
+          desc: "compilar + push las 3 Vite · push gestor · sin pm2.",
+          color: "yellow",
           danger: "high",
         },
         {
@@ -1135,7 +1205,8 @@ async function deployMenu() {
       ],
     );
     if (!row || row.id === "back") return;
-    if (row.id === "update-all") await fullSyncAndDeploy();
+    if (row.id === "pull-all") await pullAllDeploy();
+    else if (row.id === "push-all") await pushAllUpload();
     else if (row.id === "pull-gestor") await gitPull(new Set(["gestor"]));
     else if (row.id === "deploy-gestor") await deployGestor();
     else if (row.id === "pm2-local") await pm2RestartLocal();
@@ -1335,10 +1406,17 @@ async function deployGestorServer() {
 function menuRows() {
   return [
     {
-      id: "update-all",
-      title: "★ Actualizar todo",
-      desc: "pull todos → deploy gestor si cambió → 3 Vite → pm2 restart all.",
-      color: "magenta",
+      id: "pull-all",
+      title: "★ Bajar todo",
+      desc: "pull todos → deploy gestor si cambió → pm2 restart all.",
+      color: "green",
+      danger: "high",
+    },
+    {
+      id: "push-all",
+      title: "★ Subir todo",
+      desc: "compilar + push las 3 Vite · push gestor · sin pm2.",
+      color: "yellow",
       danger: "high",
     },
     {
@@ -1364,7 +1442,7 @@ function menuRows() {
     {
       id: "deploy",
       title: "Deploy / PM2 · Raptor Solutions",
-      desc: "Pull/deploy gestor · pm2 restart all o una app.",
+      desc: "Bajar/subir todo · deploy gestor · pm2 all o una.",
       color: "cyan",
       danger: "med",
     },
@@ -1386,11 +1464,19 @@ function menuRows() {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes("--update-all") || args.includes("update-all")) {
-    const code = await fullSyncAndDeploy({
-      confirm: !args.includes("--yes") && !args.includes("-y"),
-    });
-    process.exitCode = code;
+  const noConfirm = args.includes("--yes") || args.includes("-y");
+
+  if (
+    args.includes("--pull-all") ||
+    args.includes("pull-all") ||
+    args.includes("--update-all") ||
+    args.includes("update-all")
+  ) {
+    process.exitCode = await pullAllDeploy({ confirm: !noConfirm });
+    return;
+  }
+  if (args.includes("--push-all") || args.includes("push-all")) {
+    process.exitCode = await pushAllUpload({ confirm: !noConfirm });
     return;
   }
 
@@ -1405,7 +1491,8 @@ async function main() {
       console.log("Listo.");
       return;
     }
-    if (row.id === "update-all") await fullSyncAndDeploy();
+    if (row.id === "pull-all") await pullAllDeploy();
+    else if (row.id === "push-all") await pushAllUpload();
     else if (row.id === "git") await gitMenu();
     else if (row.id === "vite") await viteMenu();
     else if (row.id === "db") await dbMenu();

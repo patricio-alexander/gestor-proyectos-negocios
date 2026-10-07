@@ -67,7 +67,13 @@ function reviveBigIntFields(
   });
 }
 
-export function parseBackupJson(raw: string): Record<BackupTableKey, unknown[]> {
+export type ParsedBackup = {
+  data: Record<BackupTableKey, unknown[]>;
+  /** Tablas presentes en el JSON (aunque estén vacías). Las omitidas no se tocan al restaurar. */
+  presentKeys: BackupTableKey[];
+};
+
+export function parseBackupJson(raw: string): ParsedBackup {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -92,6 +98,7 @@ export function parseBackupJson(raw: string): Record<BackupTableKey, unknown[]> 
   }
 
   const result = {} as Record<BackupTableKey, unknown[]>;
+  const presentKeys: BackupTableKey[] = [];
   for (const key of BACKUP_TABLE_KEYS) {
     const value = source[key];
     if (value === undefined) {
@@ -102,6 +109,7 @@ export function parseBackupJson(raw: string): Record<BackupTableKey, unknown[]> 
       throw new Error(`La tabla "${key}" debe ser un array`);
     }
     result[key] = value;
+    presentKeys.push(key);
   }
 
   for (const key of Object.keys(source)) {
@@ -110,7 +118,7 @@ export function parseBackupJson(raw: string): Record<BackupTableKey, unknown[]> 
     }
   }
 
-  return result;
+  return { data: result, presentKeys };
 }
 
 function timestampSuffix(date = new Date()) {
@@ -121,13 +129,21 @@ function timestampSuffix(date = new Date()) {
   );
 }
 
-/** Borra todas las tablas del backup e inserta las filas del JSON (reemplazo total). */
+/** Borra e inserta solo las tablas presentes en el JSON (reemplazo parcial/total). */
 export async function restoreDatabaseFromBackup(
   data: Record<BackupTableKey, unknown[]>,
-  options?: { savePayload?: string },
+  options?: { savePayload?: string; presentKeys?: BackupTableKey[] },
 ) {
+  const keysToTouch =
+    options?.presentKeys && options.presentKeys.length > 0
+      ? options.presentKeys
+      : [...BACKUP_TABLE_KEYS];
+  const keySet = new Set(keysToTouch);
+
   const summary = summarizeBackupData(
-    data as Record<string, unknown[]>,
+    Object.fromEntries(
+      keysToTouch.map((k) => [k, data[k] ?? []]),
+    ) as Record<string, unknown[]>,
   );
 
   await prisma.$transaction(
@@ -136,7 +152,9 @@ export async function restoreDatabaseFromBackup(
 
       await db.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
 
+      // Borrar en orden inverso del catálogo, solo tablas presentes en el JSON.
       for (const key of [...BACKUP_TABLE_KEYS].reverse()) {
+        if (!keySet.has(key)) continue;
         const delegate = backupTableDelegate(
           db,
           key,
@@ -145,7 +163,8 @@ export async function restoreDatabaseFromBackup(
       }
 
       for (const key of BACKUP_TABLE_KEYS) {
-        const rows = data[key];
+        if (!keySet.has(key)) continue;
+        const rows = data[key] ?? [];
         if (!rows.length) continue;
         const delegate = backupTableDelegate(
           db,
@@ -176,16 +195,19 @@ export async function restoreDatabaseFromBackup(
 }
 
 export async function importBackupFromJson(raw: string) {
-  const data = parseBackupJson(raw);
-  const summary = await restoreDatabaseFromBackup(data, { savePayload: raw });
+  const { data, presentKeys } = parseBackupJson(raw);
+  const summary = await restoreDatabaseFromBackup(data, {
+    savePayload: raw,
+    presentKeys,
+  });
   return summary;
 }
 
 /** Restaura desde el backup.json fijo del servidor. */
 export async function reloadFromMainBackup() {
   const raw = await fs.readFile(MAIN_BACKUP_PATH, "utf8");
-  const data = parseBackupJson(raw);
-  return restoreDatabaseFromBackup(data);
+  const { data, presentKeys } = parseBackupJson(raw);
+  return restoreDatabaseFromBackup(data, { presentKeys });
 }
 
 /** Cifra en reposo secretos legacy en texto plano tras un restore. */
