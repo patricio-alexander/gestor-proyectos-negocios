@@ -45,13 +45,19 @@ function shortLabel(text: string, max = 22) {
   return text.length > max ? `${text.slice(0, max - 2)}…` : text;
 }
 
+type BarRow = {
+  shortName: string;
+  count: number;
+  [key: string]: string | number;
+};
+
 function VerticalBars({
   data,
   total,
   nameKey,
   fullNameKey,
 }: {
-  data: Array<Record<string, string | number>>;
+  data: BarRow[];
   total: number;
   nameKey: string;
   fullNameKey: string;
@@ -137,15 +143,19 @@ export function EventsOverview({
         .sort((a, b) => b.count - a.count)
         .slice(0, 10)
         .map((m) => ({
-          ...m,
+          module_key: m.module_key,
+          module_name: m.module_name,
+          count: m.count,
           shortName: shortLabel(m.module_name),
         }));
-      const sectionData = selected
+      const sectionData: BarRow[] = selected
         ? [...selected.sections]
             .sort((a, b) => b.count - a.count)
             .slice(0, 12)
             .map((s) => ({
-              ...s,
+              section_key: s.section_key,
+              section_name: s.section_name,
+              count: s.count,
               shortName: shortLabel(s.section_name),
             }))
         : [];
