@@ -33,6 +33,8 @@
     "git:push": "bash scripts/git-push.sh",
     "git-push-gestor": "bash scripts/git-push.sh",
     "deploy": "bash scripts/deploy.sh",
+    "update:all": "node scripts/hub/hub.cjs --update-all",
+    "update:all:yes": "node scripts/hub/hub.cjs --update-all --yes",
     "clean": "rm -rf .next tsconfig.tsbuildinfo && prisma generate",
     "postinstall": "prisma generate",
     "setup": "bash scripts/setup-local.sh",
