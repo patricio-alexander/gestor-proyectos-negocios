@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { isMobilePlatform } from "@/src/features/mobile-apps/lib/mobile-app-helpers";
 import {
-  toAbsoluteBundleUrl,
+  toBundleDownloadApiUrl,
   validateMobileApiKey,
 } from "@/src/features/mobile-apps/lib/mobile-api-auth";
 import { upsertMobileDeviceHeartbeat } from "@/src/features/mobile-apps/lib/mobile-device";
@@ -70,9 +70,19 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const rawKey =
+    request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+    "";
+
   return NextResponse.json({
     version: release.version,
-    bundleUrl: toAbsoluteBundleUrl(request, release.bundle_path),
+    // Descarga por API (no /public/bundles estático — en prod da 404).
+    bundleUrl: toBundleDownloadApiUrl(
+      request,
+      release.platform,
+      release.version,
+      rawKey,
+    ),
     mandatory: release.mandatory,
     platform: release.platform,
     releaseNotes: release.release_notes,

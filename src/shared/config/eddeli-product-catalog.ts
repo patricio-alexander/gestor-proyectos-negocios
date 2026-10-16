@@ -495,15 +495,15 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
 {
     key: "produccion",
     name: "Producción",
-    description: "Insumos, recetas, fabricación y (próx.) proveedores con cuenta.",
+    description: "Enlaces de productos, recetas, fabricación y (próx.) proveedores con cuenta.",
     status: "active",
     sections: [
       {
         key: "/produccion/insumos",
-        name: "Insumos y marcas",
+        name: "Enlaces productos",
         status: "active",
         capabilities: [
-          { code: "panel_de_insumos_genericos", name: "Panel de insumos genéricos" },
+          { code: "panel_de_insumos_genericos", name: "Panel de enlaces de productos" },
           { code: "crear_presentacion", name: "Crear presentación" },
           { code: "enlazar_producto", name: "Enlazar producto" },
           { code: "bootstrap_frecuentes", name: "Bootstrap frecuentes" },
@@ -1048,6 +1048,17 @@ export const EDDELI_MENU_GROUPS: CatalogModuleDef[] = [
           { code: "descargar_backup_2", name: "Descargar backup" },
           { code: "recargar_bd", name: "Recargar BD" },
           { code: "progreso_visual", name: "Progreso visual" },
+        ],
+      },
+      {
+        key: "/desarrollador/pruebas",
+        name: "Pruebas",
+        status: "active",
+        capabilities: [
+          {
+            code: "bolita_explosiva",
+            name: "Bolita explosiva",
+          },
         ],
       },
     ],

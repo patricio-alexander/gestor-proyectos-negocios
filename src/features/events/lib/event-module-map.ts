@@ -236,6 +236,14 @@ const RULES: Rule[] = [
   {
     module_key: "desarrollador",
     module_name: "Desarrollador",
+    section_key: "/desarrollador/pruebas",
+    section_name: "Pruebas",
+    typePrefixes: ["test", "prueba"],
+    pathPrefixes: ["/desarrollador/pruebas", "/pruebas"],
+  },
+  {
+    module_key: "desarrollador",
+    module_name: "Desarrollador",
     section_key: "/desarrollador/logs",
     section_name: "Logs",
     typePrefixes: ["log", "image", "file"],

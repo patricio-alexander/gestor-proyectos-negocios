@@ -110,3 +110,23 @@ export function toAbsoluteBundleUrl(
   const path = bundlePath.startsWith("/") ? bundlePath : `/${bundlePath}`;
   return `${base}${path}`;
 }
+
+/**
+ * URL de descarga OTA vía API.
+ * Incluye `key` en query para que apps ya instaladas (sin headers en download)
+ * puedan bajar el bundle; también acepta Authorization Bearer.
+ */
+export function toBundleDownloadApiUrl(
+  request: NextRequest,
+  platform: string,
+  version: string,
+  apiKey?: string | null,
+): string {
+  const base = buildPublicBaseUrl(request);
+  const q = new URLSearchParams({
+    platform: String(platform || ""),
+    version: String(version || ""),
+  });
+  if (apiKey) q.set("key", String(apiKey));
+  return `${base}/api/mobile/app-update/bundle?${q.toString()}`;
+}
