@@ -130,3 +130,19 @@ export function toBundleDownloadApiUrl(
   if (apiKey) q.set("key", String(apiKey));
   return `${base}/api/mobile/app-update/bundle?${q.toString()}`;
 }
+
+/** URL de descarga APK (instalación con confirmación del usuario). */
+export function toApkDownloadApiUrl(
+  request: NextRequest,
+  platform: string,
+  version: string,
+  apiKey?: string | null,
+): string {
+  const base = buildPublicBaseUrl(request);
+  const q = new URLSearchParams({
+    platform: String(platform || ""),
+    version: String(version || ""),
+  });
+  if (apiKey) q.set("key", String(apiKey));
+  return `${base}/api/mobile/app-update/apk?${q.toString()}`;
+}

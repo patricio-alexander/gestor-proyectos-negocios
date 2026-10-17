@@ -102,6 +102,7 @@ export async function listReleasesForApp(mobileAppId: number) {
     platform: r.platform as MobilePlatform,
     version: r.version,
     bundle_path: r.bundle_path,
+    apk_path: r.apk_path,
     mandatory: r.mandatory,
     release_notes: r.release_notes,
     is_active: r.is_active,

@@ -536,7 +536,9 @@ model MobileAppRelease {
   platform      MobilePlatform
   version       String         @db.VarChar(50)
   /** Ruta relativa bajo public/, ej. /bundles/mobile/chilepan/ios/1.0.0/index.bundle */
-  bundle_path   String         @db.VarChar(500)
+  bundle_path   String?        @db.VarChar(500)
+  /** APK Android opcional, ej. /bundles/mobile/panaderiatv/android/0.0.1/app-release.apk */
+  apk_path      String?        @db.VarChar(500)
   mandatory     Boolean        @default(false)
   release_notes String?        @db.Text
   /** Solo un release activo por (app, platform). */

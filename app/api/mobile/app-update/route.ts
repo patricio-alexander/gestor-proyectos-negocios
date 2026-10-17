@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { isMobilePlatform } from "@/src/features/mobile-apps/lib/mobile-app-helpers";
 import {
+  toApkDownloadApiUrl,
   toBundleDownloadApiUrl,
   validateMobileApiKey,
 } from "@/src/features/mobile-apps/lib/mobile-api-auth";
@@ -74,15 +75,35 @@ export async function GET(request: NextRequest) {
     request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim() ||
     "";
 
+  const hasBundle = Boolean(release.bundle_path);
+  const hasApk = Boolean(release.apk_path) && platformRaw === "android";
+
+  if (!hasBundle && !hasApk) {
+    return NextResponse.json(
+      { error: "Release activo sin bundle ni APK" },
+      { status: 404 },
+    );
+  }
+
   return NextResponse.json({
     version: release.version,
     // Descarga por API (no /public/bundles estático — en prod da 404).
-    bundleUrl: toBundleDownloadApiUrl(
-      request,
-      release.platform,
-      release.version,
-      rawKey,
-    ),
+    bundleUrl: hasBundle
+      ? toBundleDownloadApiUrl(
+          request,
+          release.platform,
+          release.version,
+          rawKey,
+        )
+      : null,
+    apkUrl: hasApk
+      ? toApkDownloadApiUrl(
+          request,
+          release.platform,
+          release.version,
+          rawKey,
+        )
+      : null,
     mandatory: release.mandatory,
     platform: release.platform,
     releaseNotes: release.release_notes,

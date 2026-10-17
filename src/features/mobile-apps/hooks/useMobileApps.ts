@@ -109,6 +109,8 @@ export function useMobileReleases(appId: number | null) {
     mandatory: boolean;
     activate: boolean;
     release_notes?: string;
+    /** bundle = JS OTA; apk = instalador Android */
+    artifact?: "bundle" | "apk";
   }) {
     if (!appId) throw new Error("Sin app seleccionada");
     const form = new FormData();
@@ -117,6 +119,7 @@ export function useMobileReleases(appId: number | null) {
     form.append("version", input.version);
     form.append("mandatory", String(input.mandatory));
     form.append("activate", String(input.activate));
+    form.append("artifact", input.artifact || "bundle");
     if (input.release_notes) form.append("release_notes", input.release_notes);
 
     const res = await fetch(

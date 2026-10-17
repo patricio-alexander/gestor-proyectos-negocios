@@ -286,6 +286,7 @@ function AppDetail({
 
   const uploadState = useOverlayState();
   const [platform, setPlatform] = useState<MobilePlatform>("android");
+  const [artifact, setArtifact] = useState<"bundle" | "apk">("bundle");
   const [version, setVersion] = useState("1.0.0");
   const [notes, setNotes] = useState("");
   const [mandatory, setMandatoryFlag] = useState(false);
@@ -295,7 +296,15 @@ function AppDetail({
 
   async function onUpload() {
     if (!file) {
-      appToast.warning("Selecciona el archivo bundle");
+      appToast.warning(
+        artifact === "apk"
+          ? "Selecciona el archivo APK"
+          : "Selecciona el archivo bundle",
+      );
+      return;
+    }
+    if (artifact === "apk" && platform !== "android") {
+      appToast.warning("APK solo para Android");
       return;
     }
     setBusy(true);
@@ -307,10 +316,17 @@ function AppDetail({
         mandatory,
         activate: activateOnUpload,
         release_notes: notes || undefined,
+        artifact,
       });
       onReleasesChanged();
       appToast.success(
-        activateOnUpload ? "Release subido y activado" : "Release subido",
+        activateOnUpload
+          ? artifact === "apk"
+            ? "APK subido y release activado"
+            : "Release subido y activado"
+          : artifact === "apk"
+            ? "APK subido"
+            : "Release subido",
       );
       uploadState.close();
       setFile(null);
@@ -450,7 +466,7 @@ function AppDetail({
             </div>
           ) : releases.length === 0 ? (
             <p className={gp.empty}>
-              Sin releases. Subí el primer bundle (Android o iOS).
+              Sin releases. Subí el primer bundle o APK (Android).
             </p>
           ) : (
             <div className={gp.tableWrap}>
@@ -462,6 +478,7 @@ function AppDetail({
                     <th>Estado</th>
                     <th>Tipo</th>
                     <th>Bundle</th>
+                    <th>APK</th>
                     <th />
                   </tr>
                 </thead>
@@ -473,14 +490,32 @@ function AppDetail({
                       <td>{r.is_active ? "Activo" : "Inactivo"}</td>
                       <td>{r.mandatory ? "Obligatorio" : "Opcional"}</td>
                       <td>
-                        <a
-                          className="text-sm underline opacity-80"
-                          href={assetUrl(r.bundle_path)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {r.bundle_path.split("/").pop()}
-                        </a>
+                        {r.bundle_path ? (
+                          <a
+                            className="text-sm underline opacity-80"
+                            href={assetUrl(r.bundle_path)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {r.bundle_path.split("/").pop()}
+                          </a>
+                        ) : (
+                          <span className="text-xs opacity-50">—</span>
+                        )}
+                      </td>
+                      <td>
+                        {r.apk_path ? (
+                          <a
+                            className="text-sm underline opacity-80"
+                            href={assetUrl(r.apk_path)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {r.apk_path.split("/").pop()}
+                          </a>
+                        ) : (
+                          <span className="text-xs opacity-50">—</span>
+                        )}
                       </td>
                       <td>
                         <div className="flex flex-wrap justify-end gap-1">
@@ -560,23 +595,53 @@ function AppDetail({
             </Modal.Header>
             <Modal.Body className="flex flex-col gap-3">
               <Select
-                selectedKey={platform}
+                selectedKey={artifact}
                 onSelectionChange={(key) => {
-                  if (key === "ios" || key === "android") setPlatform(key);
+                  if (key === "bundle" || key === "apk") {
+                    setArtifact(key);
+                    setFile(null);
+                    if (key === "apk") setPlatform("android");
+                  }
                 }}
               >
-                <Label>Plataforma</Label>
+                <Label>Tipo de archivo</Label>
                 <Select.Trigger>
                   <Select.Value />
                   <Select.Indicator />
                 </Select.Trigger>
                 <Select.Popover>
                   <ListBox>
-                    <ListBox.Item id="android">Android</ListBox.Item>
-                    <ListBox.Item id="ios">iOS</ListBox.Item>
+                    <ListBox.Item id="bundle">
+                      Bundle JS (OTA sin reinstalar)
+                    </ListBox.Item>
+                    <ListBox.Item id="apk">
+                      APK Android (instalación nativa)
+                    </ListBox.Item>
                   </ListBox>
                 </Select.Popover>
               </Select>
+              {artifact === "bundle" ? (
+                <Select
+                  selectedKey={platform}
+                  onSelectionChange={(key) => {
+                    if (key === "ios" || key === "android") setPlatform(key);
+                  }}
+                >
+                  <Label>Plataforma</Label>
+                  <Select.Trigger>
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
+                      <ListBox.Item id="android">Android</ListBox.Item>
+                      <ListBox.Item id="ios">iOS</ListBox.Item>
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
+              ) : (
+                <p className="text-sm opacity-70">Plataforma: Android</p>
+              )}
               <label className={gp.label}>
                 Versión
                 <Input
@@ -586,12 +651,22 @@ function AppDetail({
                 />
               </label>
               <label className={gp.label}>
-                Bundle (.bundle / JS)
+                {artifact === "apk"
+                  ? "APK (.apk)"
+                  : "Bundle (.bundle / JS)"}
                 <Input
                   type="file"
+                  accept={artifact === "apk" ? ".apk,application/vnd.android.package-archive" : undefined}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
               </label>
+              {artifact === "apk" ? (
+                <p className="text-xs opacity-70">
+                  La app pedirá confirmación al usuario (Aceptar) antes de
+                  instalar. Si ya existe un release con esa versión, se adjunta
+                  el APK sin borrar el bundle.
+                </p>
+              ) : null}
               <label className={gp.label}>
                 Notas
                 <TextArea

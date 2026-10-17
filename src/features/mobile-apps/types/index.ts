@@ -25,7 +25,9 @@ export type MobileAppRelease = {
   mobile_app_id: number;
   platform: MobilePlatform;
   version: string;
-  bundle_path: string;
+  bundle_path: string | null;
+  /** APK Android opcional (instalación nativa con confirmación del usuario). */
+  apk_path: string | null;
   mandatory: boolean;
   release_notes: string | null;
   is_active: boolean;
@@ -82,7 +84,10 @@ export type UpdateMobileReleaseInput = {
 
 export type AppUpdateManifest = {
   version: string;
-  bundleUrl: string;
+  /** Bundle JS OTA (puede faltar si solo hay APK). */
+  bundleUrl: string | null;
+  /** APK Android para instalar con el instalador del sistema. */
+  apkUrl: string | null;
   mandatory: boolean;
   platform: MobilePlatform;
   releaseNotes: string | null;

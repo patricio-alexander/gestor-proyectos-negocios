@@ -4,6 +4,7 @@ import path from "path";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
 import {
+  buildApkRelativePath,
   buildBundleRelativePath,
   isMobilePlatform,
   isValidSemverLike,
@@ -11,6 +12,14 @@ import {
 import { activateRelease } from "@/src/features/mobile-apps/lib/mobile-app-query";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+function detectArtifact(file: File, artifactRaw: string): "bundle" | "apk" {
+  const a = String(artifactRaw || "").trim().toLowerCase();
+  if (a === "apk" || a === "bundle") return a;
+  const name = String(file.name || "").toLowerCase();
+  if (name.endsWith(".apk")) return "apk";
+  return "bundle";
+}
 
 export async function POST(request: Request, context: Ctx) {
   const auth = await getAuthUser();
@@ -35,12 +44,15 @@ export async function POST(request: Request, context: Ctx) {
     const version = String(formData.get("version") || "").trim();
     const mandatory = String(formData.get("mandatory") || "") === "true";
     const activate = String(formData.get("activate") || "") === "true";
+    const artifact = file
+      ? detectArtifact(file, String(formData.get("artifact") || ""))
+      : "bundle";
     const releaseNotesRaw = formData.get("release_notes");
     const releaseNotes =
       typeof releaseNotesRaw === "string" ? releaseNotesRaw.trim() || null : null;
 
     if (!file) {
-      return NextResponse.json({ error: "Falta el archivo bundle" }, { status: 400 });
+      return NextResponse.json({ error: "Falta el archivo" }, { status: 400 });
     }
     if (!isMobilePlatform(platformRaw)) {
       return NextResponse.json(
@@ -48,38 +60,39 @@ export async function POST(request: Request, context: Ctx) {
         { status: 400 },
       );
     }
+    if (artifact === "apk" && platformRaw !== "android") {
+      return NextResponse.json(
+        { error: "APK solo se sube para Android" },
+        { status: 400 },
+      );
+    }
     if (!isValidSemverLike(version)) {
       return NextResponse.json(
-        { error: "version inválida (ej. 1.0.0)" },
+        { error: "version inválida (ej. 1.0.0 o 0.0.0.4)" },
         { status: 400 },
       );
     }
 
-    const dup = await prisma.mobileAppRelease.findFirst({
+    const existing = await prisma.mobileAppRelease.findFirst({
       where: {
         mobile_app_id: mobileAppId,
         platform: platformRaw,
         version,
         deleted_at: null,
       },
-      select: { id: true },
     });
-    if (dup) {
-      return NextResponse.json(
-        { error: "Ya existe esa versión para la plataforma" },
-        { status: 409 },
-      );
-    }
 
     const filename = file.name?.includes(".")
       ? path.basename(file.name)
-      : "index.bundle";
-    const bundlePath = buildBundleRelativePath(
-      app.key,
-      platformRaw,
-      version,
-      filename,
-    );
+      : artifact === "apk"
+        ? "app-release.apk"
+        : "index.bundle";
+
+    const relativePath =
+      artifact === "apk"
+        ? buildApkRelativePath(app.key, platformRaw, version, filename)
+        : buildBundleRelativePath(app.key, platformRaw, version, filename);
+
     const absDir = path.join(
       process.cwd(),
       "public",
@@ -89,27 +102,61 @@ export async function POST(request: Request, context: Ctx) {
       platformRaw,
       version,
     );
-    const absFile = path.join(absDir, path.basename(bundlePath));
+    const absFile = path.join(absDir, path.basename(relativePath));
 
     await mkdir(absDir, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(absFile, buffer);
 
-    const release = await prisma.mobileAppRelease.create({
-      data: {
-        mobile_app_id: mobileAppId,
-        platform: platformRaw,
-        version,
-        bundle_path: bundlePath,
-        mandatory,
-        release_notes: releaseNotes,
-        is_active: false,
-      },
-    });
+    // Si suben APK sin bundle, heredar bundle del release activo previo (misma plataforma).
+    let inheritBundle: string | null = null;
+    if (artifact === "apk" && !existing?.bundle_path) {
+      const prev = await prisma.mobileAppRelease.findFirst({
+        where: {
+          mobile_app_id: mobileAppId,
+          platform: platformRaw,
+          deleted_at: null,
+          bundle_path: { not: null },
+          NOT: existing ? { id: existing.id } : undefined,
+        },
+        orderBy: [{ is_active: "desc" }, { published_at: "desc" }, { id: "desc" }],
+      });
+      inheritBundle = prev?.bundle_path ?? null;
+    }
+
+    let release;
+    if (existing) {
+      release = await prisma.mobileAppRelease.update({
+        where: { id: existing.id },
+        data: {
+          ...(artifact === "apk"
+            ? { apk_path: relativePath }
+            : { bundle_path: relativePath }),
+          ...(artifact === "apk" && !existing.bundle_path && inheritBundle
+            ? { bundle_path: inheritBundle }
+            : {}),
+          mandatory,
+          release_notes: releaseNotes,
+        },
+      });
+    } else {
+      release = await prisma.mobileAppRelease.create({
+        data: {
+          mobile_app_id: mobileAppId,
+          platform: platformRaw,
+          version,
+          bundle_path: artifact === "bundle" ? relativePath : inheritBundle,
+          apk_path: artifact === "apk" ? relativePath : null,
+          mandatory,
+          release_notes: releaseNotes,
+          is_active: false,
+        },
+      });
+    }
 
     if (activate) {
       const activated = await activateRelease(release.id, mobileAppId);
-      return NextResponse.json(activated, { status: 201 });
+      return NextResponse.json(activated, { status: existing ? 200 : 201 });
     }
 
     return NextResponse.json(
@@ -119,20 +166,21 @@ export async function POST(request: Request, context: Ctx) {
         platform: release.platform,
         version: release.version,
         bundle_path: release.bundle_path,
+        apk_path: release.apk_path,
         mandatory: release.mandatory,
         release_notes: release.release_notes,
-        is_active: false,
-        published_at: null,
+        is_active: release.is_active,
+        published_at: release.published_at?.toISOString?.() ?? release.published_at,
         created_at: release.created_at.toISOString(),
         updated_at: release.updated_at.toISOString(),
         deleted_at: null,
       },
-      { status: 201 },
+      { status: existing ? 200 : 201 },
     );
   } catch (err) {
     console.error("[mobile-apps upload] POST", err);
     return NextResponse.json(
-      { error: "Error al subir el bundle" },
+      { error: "Error al subir el archivo" },
       { status: 500 },
     );
   }

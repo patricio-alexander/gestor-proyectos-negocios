@@ -32,3 +32,13 @@ export function buildBundleRelativePath(
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_") || "index.bundle";
   return `/bundles/mobile/${appKey}/${platform}/${version}/${safeName}`;
 }
+
+export function buildApkRelativePath(
+  appKey: string,
+  platform: MobilePlatform,
+  version: string,
+  filename = "app-release.apk",
+): string {
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_") || "app-release.apk";
+  return `/bundles/mobile/${appKey}/${platform}/${version}/${safeName}`;
+}
