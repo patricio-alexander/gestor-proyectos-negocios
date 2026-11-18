@@ -66,8 +66,15 @@ echo "==> prisma generate"
 npx prisma generate
 
 if [[ "${SKIP_MIGRATE:-0}" != "1" ]]; then
-  echo "==> prisma migrate deploy"
-  npx prisma migrate deploy
+  echo "==> prisma migrate deploy (schema BD)"
+  if ! npx prisma migrate deploy; then
+    echo ""
+    echo "Aviso: migrate deploy falló (historial/desvío)."
+    echo "==> Alineando esquema con prisma db push (no borra datos)"
+    # Cubre columnas nuevas (update_force, JointUpdateJob, etc.) aunque
+    # alguna migración vieja ya estuviera aplicada a mano / con db push.
+    npx prisma db push
+  fi
 else
   echo "==> prisma migrate (omitido)"
 fi
