@@ -150,6 +150,11 @@ async function buildFeaturesForApp(appId: number): Promise<EntitlementFeature[]>
 export async function buildEntitlementForAppHash(
   appHash: string,
 ): Promise<EntitlementPayload> {
+  const { ensureAppsUpdateColumns } = await import(
+    "@/src/shared/lib/ensure-apps-update-columns"
+  );
+  await ensureAppsUpdateColumns();
+
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
     select: {

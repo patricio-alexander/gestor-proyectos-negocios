@@ -132,6 +132,12 @@ export function useApps() {
     apps,
     loading: appsQuery.isLoading,
     isFetching: appsQuery.isFetching,
+    error:
+      appsQuery.error instanceof Error
+        ? appsQuery.error.message
+        : appsQuery.error
+          ? String(appsQuery.error)
+          : null,
     create,
     update,
     remove,

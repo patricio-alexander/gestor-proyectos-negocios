@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { validateKey } from "@/src/shared/lib/api-auth";
+import { ensureAppsUpdateColumns } from "@/src/shared/lib/ensure-apps-update-columns";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 
 export const runtime = "nodejs";
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
   const version = String(body.version || "")
     .trim()
     .slice(0, 40);
+
+  await ensureAppsUpdateColumns();
 
   const app = await prisma.apps.update({
     where: { id: auth.app_id },

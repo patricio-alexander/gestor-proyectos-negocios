@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
+import { ensureAppsUpdateColumns } from "@/src/shared/lib/ensure-apps-update-columns";
 import { revealSecret, sealSecret } from "@/src/shared/lib/secret-crypto";
 
 export async function GET() {
@@ -9,6 +10,7 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
+    await ensureAppsUpdateColumns();
     const apps = await prisma.apps.findMany({
       where: { deleted_at: null },
       orderBy: { created_at: "desc" },
@@ -107,6 +109,9 @@ export async function GET() {
           updating: Boolean(a.updating),
           update_force: a.update_force !== false,
           update_available: Boolean(a.update_available),
+          update_force_logout: Boolean(
+            (a as { update_force_logout?: boolean }).update_force_logout,
+          ),
           reported_version: a.reported_version || null,
           entitlement_url: a.entitlement_url,
           entitlement_secret: revealSecret(a.entitlement_secret),
@@ -165,11 +170,30 @@ export async function GET() {
         };
       }),
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Error al obtener aplicaciones" },
-      { status: 500 },
-    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[api/apps GET]", msg);
+    // Reintento único: columna nueva / Prisma desfasado
+    try {
+      await ensureAppsUpdateColumns();
+      return NextResponse.json(
+        {
+          error:
+            "Esquema de apps actualizado. Recargá la página (F5).",
+          detail: msg.slice(0, 300),
+        },
+        { status: 503 },
+      );
+    } catch (e2) {
+      const msg2 = e2 instanceof Error ? e2.message : String(e2);
+      return NextResponse.json(
+        {
+          error: "Error al obtener aplicaciones",
+          detail: msg2.slice(0, 400),
+        },
+        { status: 500 },
+      );
+    }
   }
 }
 

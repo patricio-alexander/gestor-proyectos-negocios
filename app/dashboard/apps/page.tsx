@@ -127,8 +127,18 @@ function InfoField({
 }
 
 export default function AppsPage() {
-  const { apps, loading, create, update, remove, pushEntitlement, enablePlan, updateModules, refetch } =
-    useApps();
+  const {
+    apps,
+    loading,
+    error: appsError,
+    create,
+    update,
+    remove,
+    pushEntitlement,
+    enablePlan,
+    updateModules,
+    refetch,
+  } = useApps();
   const {
     healthFor,
     isFetching: syncChecking,
@@ -489,6 +499,20 @@ export default function AppsPage() {
 
   return (
     <div className={gp.page}>
+      {appsError ? (
+        <Alert status="danger" className="mb-4">
+          <Alert.Description className="flex flex-wrap items-center gap-3">
+            <span>No se pudieron cargar las apps: {appsError}</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onPress={() => void refetch()}
+            >
+              Reintentar
+            </Button>
+          </Alert.Description>
+        </Alert>
+      ) : null}
       <ManagerHeader
         title="Todas"
         description="Apps web y móvil: email, sync, dispositivos, planes y mantenimiento."

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { prisma } from "@/src/shared/lib/prisma";
+import { ensureAppsUpdateColumns } from "@/src/shared/lib/ensure-apps-update-columns";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 import { PRODUCTION_SITE_URL } from "@/src/config/site";
 import {
@@ -142,6 +143,7 @@ export async function executeJointUpdate(opts: {
   };
 
   if (opts.notify) {
+    await ensureAppsUpdateColumns();
     const apps = await prisma.apps.findMany({
       where: { deleted_at: null, kind: { not: "mobile" } },
       select: {
