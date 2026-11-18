@@ -6,6 +6,7 @@ import { Alert, Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import Tachometer from "@gravity-ui/icons/Tachometer";
 import ShieldKeyhole from "@gravity-ui/icons/ShieldKeyhole";
 import Key from "@gravity-ui/icons/Key";
+import { SYSTEM_VERSION } from "@/src/config/systemVersion";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { assetUrl } from "@/src/utils/assetUrl";
@@ -136,7 +137,7 @@ export default function LoginPage() {
           style={{ color: "var(--gp-text-faint)" }}
         >
           <img src={EYE_LOGO} alt="" aria-hidden className="h-4 w-auto opacity-80" />
-          © {new Date().getFullYear()} Raptor Solutions
+          © {new Date().getFullYear()} Raptor Solutions · v{SYSTEM_VERSION}
         </p>
       </div>
 

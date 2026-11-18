@@ -1,0 +1,394 @@
+#!/usr/bin/env node
+/**
+ * Actualiza apps del hub en el servidor (git pull → db:sync → pm2 restart).
+ *
+ * Flujo producción:
+ *   1) Subís cambios a git desde tu máquina
+ *   2) En https://aplicaciones.marianosamaniego.edu.ec/raptorsolutions
+ *      → Configuración → Actualizar → "Actualizar las 3"
+ *
+ * Uso CLI:
+ *   node scripts/update-apps.mjs --mode=all
+ *   node scripts/update-apps.mjs --mode=missing
+ *   node scripts/update-apps.mjs --mode=one --app=eddeli
+ *   node scripts/update-apps.mjs --mode=status
+ *   node scripts/update-apps.mjs --mode=all --dry-run   # solo simula
+ *
+ * Env:
+ *   UPDATE_APPS_DRY_RUN=1  → simula (no pull)
+ *   UPDATE_APPS_LIVE=1     → fuerza real
+ *   APPSWEB_ROOT           → carpeta AppsWeb (default: padre del gestor)
+ *   PM2_EDDELI / PM2_STORE / PM2_TIENDA / PM2_APP
+ */
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const GESTOR_ROOT = path.resolve(__dirname, "..");
+const APPSWEB = path.resolve(
+  process.env.APPSWEB_ROOT || path.join(GESTOR_ROOT, ".."),
+);
+const SYSTEM_VERSION = "1.0.0.10";
+const PRODUCTION_SITE_URL =
+  "https://aplicaciones.marianosamaniego.edu.ec/raptorsolutions";
+
+const APPS = {
+  eddeli: {
+    id: "eddeli",
+    title: "EdDeli",
+    root: path.join(APPSWEB, "eddeli"),
+    backend: path.join(APPSWEB, "eddeli", "backend"),
+    pm2: process.env.PM2_EDDELI || "eddeli",
+    sync: true,
+  },
+  store: {
+    id: "store",
+    title: "Store",
+    root: path.join(APPSWEB, "store"),
+    backend: path.join(APPSWEB, "store", "backend"),
+    pm2: process.env.PM2_STORE || "store",
+    sync: true,
+  },
+  tienda: {
+    id: "tienda",
+    title: "Tienda",
+    root: path.join(APPSWEB, "tienda"),
+    backend: path.join(APPSWEB, "tienda", "backend"),
+    pm2: process.env.PM2_TIENDA || "tienda",
+    sync: true,
+  },
+  raptor: {
+    id: "raptor",
+    title: "Raptor (front)",
+    root: path.join(APPSWEB, "raptor"),
+    backend: null,
+    pm2: null,
+    sync: false,
+  },
+  gestor: {
+    id: "gestor",
+    title: "Raptor Solutions (gestor)",
+    root: GESTOR_ROOT,
+    backend: null,
+    pm2: process.env.PM2_APP || "Raptor Solutions",
+    sync: false,
+  },
+};
+
+const TRIO = ["eddeli", "store", "tienda"];
+
+function say(msg) {
+  process.stderr.write(`[update-apps] ${msg}\n`);
+}
+
+function run(cmd, args, cwd, { inherit = false, timeout = 180_000 } = {}) {
+  const r = spawnSync(cmd, args, {
+    cwd,
+    encoding: "utf8",
+    stdio: inherit ? "inherit" : "pipe",
+    shell: false,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    timeout,
+  });
+  return {
+    status: r.error?.code === "ETIMEDOUT" ? 124 : (r.status ?? 1),
+    stdout: (r.stdout || "").trim(),
+    stderr: (r.stderr || r.error?.message || "").trim(),
+  };
+}
+
+function git(args, cwd) {
+  return run("git", args, cwd);
+}
+
+function isGitRepo(root) {
+  return fs.existsSync(path.join(root, ".git"));
+}
+
+function headOf(root) {
+  if (!isGitRepo(root)) return null;
+  const r = git(["rev-parse", "HEAD"], root);
+  return r.status === 0 ? r.stdout : null;
+}
+
+function fetchAndBehind(root, { fetchRemote = true } = {}) {
+  if (!isGitRepo(root)) {
+    return { ok: false, behind: 0, ahead: 0, error: "no-git" };
+  }
+  if (fetchRemote) {
+    const f = run("git", ["fetch", "--quiet", "--no-tags"], root, {
+      timeout: 60_000,
+    });
+    if (f.status === 124) {
+      return { ok: false, behind: 0, ahead: 0, error: "git-fetch-timeout" };
+    }
+  }
+  const behind = git(["rev-list", "--count", "HEAD..@{u}"], root);
+  const ahead = git(["rev-list", "--count", "@{u}..HEAD"], root);
+  if (behind.status !== 0) {
+    const bMain = git(["rev-list", "--count", "HEAD..origin/main"], root);
+    const aMain = git(["rev-list", "--count", "origin/main..HEAD"], root);
+    if (bMain.status === 0) {
+      return {
+        ok: true,
+        behind: Number(bMain.stdout) || 0,
+        ahead: Number(aMain.stdout) || 0,
+        branch: "origin/main",
+      };
+    }
+    return {
+      ok: false,
+      behind: 0,
+      ahead: 0,
+      error: behind.stderr || "no-upstream",
+    };
+  }
+  return {
+    ok: true,
+    behind: Number(behind.stdout) || 0,
+    ahead: Number(ahead.stdout) || 0,
+  };
+}
+
+function statusOf(app, { fetchRemote = true } = {}) {
+  const st = fetchAndBehind(app.root, { fetchRemote });
+  return {
+    id: app.id,
+    title: app.title,
+    root: app.root,
+    head: headOf(app.root)?.slice(0, 7) || null,
+    ...st,
+    needsUpdate: Boolean(st.ok && st.behind > 0),
+  };
+}
+
+function updateOne(app, { force = false, dryRun = false } = {}) {
+  const log = [];
+  const push = (msg) => {
+    log.push(msg);
+    say(`${app.id}: ${msg}`);
+  };
+
+  const before = statusOf(app, { fetchRemote: !dryRun });
+  if (!before.ok && before.error === "no-git") {
+    return {
+      id: app.id,
+      title: app.title,
+      ok: false,
+      skipped: true,
+      dryRun,
+      reason: "Sin repositorio git",
+      log,
+      status: before,
+    };
+  }
+
+  if (!force && before.ok && before.behind === 0) {
+    push("Ya está al día — omitido");
+    return {
+      id: app.id,
+      title: app.title,
+      ok: true,
+      skipped: true,
+      dryRun,
+      reason: "Ya está al día",
+      log,
+      status: before,
+    };
+  }
+
+  if (dryRun) {
+    push(`[DRY-RUN] Simularía: git pull en ${app.root}`);
+    if (app.sync && app.backend && fs.existsSync(app.backend)) {
+      push(`[DRY-RUN] Simularía: npm run db:sync en ${app.backend}`);
+    }
+    if (app.pm2) push(`[DRY-RUN] Simularía: pm2 restart ${app.pm2}`);
+    push(`[DRY-RUN] OK — sin cambios reales`);
+    return {
+      id: app.id,
+      title: app.title,
+      ok: true,
+      skipped: false,
+      dryRun: true,
+      reason: "Simulado (dry-run)",
+      log,
+      status: before,
+    };
+  }
+
+  push(`git pull (${before.behind || "?"} commits atrás)…`);
+  let pull = git(["pull", "--ff-only"], app.root);
+  if (pull.status !== 0) {
+    push("ff-only falló → pull --rebase");
+    pull = git(["pull", "--rebase", "origin", "HEAD"], app.root);
+  }
+  if (pull.status !== 0) {
+    return {
+      id: app.id,
+      title: app.title,
+      ok: false,
+      skipped: false,
+      dryRun: false,
+      reason: pull.stderr || pull.stdout || "git pull falló",
+      log,
+      status: statusOf(app, { fetchRemote: false }),
+    };
+  }
+  push("pull OK");
+
+  if (app.sync && app.backend && fs.existsSync(app.backend)) {
+    push("npm run db:sync…");
+    const sync = run("npm", ["run", "db:sync"], app.backend);
+    if (sync.status !== 0) {
+      return {
+        id: app.id,
+        title: app.title,
+        ok: false,
+        skipped: false,
+        dryRun: false,
+        reason: sync.stderr || sync.stdout || "db:sync falló",
+        log,
+        status: statusOf(app, { fetchRemote: false }),
+      };
+    }
+    push("db:sync OK");
+  }
+
+  if (app.pm2) {
+    push(`pm2 restart ${app.pm2}…`);
+    const pm2 = run("pm2", ["restart", app.pm2], GESTOR_ROOT);
+    if (pm2.status !== 0) {
+      push(`aviso: pm2 restart falló (${pm2.stderr || pm2.stdout || pm2.status})`);
+    } else {
+      push("pm2 OK");
+    }
+  }
+
+  return {
+    id: app.id,
+    title: app.title,
+    ok: true,
+    skipped: false,
+    dryRun: false,
+    reason: "Actualizado",
+    log,
+    status: statusOf(app, { fetchRemote: false }),
+  };
+}
+
+function parseArgs(argv) {
+  const out = { mode: "status", app: null, force: false, dryRun: null };
+  for (const a of argv) {
+    if (a.startsWith("--mode=")) out.mode = a.slice(7);
+    else if (a.startsWith("--app=")) out.app = a.slice(6);
+    else if (a === "--force") out.force = true;
+    else if (a === "--status") out.mode = "status";
+    else if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--live") out.dryRun = false;
+  }
+  return out;
+}
+
+/** Real por defecto. Solo dry-run si UPDATE_APPS_DRY_RUN=1 o --dry-run. */
+function resolveDryRun(flag) {
+  if (flag === true) return true;
+  if (flag === false) return false;
+  if (process.env.UPDATE_APPS_LIVE === "1") return false;
+  if (process.env.UPDATE_APPS_DRY_RUN === "1") return true;
+  return false;
+}
+
+function main() {
+  const { mode, app: appId, force, dryRun: dryFlag } = parseArgs(
+    process.argv.slice(2),
+  );
+  const dryRun = resolveDryRun(dryFlag);
+  const wantFetch = mode !== "status" && !dryRun;
+  const trioStatuses = TRIO.map((id) =>
+    statusOf(APPS[id], { fetchRemote: wantFetch }),
+  );
+
+  if (mode === "status") {
+    const payload = {
+      ok: true,
+      systemVersion: SYSTEM_VERSION,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+      dryRunDefault: dryRun,
+      apps: [
+        ...trioStatuses,
+        statusOf(APPS.raptor, { fetchRemote: false }),
+        statusOf(APPS.gestor, { fetchRemote: false }),
+      ],
+      missing: trioStatuses.filter((s) => s.needsUpdate).map((s) => s.id),
+    };
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    process.exit(0);
+  }
+
+  say(
+    `Inicio mode=${mode} dryRun=${dryRun} force=${force} v=${SYSTEM_VERSION} appsweb=${APPSWEB}`,
+  );
+
+  let targets = [];
+  if (mode === "all") {
+    targets = TRIO.map((id) => APPS[id]);
+  } else if (mode === "missing") {
+    targets = trioStatuses.filter((s) => s.needsUpdate).map((s) => APPS[s.id]);
+  } else if (mode === "one") {
+    if (!appId || !APPS[appId]) {
+      process.stdout.write(
+        `${JSON.stringify({ ok: false, error: "Falta --app=eddeli|store|tienda|raptor|gestor" })}\n`,
+      );
+      process.exit(1);
+    }
+    targets = [APPS[appId]];
+  } else {
+    process.stdout.write(
+      `${JSON.stringify({ ok: false, error: `mode inválido: ${mode}` })}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (targets.length === 0) {
+    const payload = {
+      ok: true,
+      mode,
+      dryRun,
+      systemVersion: SYSTEM_VERSION,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+      results: [],
+      missingAfter: [],
+      message: "Nada que actualizar: las 3 apps ya están al día",
+    };
+    say(payload.message);
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    process.exit(0);
+  }
+
+  // all / one: siempre intentar pull. missing: solo las atrasadas.
+  const useForce = force || mode === "one" || mode === "all";
+  const results = targets.map((app) =>
+    updateOne(app, { force: useForce, dryRun }),
+  );
+
+  const worst = results.some((r) => !r.ok && !r.skipped);
+  const payload = {
+    ok: !worst,
+    mode,
+    dryRun,
+    systemVersion: SYSTEM_VERSION,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+    results,
+    missingAfter: TRIO.map((id) => statusOf(APPS[id], { fetchRemote: false }))
+      .filter((s) => s.needsUpdate)
+      .map((s) => s.id),
+  };
+
+  say(`Fin ok=${payload.ok} apps=${results.length} dryRun=${dryRun}`);
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  process.exit(worst ? 1 : 0);
+}
+
+main();

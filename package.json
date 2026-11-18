@@ -1,6 +1,6 @@
 {
   "name": "gestor-proyectos",
-  "version": "0.1.0",
+  "version": "1.0.0.10",
   "private": true,
   "type": "module",
   "engines": {
@@ -39,6 +39,9 @@
     "push:all:yes": "node scripts/hub/hub.cjs --push-all --yes",
     "update:all": "node scripts/hub/hub.cjs --pull-all",
     "update:all:yes": "node scripts/hub/hub.cjs --pull-all --yes",
+    "update:apps": "node scripts/update-apps.mjs --mode=all",
+    "update:apps:missing": "node scripts/update-apps.mjs --mode=missing",
+    "update:apps:status": "node scripts/update-apps.mjs --mode=status",
     "clean": "rm -rf .next tsconfig.tsbuildinfo && prisma generate",
     "postinstall": "prisma generate",
     "setup": "bash scripts/setup-local.sh",
