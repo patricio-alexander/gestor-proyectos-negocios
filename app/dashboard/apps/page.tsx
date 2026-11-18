@@ -45,8 +45,13 @@ import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { JointUpdateModal } from "@/src/features/system/components/JointUpdateModal";
 import {
+  AppUpdateModal,
+  runJointUpdateNow,
+} from "@/src/features/system/components/AppUpdateModal";
+import {
   matchTrioId,
   trioLabel,
+  type TrioId,
 } from "@/src/features/system/lib/trio-apps";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
@@ -149,6 +154,9 @@ export default function AppsPage() {
   const viewState = useOverlayState();
   const deleteState = useOverlayState();
   const planState = useOverlayState();
+  const updateState = useOverlayState();
+  const [updateTargets, setUpdateTargets] = useState<TrioId[]>([]);
+  const [updateAppId, setUpdateAppId] = useState<number | null>(null);
 
   const filterApps = (app: App, query: string) => matchesAppSearch(app, query);
 
@@ -376,51 +384,46 @@ export default function AppsPage() {
       return;
     }
 
-    // EdDeli / Store / Tienda: actualizar esa app (git + sync + pm2) + avisar
-    if (
-      !window.confirm(
-        `¿Actualizar ${trioLabel(trio)} ahora?\n\nHará git pull + db:sync + reinicio en el servidor y avisará a la app.`,
-      )
-    ) {
-      return;
-    }
-    const forced = window.confirm(
-      "Permiso del usuario:\n\nOK = forzada (bloquea sin pedir permiso)\nCancelar = con aceptación (el usuario elige actualizar o más tarde)",
-    );
-    const policy = forced ? "forced" : "optional";
+    // EdDeli / Store / Tienda: modal forzada/permiso + completo o pasos
+    setUpdateTargets([trio]);
+    setUpdateAppId(app.id);
+    updateState.open();
+  }
 
-    setTogglingIds((prev) => new Set(prev).add(app.id));
+  async function handleConfirmAppUpdate(opts: {
+    policy: "forced" | "optional";
+    notify: boolean;
+    deploy: boolean;
+    steps: { git: boolean; sync: boolean; pm2: boolean };
+  }) {
+    const trio = updateTargets[0];
+    const appId = updateAppId;
+    if (!trio) throw new Error("Sin destino");
+    if (appId != null) {
+      setTogglingIds((prev) => new Set(prev).add(appId));
+    }
     try {
-      const res = await fetch(apiUrl("/api/system/joint-update"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          when: "now",
-          policy,
-          deploy: true,
-          notify: true,
-          targets: [trio],
-        }),
+      await runJointUpdateNow({
+        targets: updateTargets,
+        policy: opts.policy,
+        notify: opts.notify,
+        deploy: opts.deploy,
+        steps: opts.steps,
       });
-      const data = await res.json();
-      if (!res.ok || data.ok === false) {
-        throw new Error(data.error || "No se pudo actualizar la app");
-      }
       appToast.success(
-        `${trioLabel(trio)}: actualización ${policy === "forced" ? "forzada" : "con aceptación"} iniciada`,
+        `${trioLabel(trio)}: actualización ${
+          opts.policy === "forced" ? "forzada" : "con aceptación"
+        } iniciada`,
       );
       await refetch();
-    } catch (err) {
-      appToast.error(
-        err instanceof Error ? err.message : "Error al actualizar",
-      );
     } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(app.id);
-        return next;
-      });
+      if (appId != null) {
+        setTogglingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(appId);
+          return next;
+        });
+      }
     }
   }
 
@@ -890,7 +893,7 @@ export default function AppsPage() {
                             : app.updating || app.update_available
                               ? "Aviso de update activo — clic para quitar"
                               : matchTrioId(app)
-                                ? "Actualizar esta app (git + sync + reinicio)"
+                                ? "Actualizar esta app (forzada o con permiso)"
                                 : "Marcar como actualizando"
                         }
                       >
@@ -1433,6 +1436,12 @@ export default function AppsPage() {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      <AppUpdateModal
+        state={updateState}
+        targets={updateTargets}
+        onConfirm={handleConfirmAppUpdate}
+      />
 
       <Modal state={deleteState}>
         <Modal.Backdrop>

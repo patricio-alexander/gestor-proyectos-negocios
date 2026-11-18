@@ -13,12 +13,47 @@ export type { TrioId };
 export type JointPolicy = "forced" | "optional";
 export { matchTrioId };
 
+export type DeploySteps = {
+  git?: boolean;
+  sync?: boolean;
+  pm2?: boolean;
+};
+
+/** targets puede ser `["eddeli"]` o `{ apps: [...], steps?: {...} }` (jobs). */
 export function normalizeTargets(raw: unknown): TrioId[] {
-  if (!Array.isArray(raw) || raw.length === 0) return [...TRIO_IDS];
-  const out = raw
+  const list = Array.isArray(raw)
+    ? raw
+    : raw &&
+        typeof raw === "object" &&
+        Array.isArray((raw as { apps?: unknown }).apps)
+      ? (raw as { apps: unknown[] }).apps
+      : null;
+  if (!list || list.length === 0) return [...TRIO_IDS];
+  const out = list
     .map((x) => String(x).toLowerCase())
     .filter((x): x is TrioId => TRIO_IDS.includes(x as TrioId));
   return out.length ? out : [...TRIO_IDS];
+}
+
+export function extractSteps(raw: unknown): DeploySteps | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const steps = (raw as { steps?: DeploySteps }).steps;
+  if (!steps || typeof steps !== "object") return undefined;
+  return steps;
+}
+
+export function packJobTargets(
+  targets: TrioId[],
+  steps?: DeploySteps,
+): { apps: TrioId[]; steps: DeploySteps } {
+  return {
+    apps: targets,
+    steps: {
+      git: steps?.git !== false,
+      sync: steps?.sync !== false,
+      pm2: steps?.pm2 !== false,
+    },
+  };
 }
 
 function runUpdateScript(args: string[]): Promise<{
@@ -84,11 +119,17 @@ export async function executeJointUpdate(opts: {
   deploy: boolean;
   notify: boolean;
   targets: TrioId[];
+  steps?: DeploySteps;
 }): Promise<JointRunResult> {
   const targets = normalizeTargets(opts.targets);
   const force = opts.policy === "forced";
   const notified: JointRunResult["notified"] = [];
   let deployResult: unknown = null;
+  const steps = {
+    git: opts.steps?.git !== false,
+    sync: opts.steps?.sync !== false,
+    pm2: opts.steps?.pm2 !== false,
+  };
 
   if (opts.notify) {
     const apps = await prisma.apps.findMany({
@@ -135,19 +176,30 @@ export async function executeJointUpdate(opts: {
     }
   }
 
-  if (opts.deploy) {
-    // Actualizar cada target (force pull)
+  if (opts.deploy && (steps.git || steps.sync || steps.pm2)) {
+    const stepParts = [
+      steps.git ? "git" : null,
+      steps.sync ? "sync" : null,
+      steps.pm2 ? "pm2" : null,
+    ].filter(Boolean);
     const results = [];
     for (const id of targets) {
-      const r = await runUpdateScript([
+      const args = [
         `--mode=one`,
         `--app=${id}`,
         `--force`,
         `--live`,
-      ]);
-      results.push({ id, ...(typeof r.json === "object" && r.json ? r.json : { ok: r.code === 0, raw: r.stdout, stderr: r.stderr }) });
+        `--steps=${stepParts.join(",")}`,
+      ];
+      const r = await runUpdateScript(args);
+      results.push({
+        id,
+        ...(typeof r.json === "object" && r.json
+          ? r.json
+          : { ok: r.code === 0, raw: r.stdout, stderr: r.stderr }),
+      });
     }
-    deployResult = { results };
+    deployResult = { results, steps };
   }
 
   const notifyFailed = notified.some((n) => !n.push_ok);
@@ -193,6 +245,7 @@ export async function runDueJointJobs(): Promise<number> {
         deploy: Boolean(job.deploy),
         notify: Boolean(job.notify),
         targets: normalizeTargets(job.targets),
+        steps: extractSteps(job.targets),
       });
       await prisma.jointUpdateJob.update({
         where: { id: job.id },

@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useOverlayState } from "@heroui/react";
 import ArrowsRotateRight from "@gravity-ui/icons/ArrowsRotateRight";
 import CircleCheck from "@gravity-ui/icons/CircleCheck";
 import CircleXmark from "@gravity-ui/icons/CircleXmark";
 import { PRODUCTION_SITE_URL, SITE_URL } from "@/src/config/site";
 import { SYSTEM_VERSION } from "@/src/config/systemVersion";
+import { ConfirmModal } from "@/src/features/system/components/ConfirmModal";
+import { pm2NameFor } from "@/src/features/system/lib/pm2-names";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 
@@ -56,6 +59,13 @@ const TRIO = [
   { id: "tienda", label: "Tienda" },
 ] as const;
 
+type PendingRun = {
+  mode: "all" | "missing" | "one";
+  app?: string;
+  title: string;
+  message: string;
+};
+
 const btnPrimary =
   "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-50";
 const btnSecondary =
@@ -67,6 +77,8 @@ export function SystemUpdatePanel() {
   const [running, setRunning] = useState(false);
   const [lastRun, setLastRun] = useState<UpdatePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingRun | null>(null);
+  const confirmState = useOverlayState();
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -92,15 +104,31 @@ export function SystemUpdatePanel() {
   const siteUrl = status?.siteUrl || SITE_URL || PRODUCTION_SITE_URL;
   const isDryRun = Boolean(status?.dryRunDefault);
 
-  const runUpdate = async (mode: "all" | "missing" | "one", app?: string) => {
-    const label =
+  function askUpdate(mode: "all" | "missing" | "one", app?: string) {
+    const pm2All = TRIO.map((t) => pm2NameFor(t.id)).join(", ");
+    const title =
       mode === "all"
-        ? "¿Actualizar EdDeli, Store y Tienda ahora?\n\nHará git pull + db:sync + reinicio PM2 en el servidor.\nAntes debés haber subido los cambios a git."
+        ? "Actualizar las 3"
         : mode === "missing"
-          ? "¿Actualizar solo las apps atrasadas?"
-          : `¿Actualizar ${app} ahora? (pull + sync + pm2)`;
-    if (!window.confirm(label)) return;
+          ? "Actualizar atrasadas"
+          : `Actualizar ${app}`;
+    const message =
+      mode === "all"
+        ? `¿Actualizar EdDeli, Store y Tienda ahora?\n\nHará git pull + db:sync + reinicio PM2 (${pm2All}).\nAntes debés haber subido los cambios a git.`
+        : mode === "missing"
+          ? "¿Actualizar solo las apps atrasadas?\n\nGit pull + db:sync + pm2 restart en cada una."
+          : `¿Actualizar ${app} ahora?\n\nGit pull + db:sync + pm2 restart ${
+              app && (app === "eddeli" || app === "store" || app === "tienda")
+                ? pm2NameFor(app)
+                : ""
+            }.`;
+    setPending({ mode, app, title, message });
+    confirmState.open();
+  }
 
+  async function runConfirmed() {
+    if (!pending) return;
+    const { mode, app } = pending;
     setRunning(true);
     setError(null);
     setLastRun(null);
@@ -120,13 +148,15 @@ export function SystemUpdatePanel() {
       if (!res.ok && !data.ok) {
         setError(data.error || "La actualización terminó con errores");
       }
+      confirmState.close();
+      setPending(null);
       await loadStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al actualizar");
     } finally {
       setRunning(false);
     }
-  };
+  }
 
   const apps = status?.apps || [];
   const missing = status?.missing || [];
@@ -156,7 +186,8 @@ export function SystemUpdatePanel() {
           </p>
           <p className="mt-2 rounded-md border border-[var(--gp-border)] bg-[var(--gp-surface)] px-2.5 py-1.5 text-xs text-[var(--gp-text-muted)]">
             1) Subí los cambios a git · 2) Abrí el gestor en producción · 3)
-            Pulsá <strong className="text-[var(--gp-text)]">Actualizar las 3</strong>
+            Pulsá{" "}
+            <strong className="text-[var(--gp-text)]">Actualizar las 3</strong>
             {isDryRun ? " · (ahora: dry-run / UPDATE_APPS_DRY_RUN)" : ""}
           </p>
         </div>
@@ -203,10 +234,13 @@ export function SystemUpdatePanel() {
                 HEAD {st?.head || "—"}
                 {st?.error ? ` · ${st.error}` : ""}
               </p>
+              <p className="text-[10px] text-[var(--gp-text-muted)]">
+                PM2: {pm2NameFor(t.id)}
+              </p>
               <button
                 type="button"
                 disabled={running}
-                onClick={() => void runUpdate("one", t.id)}
+                onClick={() => askUpdate("one", t.id)}
                 className={btnSecondary}
               >
                 Actualizar esta
@@ -220,7 +254,7 @@ export function SystemUpdatePanel() {
         <button
           type="button"
           disabled={running}
-          onClick={() => void runUpdate("all")}
+          onClick={() => askUpdate("all")}
           className={btnPrimary}
           style={{
             backgroundColor: "var(--gp-primary)",
@@ -232,7 +266,7 @@ export function SystemUpdatePanel() {
         <button
           type="button"
           disabled={running || missing.length === 0}
-          onClick={() => void runUpdate("missing")}
+          onClick={() => askUpdate("missing")}
           className={btnSecondary}
         >
           Solo las que faltan
@@ -277,6 +311,15 @@ export function SystemUpdatePanel() {
       {loading ? (
         <p className="text-sm text-[var(--gp-text-muted)]">Consultando repos…</p>
       ) : null}
+
+      <ConfirmModal
+        state={confirmState}
+        title={pending?.title || "Confirmar"}
+        message={pending?.message || ""}
+        confirmLabel="Actualizar"
+        busy={running}
+        onConfirm={runConfirmed}
+      />
     </div>
   );
 }

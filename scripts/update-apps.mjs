@@ -40,7 +40,7 @@ const APPS = {
     title: "EdDeli",
     root: path.join(APPSWEB, "eddeli"),
     backend: path.join(APPSWEB, "eddeli", "backend"),
-    pm2: process.env.PM2_EDDELI || "eddeli",
+    pm2: process.env.PM2_EDDELI || "backendEddeli",
     sync: true,
   },
   store: {
@@ -48,7 +48,7 @@ const APPS = {
     title: "Store",
     root: path.join(APPSWEB, "store"),
     backend: path.join(APPSWEB, "store", "backend"),
-    pm2: process.env.PM2_STORE || "store",
+    pm2: process.env.PM2_STORE || "backendStore",
     sync: true,
   },
   tienda: {
@@ -56,7 +56,7 @@ const APPS = {
     title: "Tienda",
     root: path.join(APPSWEB, "tienda"),
     backend: path.join(APPSWEB, "tienda", "backend"),
-    pm2: process.env.PM2_TIENDA || "tienda",
+    pm2: process.env.PM2_TIENDA || "backendTienda",
     sync: true,
   },
   raptor: {
@@ -164,15 +164,24 @@ function statusOf(app, { fetchRemote = true } = {}) {
   };
 }
 
-function updateOne(app, { force = false, dryRun = false } = {}) {
+function updateOne(
+  app,
+  {
+    force = false,
+    dryRun = false,
+    doGit = true,
+    doSync = true,
+    doPm2 = true,
+  } = {},
+) {
   const log = [];
   const push = (msg) => {
     log.push(msg);
     say(`${app.id}: ${msg}`);
   };
 
-  const before = statusOf(app, { fetchRemote: !dryRun });
-  if (!before.ok && before.error === "no-git") {
+  const before = statusOf(app, { fetchRemote: !dryRun && doGit });
+  if (!before.ok && before.error === "no-git" && doGit) {
     return {
       id: app.id,
       title: app.title,
@@ -185,26 +194,16 @@ function updateOne(app, { force = false, dryRun = false } = {}) {
     };
   }
 
-  if (!force && before.ok && before.behind === 0) {
-    push("Ya está al día — omitido");
-    return {
-      id: app.id,
-      title: app.title,
-      ok: true,
-      skipped: true,
-      dryRun,
-      reason: "Ya está al día",
-      log,
-      status: before,
-    };
+  if (doGit && !force && before.ok && before.behind === 0) {
+    push("Ya está al día en git — se siguen los pasos marcados");
   }
 
   if (dryRun) {
-    push(`[DRY-RUN] Simularía: git pull en ${app.root}`);
-    if (app.sync && app.backend && fs.existsSync(app.backend)) {
+    if (doGit) push(`[DRY-RUN] Simularía: git pull en ${app.root}`);
+    if (doSync && app.sync && app.backend && fs.existsSync(app.backend)) {
       push(`[DRY-RUN] Simularía: npm run db:sync en ${app.backend}`);
     }
-    if (app.pm2) push(`[DRY-RUN] Simularía: pm2 restart ${app.pm2}`);
+    if (doPm2 && app.pm2) push(`[DRY-RUN] Simularía: pm2 restart ${app.pm2}`);
     push(`[DRY-RUN] OK — sin cambios reales`);
     return {
       id: app.id,
@@ -218,27 +217,31 @@ function updateOne(app, { force = false, dryRun = false } = {}) {
     };
   }
 
-  push(`git pull (${before.behind || "?"} commits atrás)…`);
-  let pull = git(["pull", "--ff-only"], app.root);
-  if (pull.status !== 0) {
-    push("ff-only falló → pull --rebase");
-    pull = git(["pull", "--rebase", "origin", "HEAD"], app.root);
+  if (doGit) {
+    push(`git pull (${before.behind || "?"} commits atrás)…`);
+    let pull = git(["pull", "--ff-only"], app.root);
+    if (pull.status !== 0) {
+      push("ff-only falló → pull --rebase");
+      pull = git(["pull", "--rebase", "origin", "HEAD"], app.root);
+    }
+    if (pull.status !== 0) {
+      return {
+        id: app.id,
+        title: app.title,
+        ok: false,
+        skipped: false,
+        dryRun: false,
+        reason: pull.stderr || pull.stdout || "git pull falló",
+        log,
+        status: statusOf(app, { fetchRemote: false }),
+      };
+    }
+    push("pull OK");
+  } else {
+    push("git pull omitido");
   }
-  if (pull.status !== 0) {
-    return {
-      id: app.id,
-      title: app.title,
-      ok: false,
-      skipped: false,
-      dryRun: false,
-      reason: pull.stderr || pull.stdout || "git pull falló",
-      log,
-      status: statusOf(app, { fetchRemote: false }),
-    };
-  }
-  push("pull OK");
 
-  if (app.sync && app.backend && fs.existsSync(app.backend)) {
+  if (doSync && app.sync && app.backend && fs.existsSync(app.backend)) {
     push("npm run db:sync…");
     const sync = run("npm", ["run", "db:sync"], app.backend);
     if (sync.status !== 0) {
@@ -254,9 +257,11 @@ function updateOne(app, { force = false, dryRun = false } = {}) {
       };
     }
     push("db:sync OK");
+  } else if (!doSync) {
+    push("db:sync omitido");
   }
 
-  if (app.pm2) {
+  if (doPm2 && app.pm2) {
     push(`pm2 restart ${app.pm2}…`);
     const pm2 = run("pm2", ["restart", app.pm2], GESTOR_ROOT);
     if (pm2.status !== 0) {
@@ -264,6 +269,8 @@ function updateOne(app, { force = false, dryRun = false } = {}) {
     } else {
       push("pm2 OK");
     }
+  } else if (!doPm2) {
+    push("pm2 omitido");
   }
 
   return {
@@ -279,7 +286,15 @@ function updateOne(app, { force = false, dryRun = false } = {}) {
 }
 
 function parseArgs(argv) {
-  const out = { mode: "status", app: null, force: false, dryRun: null };
+  const out = {
+    mode: "status",
+    app: null,
+    force: false,
+    dryRun: null,
+    doGit: true,
+    doSync: true,
+    doPm2: true,
+  };
   for (const a of argv) {
     if (a.startsWith("--mode=")) out.mode = a.slice(7);
     else if (a.startsWith("--app=")) out.app = a.slice(6);
@@ -287,6 +302,21 @@ function parseArgs(argv) {
     else if (a === "--status") out.mode = "status";
     else if (a === "--dry-run") out.dryRun = true;
     else if (a === "--live") out.dryRun = false;
+    else if (a === "--no-git") out.doGit = false;
+    else if (a === "--no-sync") out.doSync = false;
+    else if (a === "--no-pm2") out.doPm2 = false;
+    else if (a.startsWith("--steps=")) {
+      const parts = new Set(
+        a
+          .slice(8)
+          .split(",")
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean),
+      );
+      out.doGit = parts.has("git");
+      out.doSync = parts.has("sync");
+      out.doPm2 = parts.has("pm2");
+    }
   }
   return out;
 }
@@ -301,11 +331,17 @@ function resolveDryRun(flag) {
 }
 
 function main() {
-  const { mode, app: appId, force, dryRun: dryFlag } = parseArgs(
-    process.argv.slice(2),
-  );
+  const {
+    mode,
+    app: appId,
+    force,
+    dryRun: dryFlag,
+    doGit,
+    doSync,
+    doPm2,
+  } = parseArgs(process.argv.slice(2));
   const dryRun = resolveDryRun(dryFlag);
-  const wantFetch = mode !== "status" && !dryRun;
+  const wantFetch = mode !== "status" && !dryRun && doGit;
   const trioStatuses = TRIO.map((id) =>
     statusOf(APPS[id], { fetchRemote: wantFetch }),
   );
@@ -369,8 +405,9 @@ function main() {
 
   // all / one: siempre intentar pull. missing: solo las atrasadas.
   const useForce = force || mode === "one" || mode === "all";
+  say(`Pasos: git=${doGit} sync=${doSync} pm2=${doPm2}`);
   const results = targets.map((app) =>
-    updateOne(app, { force: useForce, dryRun }),
+    updateOne(app, { force: useForce, dryRun, doGit, doSync, doPm2 }),
   );
 
   const worst = results.some((r) => !r.ok && !r.skipped);

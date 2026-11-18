@@ -4,7 +4,9 @@ import { prisma } from "@/src/shared/lib/prisma";
 import {
   executeJointUpdate,
   normalizeTargets,
+  packJobTargets,
   runDueJointJobs,
+  type DeploySteps,
   type JointPolicy,
   type TrioId,
 } from "@/src/features/system/lib/joint-update";
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
     deploy?: boolean;
     notify?: boolean;
     targets?: TrioId[];
+    steps?: DeploySteps;
     cancelJobId?: number;
   } = {};
   try {
@@ -84,6 +87,11 @@ export async function POST(request: Request) {
   const deploy = body.deploy !== false;
   const notify = body.notify !== false;
   const targets = normalizeTargets(body.targets);
+  const steps: DeploySteps = {
+    git: body.steps?.git !== false,
+    sync: body.steps?.sync !== false,
+    pm2: body.steps?.pm2 !== false,
+  };
   const when = body.when === "schedule" ? "schedule" : "now";
 
   if (when === "schedule") {
@@ -106,7 +114,7 @@ export async function POST(request: Request) {
         policy,
         deploy,
         notify,
-        targets,
+        targets: packJobTargets(targets, steps),
         status: "pending",
       },
     });
@@ -118,6 +126,12 @@ export async function POST(request: Request) {
     });
   }
 
-  const result = await executeJointUpdate({ policy, deploy, notify, targets });
+  const result = await executeJointUpdate({
+    policy,
+    deploy,
+    notify,
+    targets,
+    steps,
+  });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }

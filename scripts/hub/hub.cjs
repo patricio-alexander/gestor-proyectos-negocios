@@ -99,17 +99,17 @@ const PM2_PROCESSES = [
   {
     id: "eddeli",
     title: "EdDeli (backend)",
-    name: process.env.PM2_EDDELI || "eddeli",
+    name: process.env.PM2_EDDELI || "backendEddeli",
   },
   {
     id: "store",
     title: "Store (backend)",
-    name: process.env.PM2_STORE || "store",
+    name: process.env.PM2_STORE || "backendStore",
   },
   {
     id: "tienda",
     title: "Tienda (backend)",
-    name: process.env.PM2_TIENDA || "tienda",
+    name: process.env.PM2_TIENDA || "backendTienda",
   },
 ];
 
