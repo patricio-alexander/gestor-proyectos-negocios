@@ -38,6 +38,7 @@ export async function buildEntitlementForAppId(appId: number) {
     return {
       maintenance: false,
       updating: false,
+      update_force: true,
       subscribed: false,
       features: [],
       plans: [],

@@ -43,7 +43,13 @@ import {
 import { GestorHowItWorks } from "@/src/shared/components/GestorHowItWorks";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
+import { JointUpdateModal } from "@/src/features/system/components/JointUpdateModal";
+import {
+  matchTrioId,
+  trioLabel,
+} from "@/src/features/system/lib/trio-apps";
 import { gp } from "@/src/shared/ui/theme";
+import { apiUrl } from "@/src/utils/apiUrl";
 import { appToast } from "@/src/shared/utils/app-toast";
 import {
   formatPushSyncNote,
@@ -314,16 +320,98 @@ export default function AppsPage() {
   }
 
   async function handleToggleUpdating(app: App) {
+    // Apagar estado «actualizando»
+    if (app.updating) {
+      setTogglingIds((prev) => new Set(prev).add(app.id));
+      try {
+        const updated = await update(app.id, { updating: false });
+        const pushMsg = formatPushSyncToast(
+          updated as Parameters<typeof formatPushSyncToast>[0],
+          "Estado quitado, pero sync incompleto",
+        );
+        if (pushMsg) appToast.warning(pushMsg);
+        else appToast.success("Modo actualizando desactivado");
+      } catch (err) {
+        appToast.error(
+          err instanceof Error ? err.message : "Error al cambiar estado",
+        );
+      } finally {
+        setTogglingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(app.id);
+          return next;
+        });
+      }
+      return;
+    }
+
+    const trio = matchTrioId(app);
+    if (!trio) {
+      // Apps que no son EdDeli/Store/Tienda: solo marca el flag (como antes)
+      setTogglingIds((prev) => new Set(prev).add(app.id));
+      try {
+        const updated = await update(app.id, {
+          updating: true,
+          update_force: true,
+        });
+        const pushMsg = formatPushSyncToast(
+          updated as Parameters<typeof formatPushSyncToast>[0],
+          "Marcado, pero sync incompleto",
+        );
+        if (pushMsg) appToast.warning(pushMsg);
+      } catch (err) {
+        appToast.error(
+          err instanceof Error ? err.message : "Error al marcar actualizando",
+        );
+      } finally {
+        setTogglingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(app.id);
+          return next;
+        });
+      }
+      return;
+    }
+
+    // EdDeli / Store / Tienda: actualizar esa app (git + sync + pm2) + avisar
+    if (
+      !window.confirm(
+        `¿Actualizar ${trioLabel(trio)} ahora?\n\nHará git pull + db:sync + reinicio en el servidor y avisará a la app.`,
+      )
+    ) {
+      return;
+    }
+    const forced = window.confirm(
+      "Permiso del usuario:\n\nOK = forzada (bloquea sin pedir permiso)\nCancelar = con aceptación (el usuario elige actualizar o más tarde)",
+    );
+    const policy = forced ? "forced" : "optional";
+
     setTogglingIds((prev) => new Set(prev).add(app.id));
     try {
-      const updated = await update(app.id, { updating: !app.updating });
-      const pushMsg = formatPushSyncToast(
-        updated as Parameters<typeof formatPushSyncToast>[0],
-        "Actualización guardada, pero sync incompleto",
+      const res = await fetch(apiUrl("/api/system/joint-update"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          when: "now",
+          policy,
+          deploy: true,
+          notify: true,
+          targets: [trio],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || "No se pudo actualizar la app");
+      }
+      appToast.success(
+        `${trioLabel(trio)}: actualización ${policy === "forced" ? "forzada" : "con aceptación"} iniciada`,
       );
-      if (pushMsg) appToast.warning(pushMsg);
+      await refetch();
     } catch (err) {
-      appToast.error(err instanceof Error ? err.message : "Error al cambiar estado");
+      appToast.error(
+        err instanceof Error ? err.message : "Error al actualizar",
+      );
     } finally {
       setTogglingIds((prev) => {
         const next = new Set(prev);
@@ -400,6 +488,7 @@ export default function AppsPage() {
         action={
           <div className="flex items-center gap-2">
             <GestorHowItWorks defaultTopic="features" />
+            <JointUpdateModal />
           <Modal state={createState}>
             <Button
               style={{
@@ -786,8 +875,10 @@ export default function AppsPage() {
                               ? "Actualizando: activo"
                               : "Actualizando: off"
                             : app.updating
-                              ? "Actualizando — clic para quitar"
-                              : "Marcar como actualizando"
+                              ? "Actualizando — clic para quitar el aviso"
+                              : matchTrioId(app)
+                                ? "Actualizar esta app (git + sync + reinicio)"
+                                : "Marcar como actualizando"
                         }
                       >
                         <Button

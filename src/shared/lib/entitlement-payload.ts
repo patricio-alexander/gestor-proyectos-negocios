@@ -39,6 +39,8 @@ export type EntitlementPlan = {
 export type EntitlementPayload = {
   maintenance: boolean;
   updating: boolean;
+  /** true = bloqueo forzado; false = el usuario puede aceptar/posponer. */
+  update_force: boolean;
   subscribed: boolean;
   features: EntitlementFeature[];
   plans: EntitlementPlan[];
@@ -146,13 +148,20 @@ export async function buildEntitlementForAppHash(
 ): Promise<EntitlementPayload> {
   const app = await prisma.apps.findFirst({
     where: { hash: appHash, deleted_at: null },
-    select: { id: true, maintenance: true, updating: true, kind: true },
+    select: {
+      id: true,
+      maintenance: true,
+      updating: true,
+      update_force: true,
+      kind: true,
+    },
   });
 
   if (!app) {
     return {
       maintenance: false,
       updating: false,
+      update_force: true,
       subscribed: false,
       features: [],
       plans: [],
@@ -330,6 +339,7 @@ export async function buildEntitlementForAppHash(
   return {
     maintenance: app.maintenance,
     updating: Boolean(app.updating),
+    update_force: app.updating ? Boolean(app.update_force) : true,
     subscribed: subscription?.status === "ACTIVE",
     features,
     plans,

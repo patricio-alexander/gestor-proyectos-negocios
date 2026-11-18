@@ -261,6 +261,11 @@ model Apps {
   maintenance       Boolean        @default(false)
   /** App en actualización (overlay distinto a mantenimiento). */
   updating          Boolean        @default(false)
+  /**
+   * Si updating=true: true = bloqueo forzado (sin permiso del usuario);
+   * false = el usuario puede aceptar o posponer la actualización.
+   */
+  update_force      Boolean        @default(true)
   /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
   entitlement_url    String?       @db.VarChar(500)
   /** Secreto compartido con la app (plaintext o v1: AES-GCM at-rest). */
@@ -284,6 +289,42 @@ model Apps {
   @@index([deleted_at, created_at])
   @@index([kind, deleted_at])
   @@index([entitlement_secret])
+}
+
+/** Actualización conjunta EdDeli/Store/Tienda (ahora o programada). */
+enum JointUpdatePolicy {
+  forced
+  optional
+}
+
+enum JointUpdateStatus {
+  pending
+  running
+  done
+  failed
+  cancelled
+}
+
+model JointUpdateJob {
+  id         Int               @id @default(autoincrement())
+  /** Cuándo ejecutar (UTC). */
+  run_at     DateTime
+  policy     JointUpdatePolicy @default(forced)
+  /** También correr git pull + db:sync + pm2. */
+  deploy     Boolean           @default(true)
+  /** Marcar apps updating + push entitlement. */
+  notify     Boolean           @default(true)
+  /** IDs lógicos: eddeli | store | tienda */
+  targets    Json
+  status     JointUpdateStatus @default(pending)
+  result     Json?
+  error      String?           @db.Text
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
+  started_at DateTime?
+  finished_at DateTime?
+
+  @@index([status, run_at])
 }
 
 /** Tipo de pieza en el “periódico” de novedades (apps Vite). */

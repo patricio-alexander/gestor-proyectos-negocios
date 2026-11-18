@@ -47,6 +47,7 @@ export async function GET(_request: Request, { params }: Params) {
       database_size: app.database_size,
       maintenance: app.maintenance,
       updating: Boolean(app.updating),
+      update_force: app.update_force !== false,
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),
@@ -110,6 +111,9 @@ export async function PATCH(request: Request, { params }: Params) {
           updating: Boolean(body.updating),
           ...(Boolean(body.updating) ? { maintenance: false } : {}),
         }),
+        ...(body.update_force !== undefined && {
+          update_force: Boolean(body.update_force),
+        }),
         ...(body.entitlement_url !== undefined && {
           entitlement_url:
             body.entitlement_url === null
@@ -135,6 +139,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const shouldPush =
       body.maintenance !== undefined ||
       body.updating !== undefined ||
+      body.update_force !== undefined ||
       body.entitlement_url !== undefined ||
       body.entitlement_secret !== undefined;
 
@@ -159,6 +164,7 @@ export async function PATCH(request: Request, { params }: Params) {
       database_name: app.database_name,
       maintenance: app.maintenance,
       updating: Boolean(app.updating),
+      update_force: app.update_force !== false,
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),

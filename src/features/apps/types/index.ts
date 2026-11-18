@@ -26,6 +26,8 @@ export type App = {
   database_size: number | null;
   maintenance: boolean;
   updating: boolean;
+  /** Si updating: true = forzada; false = el usuario acepta. */
+  update_force?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
@@ -68,6 +70,7 @@ export type CreateAppInput = {
   database_size?: number | null;
   maintenance?: boolean;
   updating?: boolean;
+  update_force?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
@@ -85,6 +88,7 @@ export type UpdateAppInput = {
   database_size?: number | null;
   maintenance?: boolean;
   updating?: boolean;
+  update_force?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
