@@ -266,6 +266,10 @@ model Apps {
    * false = el usuario puede aceptar o posponer la actualización.
    */
   update_force      Boolean        @default(true)
+  /** Aviso de update opcional (sin bloquear). Se usa con update_force=false. */
+  update_available  Boolean        @default(false)
+  /** Última versión reportada por la app al terminar una actualización (ej. 1.0.0.10). */
+  reported_version  String?        @db.VarChar(40)
   /** URL del backend de la app que recibe PUT del entitlement (ej. …/eddeliapi/subscription/entitlement). */
   entitlement_url    String?       @db.VarChar(500)
   /** Secreto compartido con la app (plaintext o v1: AES-GCM at-rest). */

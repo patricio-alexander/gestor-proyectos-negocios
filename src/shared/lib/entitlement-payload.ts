@@ -41,6 +41,8 @@ export type EntitlementPayload = {
   updating: boolean;
   /** true = bloqueo forzado; false = el usuario puede aceptar/posponer. */
   update_force: boolean;
+  /** true = hay update opcional (modal aceptar / más tarde). */
+  update_available: boolean;
   subscribed: boolean;
   features: EntitlementFeature[];
   plans: EntitlementPlan[];
@@ -153,6 +155,7 @@ export async function buildEntitlementForAppHash(
       maintenance: true,
       updating: true,
       update_force: true,
+      update_available: true,
       kind: true,
     },
   });
@@ -162,6 +165,7 @@ export async function buildEntitlementForAppHash(
       maintenance: false,
       updating: false,
       update_force: true,
+      update_available: false,
       subscribed: false,
       features: [],
       plans: [],
@@ -338,8 +342,12 @@ export async function buildEntitlementForAppHash(
 
   return {
     maintenance: app.maintenance,
-    updating: Boolean(app.updating),
-    update_force: app.updating ? Boolean(app.update_force) : true,
+    // Solo bloquear con pantalla de progreso si es forzada
+    updating: Boolean(app.updating) && Boolean(app.update_force),
+    update_force: Boolean(app.update_force),
+    update_available:
+      Boolean(app.update_available) ||
+      (Boolean(app.updating) && !Boolean(app.update_force)),
     subscribed: subscription?.status === "ACTIVE",
     features,
     plans,

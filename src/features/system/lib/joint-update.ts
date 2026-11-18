@@ -108,11 +108,21 @@ export async function executeJointUpdate(opts: {
 
       await prisma.apps.update({
         where: { id: app.id },
-        data: {
-          updating: true,
-          update_force: force,
-          maintenance: false,
-        },
+        data: force
+          ? {
+              // Forzada: bloquea con pantalla de progreso
+              updating: true,
+              update_force: true,
+              update_available: false,
+              maintenance: false,
+            }
+          : {
+              // Con aceptación: modal (NO bloquear con «Sistema actualizándose»)
+              updating: false,
+              update_force: false,
+              update_available: true,
+              maintenance: false,
+            },
       });
 
       const push = await pushEntitlementToApp(app.hash);

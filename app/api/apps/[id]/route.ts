@@ -48,6 +48,8 @@ export async function GET(_request: Request, { params }: Params) {
       maintenance: app.maintenance,
       updating: Boolean(app.updating),
       update_force: app.update_force !== false,
+      update_available: Boolean(app.update_available),
+      reported_version: app.reported_version || null,
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),
@@ -114,6 +116,13 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(body.update_force !== undefined && {
           update_force: Boolean(body.update_force),
         }),
+        ...(body.update_available !== undefined && {
+          update_available: Boolean(body.update_available),
+        }),
+        // Al quitar updating, limpiar aviso opcional
+        ...(body.updating === false && {
+          update_available: false,
+        }),
         ...(body.entitlement_url !== undefined && {
           entitlement_url:
             body.entitlement_url === null
@@ -140,6 +149,7 @@ export async function PATCH(request: Request, { params }: Params) {
       body.maintenance !== undefined ||
       body.updating !== undefined ||
       body.update_force !== undefined ||
+      body.update_available !== undefined ||
       body.entitlement_url !== undefined ||
       body.entitlement_secret !== undefined;
 
@@ -165,6 +175,8 @@ export async function PATCH(request: Request, { params }: Params) {
       maintenance: app.maintenance,
       updating: Boolean(app.updating),
       update_force: app.update_force !== false,
+      update_available: Boolean(app.update_available),
+      reported_version: app.reported_version || null,
       entitlement_url: app.entitlement_url,
       entitlement_secret: revealSecret(app.entitlement_secret),
       has_entitlement_secret: Boolean(app.entitlement_secret),

@@ -320,11 +320,14 @@ export default function AppsPage() {
   }
 
   async function handleToggleUpdating(app: App) {
-    // Apagar estado «actualizando»
-    if (app.updating) {
+    // Apagar estado «actualizando» / aviso opcional
+    if (app.updating || app.update_available) {
       setTogglingIds((prev) => new Set(prev).add(app.id));
       try {
-        const updated = await update(app.id, { updating: false });
+        const updated = await update(app.id, {
+          updating: false,
+          update_available: false,
+        });
         const pushMsg = formatPushSyncToast(
           updated as Parameters<typeof formatPushSyncToast>[0],
           "Estado quitado, pero sync incompleto",
@@ -678,6 +681,7 @@ export default function AppsPage() {
               <th>Nombre</th>
               <th>Tipo</th>
               <th>SO</th>
+              <th>Versión</th>
               <th>Propietario</th>
               <th>Plan</th>
               <th>Módulos</th>
@@ -709,7 +713,7 @@ export default function AppsPage() {
           <tbody>
             {paginatedApps.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-10 text-center">
+                <td colSpan={9} className="py-10 text-center">
                   <p className={gp.subtitle}>
                     {search.trim()
                       ? "No hay aplicaciones que coincidan con la búsqueda."
@@ -736,6 +740,15 @@ export default function AppsPage() {
                   </td>
                   <td className="text-xs text-[var(--gp-text-muted)]">
                     {appPlatformLabel(app)}
+                  </td>
+                  <td className="font-mono text-xs text-[var(--gp-text)]">
+                    {app.reported_version ? (
+                      <span title="Versión reportada por la app al confirmar update">
+                        v{app.reported_version}
+                      </span>
+                    ) : (
+                      <span className="text-[var(--gp-text-muted)]">—</span>
+                    )}
                   </td>
                   <td>{app.owner_name || "—"}</td>
                   <td>
@@ -871,11 +884,11 @@ export default function AppsPage() {
                         className="gp-tip inline-flex"
                         data-tip={
                           isMobileApp(app)
-                            ? app.updating
+                            ? app.updating || app.update_available
                               ? "Actualizando: activo"
                               : "Actualizando: off"
-                            : app.updating
-                              ? "Actualizando — clic para quitar el aviso"
+                            : app.updating || app.update_available
+                              ? "Aviso de update activo — clic para quitar"
                               : matchTrioId(app)
                                 ? "Actualizar esta app (git + sync + reinicio)"
                                 : "Marcar como actualizando"
@@ -885,8 +898,8 @@ export default function AppsPage() {
                           size="sm"
                           variant="ghost"
                           aria-label={
-                            app.updating
-                              ? "Quitar modo actualizando"
+                            app.updating || app.update_available
+                              ? "Quitar aviso de actualización"
                               : "Poner en actualizando"
                           }
                           isDisabled={
@@ -906,7 +919,7 @@ export default function AppsPage() {
                               width={14}
                               height={14}
                               className={
-                                app.updating
+                                app.updating || app.update_available
                                   ? "text-amber-500"
                                   : "text-[var(--gp-text-faint)]"
                               }

@@ -28,6 +28,9 @@ export type App = {
   updating: boolean;
   /** Si updating: true = forzada; false = el usuario acepta. */
   update_force?: boolean;
+  update_available?: boolean;
+  /** Versión reportada por la app al confirmar update (ej. 1.0.0.10). */
+  reported_version?: string | null;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
   has_entitlement_secret?: boolean;
@@ -71,6 +74,7 @@ export type CreateAppInput = {
   maintenance?: boolean;
   updating?: boolean;
   update_force?: boolean;
+  update_available?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
@@ -89,6 +93,7 @@ export type UpdateAppInput = {
   maintenance?: boolean;
   updating?: boolean;
   update_force?: boolean;
+  update_available?: boolean;
   entitlement_url?: string | null;
   entitlement_secret?: string | null;
 };
