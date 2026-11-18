@@ -43,6 +43,8 @@ export type EntitlementPayload = {
   update_force: boolean;
   /** true = hay update opcional (modal aceptar / más tarde). */
   update_available: boolean;
+  /** true = al Continuar la app limpia el JWT (cierra sesión). */
+  update_force_logout: boolean;
   subscribed: boolean;
   features: EntitlementFeature[];
   plans: EntitlementPlan[];
@@ -156,6 +158,7 @@ export async function buildEntitlementForAppHash(
       updating: true,
       update_force: true,
       update_available: true,
+      update_force_logout: true,
       kind: true,
     },
   });
@@ -166,6 +169,7 @@ export async function buildEntitlementForAppHash(
       updating: false,
       update_force: true,
       update_available: false,
+      update_force_logout: false,
       subscribed: false,
       features: [],
       plans: [],
@@ -348,6 +352,7 @@ export async function buildEntitlementForAppHash(
     update_available:
       Boolean(app.update_available) ||
       (Boolean(app.updating) && !Boolean(app.update_force)),
+    update_force_logout: Boolean(app.update_force_logout),
     subscribed: subscription?.status === "ACTIVE",
     features,
     plans,

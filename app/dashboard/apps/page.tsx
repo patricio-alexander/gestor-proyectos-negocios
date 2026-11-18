@@ -394,6 +394,7 @@ export default function AppsPage() {
     policy: "forced" | "optional";
     notify: boolean;
     deploy: boolean;
+    forceLogout: boolean;
     steps: { git: boolean; sync: boolean; pm2: boolean };
   }) {
     const trio = updateTargets[0];
@@ -408,6 +409,7 @@ export default function AppsPage() {
         policy: opts.policy,
         notify: opts.notify,
         deploy: opts.deploy,
+        forceLogout: opts.forceLogout,
         steps: opts.steps,
       });
       appToast.success(

@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       updating: false,
       update_available: false,
       update_force: true,
+      update_force_logout: false,
       ...(version ? { reported_version: version } : {}),
     },
     select: {

@@ -45,7 +45,8 @@ export function extractSteps(raw: unknown): DeploySteps | undefined {
 export function packJobTargets(
   targets: TrioId[],
   steps?: DeploySteps,
-): { apps: TrioId[]; steps: DeploySteps } {
+  forceLogout?: boolean,
+): { apps: TrioId[]; steps: DeploySteps; forceLogout: boolean } {
   return {
     apps: targets,
     steps: {
@@ -53,7 +54,13 @@ export function packJobTargets(
       sync: steps?.sync !== false,
       pm2: steps?.pm2 !== false,
     },
+    forceLogout: Boolean(forceLogout),
   };
+}
+
+export function extractForceLogout(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  return Boolean((raw as { forceLogout?: boolean }).forceLogout);
 }
 
 function runUpdateScript(args: string[]): Promise<{
@@ -120,9 +127,12 @@ export async function executeJointUpdate(opts: {
   notify: boolean;
   targets: TrioId[];
   steps?: DeploySteps;
+  /** Si true, la app Vite cierra sesión al Continuar. */
+  forceLogout?: boolean;
 }): Promise<JointRunResult> {
   const targets = normalizeTargets(opts.targets);
   const force = opts.policy === "forced";
+  const forceLogout = Boolean(opts.forceLogout);
   const notified: JointRunResult["notified"] = [];
   let deployResult: unknown = null;
   const steps = {
@@ -155,6 +165,7 @@ export async function executeJointUpdate(opts: {
               updating: true,
               update_force: true,
               update_available: false,
+              update_force_logout: forceLogout,
               maintenance: false,
             }
           : {
@@ -162,6 +173,7 @@ export async function executeJointUpdate(opts: {
               updating: false,
               update_force: false,
               update_available: true,
+              update_force_logout: forceLogout,
               maintenance: false,
             },
       });
@@ -246,6 +258,7 @@ export async function runDueJointJobs(): Promise<number> {
         notify: Boolean(job.notify),
         targets: normalizeTargets(job.targets),
         steps: extractSteps(job.targets),
+        forceLogout: extractForceLogout(job.targets),
       });
       await prisma.jointUpdateJob.update({
         where: { id: job.id },

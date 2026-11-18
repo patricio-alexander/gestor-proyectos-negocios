@@ -54,6 +54,7 @@ export function JointUpdateModal() {
   const [doSync, setDoSync] = useState(true);
   const [doPm2, setDoPm2] = useState(true);
   const [notify, setNotify] = useState(true);
+  const [forceLogout, setForceLogout] = useState(false);
   const [targets, setTargets] = useState<TrioId[]>([
     "eddeli",
     "store",
@@ -113,13 +114,22 @@ export function JointUpdateModal() {
       const steps = { git: doGit, sync: doSync, pm2: doPm2 };
       const body =
         when === "now"
-          ? { when: "now", policy, deploy, notify, targets, steps }
+          ? {
+              when: "now",
+              policy,
+              deploy,
+              notify,
+              forceLogout,
+              targets,
+              steps,
+            }
           : {
               when: "schedule",
               runAt: new Date(runAt).toISOString(),
               policy,
               deploy,
               notify,
+              forceLogout,
               targets,
               steps,
             };
@@ -407,6 +417,28 @@ export function JointUpdateModal() {
                       </p>
                     </div>
                     <Switch isSelected={notify} onChange={setNotify}>
+                      <Switch.Content>
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
+                      </Switch.Content>
+                    </Switch>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 border-t border-[var(--gp-border)] pt-3">
+                    <div>
+                      <p className="font-medium text-[var(--gp-text)]">
+                        Cerrar sesión forzosamente
+                      </p>
+                      <p className="text-xs text-[var(--gp-text-muted)]">
+                        Activo = limpia el token al Continuar. Apagado = se
+                        mantiene la sesión.
+                      </p>
+                    </div>
+                    <Switch
+                      isSelected={forceLogout}
+                      onChange={setForceLogout}
+                    >
                       <Switch.Content>
                         <Switch.Control>
                           <Switch.Thumb />

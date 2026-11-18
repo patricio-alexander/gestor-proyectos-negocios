@@ -20,6 +20,7 @@ export type AppUpdateSubmit = {
   policy: UpdatePolicy;
   notify: boolean;
   deploy: boolean;
+  forceLogout: boolean;
   steps: { git: boolean; sync: boolean; pm2: boolean };
 };
 
@@ -39,6 +40,7 @@ export function AppUpdateModal({ state, targets, title, onConfirm }: Props) {
   const [doSync, setDoSync] = useState(true);
   const [doPm2, setDoPm2] = useState(true);
   const [notify, setNotify] = useState(true);
+  const [forceLogout, setForceLogout] = useState(false);
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function AppUpdateModal({ state, targets, title, onConfirm }: Props) {
     setDoSync(true);
     setDoPm2(true);
     setNotify(true);
+    setForceLogout(false);
   }, [state.isOpen, targets.join(",")]);
 
   useEffect(() => {
@@ -79,6 +82,7 @@ export function AppUpdateModal({ state, targets, title, onConfirm }: Props) {
         policy,
         notify,
         deploy: doGit || doSync || doPm2,
+        forceLogout,
         steps: { git: doGit, sync: doSync, pm2: doPm2 },
       });
       state.close();
@@ -255,6 +259,29 @@ export function AppUpdateModal({ state, targets, title, onConfirm }: Props) {
                     </Switch.Content>
                   </Switch>
                 </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-[var(--gp-border)] pt-3">
+                  <div>
+                    <p className="font-medium text-[var(--gp-text)]">
+                      Cerrar sesión forzosamente
+                    </p>
+                    <p className="text-xs text-[var(--gp-text-muted)]">
+                      Si está activo, al Continuar se limpia el token. Si no, se
+                      mantiene la sesión iniciada.
+                    </p>
+                  </div>
+                  <Switch
+                    isSelected={forceLogout}
+                    isDisabled={disabled}
+                    onChange={setForceLogout}
+                  >
+                    <Switch.Content>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
+                    </Switch.Content>
+                  </Switch>
+                </div>
               </div>
             </Modal.Body>
             <Modal.Footer className="flex justify-end gap-2">
@@ -288,6 +315,7 @@ export async function runJointUpdateNow(opts: {
   policy: UpdatePolicy;
   notify: boolean;
   deploy: boolean;
+  forceLogout?: boolean;
   steps: { git: boolean; sync: boolean; pm2: boolean };
 }) {
   const res = await fetch(apiUrl("/api/system/joint-update"), {
@@ -299,6 +327,7 @@ export async function runJointUpdateNow(opts: {
       policy: opts.policy,
       notify: opts.notify,
       deploy: opts.deploy,
+      forceLogout: Boolean(opts.forceLogout),
       targets: opts.targets,
       steps: opts.steps,
     }),

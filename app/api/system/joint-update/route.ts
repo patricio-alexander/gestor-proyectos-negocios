@@ -66,6 +66,7 @@ export async function POST(request: Request) {
     notify?: boolean;
     targets?: TrioId[];
     steps?: DeploySteps;
+    forceLogout?: boolean;
     cancelJobId?: number;
   } = {};
   try {
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     body.policy === "optional" ? "optional" : "forced";
   const deploy = body.deploy !== false;
   const notify = body.notify !== false;
+  const forceLogout = Boolean(body.forceLogout);
   const targets = normalizeTargets(body.targets);
   const steps: DeploySteps = {
     git: body.steps?.git !== false,
@@ -114,7 +116,7 @@ export async function POST(request: Request) {
         policy,
         deploy,
         notify,
-        targets: packJobTargets(targets, steps),
+        targets: packJobTargets(targets, steps, forceLogout),
         status: "pending",
       },
     });
@@ -132,6 +134,7 @@ export async function POST(request: Request) {
     notify,
     targets,
     steps,
+    forceLogout,
   });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }
