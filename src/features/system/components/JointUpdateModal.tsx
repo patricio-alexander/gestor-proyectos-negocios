@@ -188,7 +188,7 @@ export function JointUpdateModal() {
         : "¿Actualización con PERMISO ahora? Se envía el aviso; el deploy (git/sync/pm2) corre cuando el usuario pulse Actualizar ahora."
       : `¿Programar actualización ${
           policy === "forced" ? "forzada" : "con permiso"
-        } para ${runAt}?`;
+        } para ${runAt}? Las apps verán la cuenta regresiva hasta esa hora.`;
 
   return (
     <>

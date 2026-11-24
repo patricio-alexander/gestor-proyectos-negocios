@@ -45,6 +45,8 @@ export type EntitlementPayload = {
   update_available: boolean;
   /** true = al Continuar la app limpia el JWT (cierra sesión). */
   update_force_logout: boolean;
+  /** ISO: actualización programada (cuenta regresiva en la app). */
+  update_scheduled_at: string | null;
   subscribed: boolean;
   features: EntitlementFeature[];
   plans: EntitlementPlan[];
@@ -175,6 +177,7 @@ export async function buildEntitlementForAppHash(
       update_force: true,
       update_available: false,
       update_force_logout: false,
+      update_scheduled_at: null,
       subscribed: false,
       features: [],
       plans: [],
@@ -349,15 +352,39 @@ export async function buildEntitlementForAppHash(
     }),
   );
 
+  const { peekPendingScheduledUpdate } = await import(
+    "@/src/features/system/lib/pending-scheduled-update"
+  );
+  const scheduled = peekPendingScheduledUpdate(app.id);
+  const scheduledAt =
+    scheduled?.at && Number.isFinite(new Date(scheduled.at).getTime())
+      ? scheduled.at
+      : null;
+  const scheduledFuture =
+    scheduledAt != null && new Date(scheduledAt).getTime() > Date.now();
+
+  // Mientras la hora programada no llega: no marcar updating (solo countdown).
+  let updating = Boolean(app.updating) && Boolean(app.update_force);
+  let update_force = Boolean(app.update_force);
+  let update_available =
+    Boolean(app.update_available) ||
+    (Boolean(app.updating) && !Boolean(app.update_force));
+  let update_force_logout = Boolean(app.update_force_logout);
+
+  if (scheduledFuture && scheduled) {
+    updating = false;
+    update_force = scheduled.policy === "forced";
+    update_available = scheduled.policy === "optional";
+    update_force_logout = Boolean(scheduled.forceLogout);
+  }
+
   return {
     maintenance: app.maintenance,
-    // Solo bloquear con pantalla de progreso si es forzada
-    updating: Boolean(app.updating) && Boolean(app.update_force),
-    update_force: Boolean(app.update_force),
-    update_available:
-      Boolean(app.update_available) ||
-      (Boolean(app.updating) && !Boolean(app.update_force)),
-    update_force_logout: Boolean(app.update_force_logout),
+    updating,
+    update_force,
+    update_available,
+    update_force_logout,
+    update_scheduled_at: scheduledFuture ? scheduledAt : null,
     subscribed: subscription?.status === "ACTIVE",
     features,
     plans,

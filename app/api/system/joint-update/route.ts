@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { prisma } from "@/src/shared/lib/prisma";
 import {
+  announceScheduledUpdate,
   executeJointUpdate,
   normalizeTargets,
   packJobTargets,
@@ -10,6 +11,9 @@ import {
   type JointPolicy,
   type TrioId,
 } from "@/src/features/system/lib/joint-update";
+import { clearPendingScheduledByJobId } from "@/src/features/system/lib/pending-scheduled-update";
+import { matchTrioId } from "@/src/features/system/lib/trio-apps";
+import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 import { PRODUCTION_SITE_URL } from "@/src/config/site";
 
 export const runtime = "nodejs";
@@ -76,11 +80,22 @@ export async function POST(request: Request) {
   }
 
   if (body.cancelJobId) {
+    const jobId = Number(body.cancelJobId);
     await prisma.jointUpdateJob.update({
-      where: { id: Number(body.cancelJobId) },
+      where: { id: jobId },
       data: { status: "cancelled", finished_at: new Date() },
     });
-    return NextResponse.json({ ok: true, cancelled: body.cancelJobId });
+    clearPendingScheduledByJobId(jobId);
+    // Empujar entitlement limpio (sin countdown) a las apps del trío
+    const apps = await prisma.apps.findMany({
+      where: { deleted_at: null, kind: { not: "mobile" } },
+      select: { hash: true, name: true, path: true, entitlement_url: true },
+    });
+    for (const app of apps) {
+      if (!matchTrioId(app)) continue;
+      await pushEntitlementToApp(app.hash);
+    }
+    return NextResponse.json({ ok: true, cancelled: jobId });
   }
 
   const policy: JointPolicy =
@@ -120,10 +135,24 @@ export async function POST(request: Request) {
         status: "pending",
       },
     });
+
+    let announced: Awaited<ReturnType<typeof announceScheduledUpdate>> | null =
+      null;
+    if (notify) {
+      announced = await announceScheduledUpdate({
+        targets,
+        runAt,
+        policy,
+        forceLogout,
+        jobId: job.id,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       scheduled: true,
       job,
+      announced,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
     });
   }

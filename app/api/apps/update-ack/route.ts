@@ -4,6 +4,7 @@ import { validateKey } from "@/src/shared/lib/api-auth";
 import { ensureAppsUpdateColumns } from "@/src/shared/lib/ensure-apps-update-columns";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 import { clearPendingOptionalDeploy } from "@/src/features/system/lib/pending-optional-deploy";
+import { clearPendingScheduledUpdate } from "@/src/features/system/lib/pending-scheduled-update";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
   // Empujar entitlement limpio para que otros clientes también salgan del aviso
   const push = await pushEntitlementToApp(app.hash);
   clearPendingOptionalDeploy(app.id);
+  clearPendingScheduledUpdate(app.id);
 
   console.log(
     `[update-ack] app=${app.name || app.id} version=${app.reported_version || "—"} push_ok=${push.ok}`,

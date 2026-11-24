@@ -10,6 +10,10 @@ import {
   type TrioId,
 } from "@/src/features/system/lib/trio-apps";
 import { savePendingOptionalDeploy } from "@/src/features/system/lib/pending-optional-deploy";
+import {
+  clearPendingScheduledForTrios,
+  savePendingScheduledUpdate,
+} from "@/src/features/system/lib/pending-scheduled-update";
 
 export type { TrioId };
 export type JointPolicy = "forced" | "optional";
@@ -155,6 +159,57 @@ export type JointRunResult = {
   error?: string;
 };
 
+/**
+ * Avisa a las apps de una actualización programada (countdown hasta runAt).
+ * No marca updating todavía: eso ocurre cuando corre el job.
+ */
+export async function announceScheduledUpdate(opts: {
+  targets: TrioId[];
+  runAt: Date;
+  policy: JointPolicy;
+  forceLogout?: boolean;
+  jobId?: number;
+}): Promise<{ notified: JointRunResult["notified"] }> {
+  const targets = normalizeTargets(opts.targets);
+  const forceLogout = Boolean(opts.forceLogout);
+  const at = opts.runAt.toISOString();
+  const notified: JointRunResult["notified"] = [];
+
+  const apps = await prisma.apps.findMany({
+    where: { deleted_at: null, kind: { not: "mobile" } },
+    select: {
+      id: true,
+      hash: true,
+      name: true,
+      path: true,
+      entitlement_url: true,
+    },
+  });
+
+  for (const app of apps) {
+    const trio = matchTrioId(app);
+    if (!trio || !targets.includes(trio)) continue;
+    savePendingScheduledUpdate({
+      appId: app.id,
+      trio,
+      at,
+      policy: opts.policy,
+      forceLogout,
+      jobId: opts.jobId,
+      createdAt: new Date().toISOString(),
+    });
+    const push = await pushEntitlementToApp(app.hash);
+    notified.push({
+      id: app.id,
+      name: app.name,
+      trio,
+      push_ok: Boolean(push.ok),
+    });
+  }
+
+  return { notified };
+}
+
 /** Ejecuta notificación (updating) y/o deploy de código. */
 export async function executeJointUpdate(opts: {
   policy: JointPolicy;
@@ -178,6 +233,8 @@ export async function executeJointUpdate(opts: {
 
   if (opts.notify) {
     await ensureAppsUpdateColumns();
+    // Al ejecutar (ahora o job vencido) ya no hay countdown programado
+    clearPendingScheduledForTrios(targets);
     const apps = await prisma.apps.findMany({
       where: { deleted_at: null, kind: { not: "mobile" } },
       select: {
@@ -197,7 +254,7 @@ export async function executeJointUpdate(opts: {
         where: { id: app.id },
         data: force
           ? {
-              // Forzada: bloquea con pantalla de progreso
+              // Forzada inmediata: bloquea con pantalla de progreso
               updating: true,
               update_force: true,
               update_available: false,
