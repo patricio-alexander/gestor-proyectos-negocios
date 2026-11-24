@@ -9,6 +9,7 @@ import {
   TRIO_IDS,
   type TrioId,
 } from "@/src/features/system/lib/trio-apps";
+import { savePendingOptionalDeploy } from "@/src/features/system/lib/pending-optional-deploy";
 
 export type { TrioId };
 export type JointPolicy = "forced" | "optional";
@@ -62,6 +63,39 @@ export function packJobTargets(
 export function extractForceLogout(raw: unknown): boolean {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
   return Boolean((raw as { forceLogout?: boolean }).forceLogout);
+}
+
+/** Deploy git/sync/pm2 para una app del trío (también usado por update-apply). */
+export async function deployTrioApp(
+  trio: TrioId,
+  steps: DeploySteps,
+): Promise<{ ok: boolean; result: unknown }> {
+  const stepParts = [
+    steps.git !== false ? "git" : null,
+    steps.sync !== false ? "sync" : null,
+    steps.pm2 !== false ? "pm2" : null,
+  ].filter(Boolean);
+  if (!stepParts.length) {
+    return { ok: true, result: { skipped: true, reason: "no_steps" } };
+  }
+  const args = [
+    `--mode=one`,
+    `--app=${trio}`,
+    `--force`,
+    `--live`,
+    `--steps=${stepParts.join(",")}`,
+  ];
+  const r = await runUpdateScript(args);
+  const result =
+    typeof r.json === "object" && r.json
+      ? r.json
+      : { ok: r.code === 0, raw: r.stdout, stderr: r.stderr };
+  const ok =
+    r.code === 0 &&
+    (typeof result !== "object" ||
+      result === null ||
+      (result as { ok?: boolean }).ok !== false);
+  return { ok, result };
 }
 
 function runUpdateScript(args: string[]): Promise<{
@@ -190,7 +224,36 @@ export async function executeJointUpdate(opts: {
     }
   }
 
-  if (opts.deploy && (steps.git || steps.sync || steps.pm2)) {
+  // Con permiso: no deploy ahora. Se guarda pendiente y corre cuando la app
+  // llama /api/apps/update-apply (usuario pulsó «Actualizar ahora»).
+  const deferDeploy = opts.policy === "optional" && opts.deploy;
+  if (deferDeploy && opts.notify) {
+    const apps = await prisma.apps.findMany({
+      where: { deleted_at: null, kind: { not: "mobile" } },
+      select: {
+        id: true,
+        name: true,
+        path: true,
+        entitlement_url: true,
+      },
+    });
+    for (const app of apps) {
+      const trio = matchTrioId(app);
+      if (!trio || !targets.includes(trio)) continue;
+      savePendingOptionalDeploy({
+        appId: app.id,
+        trio,
+        steps,
+        forceLogout,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    deployResult = {
+      deferred: true,
+      reason: "optional_awaits_user_apply",
+      steps,
+    };
+  } else if (opts.deploy && (steps.git || steps.sync || steps.pm2)) {
     const stepParts = [
       steps.git ? "git" : null,
       steps.sync ? "sync" : null,

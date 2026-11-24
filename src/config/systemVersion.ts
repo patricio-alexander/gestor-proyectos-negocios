@@ -1,2 +1,2 @@
-/** Versión del Sistema de gestión de negocios (Raptor-Solutions). */
-export const SYSTEM_VERSION = "1.0.0.10";
+/** Versión del gestor Raptor Solutions (esta app). */
+export const SYSTEM_VERSION = "0.0.1.0";

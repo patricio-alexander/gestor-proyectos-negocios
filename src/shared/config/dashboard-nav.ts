@@ -44,6 +44,9 @@ export const DASHBOARD_NAV: DashboardNavGroup[] = [
   },
   {
     title: "Sistema",
-    items: [{ label: "Configuración", href: "/dashboard/configuracion" }],
+    items: [
+      { label: "Información", href: "/dashboard/info" },
+      { label: "Configuración", href: "/dashboard/configuracion" },
+    ],
   },
 ];

@@ -185,7 +185,7 @@ export function JointUpdateModal() {
     when === "now"
       ? policy === "forced"
         ? "¿Actualización FORZADA ahora? Los usuarios no podrán seguir usando la app hasta Continuar."
-        : "¿Actualización con PERMISO ahora? Los usuarios verán un aviso para actualizar o más tarde."
+        : "¿Actualización con PERMISO ahora? Se envía el aviso; el deploy (git/sync/pm2) corre cuando el usuario pulse Actualizar ahora."
       : `¿Programar actualización ${
           policy === "forced" ? "forzada" : "con permiso"
         } para ${runAt}?`;

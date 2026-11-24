@@ -8,6 +8,7 @@ import Cubes3Overlap from "@gravity-ui/icons/Cubes3Overlap";
 import Database from "@gravity-ui/icons/Database";
 import FileText from "@gravity-ui/icons/FileText";
 import ChartLine from "@gravity-ui/icons/ChartLine";
+import CircleInfo from "@gravity-ui/icons/CircleInfo";
 import Gear from "@gravity-ui/icons/Gear";
 import Gift from "@gravity-ui/icons/Gift";
 import LayoutHeaderCellsLarge from "@gravity-ui/icons/LayoutHeaderCellsLarge";
@@ -35,6 +36,7 @@ export const NAV_ICONS: Record<string, ComponentType<IconProps>> = {
   "/dashboard/access/roles": ShieldKeyhole,
   "/dashboard/events": ClockArrowRotateLeft,
   "/dashboard/news": LayoutHeaderCellsLarge,
+  "/dashboard/info": CircleInfo,
   "/dashboard/configuracion": Gear,
   "/dashboard/backups": Database,
 };

@@ -30,7 +30,7 @@ const GESTOR_ROOT = path.resolve(__dirname, "..");
 const APPSWEB = path.resolve(
   process.env.APPSWEB_ROOT || path.join(GESTOR_ROOT, ".."),
 );
-const SYSTEM_VERSION = "1.0.0.10";
+const SYSTEM_VERSION = "0.0.1.0";
 const PRODUCTION_SITE_URL =
   "https://aplicaciones.marianosamaniego.edu.ec/raptorsolutions";
 
@@ -74,6 +74,8 @@ const APPS = {
     backend: null,
     pm2: process.env.PM2_APP || "Raptor Solutions",
     sync: false,
+    /** Next.js: rebuild antes de reiniciar PM2. */
+    build: true,
   },
 };
 
@@ -203,6 +205,7 @@ function updateOne(
     if (doSync && app.sync && app.backend && fs.existsSync(app.backend)) {
       push(`[DRY-RUN] Simularía: npm run db:sync en ${app.backend}`);
     }
+    if (app.build) push(`[DRY-RUN] Simularía: npm run build en ${app.root}`);
     if (doPm2 && app.pm2) push(`[DRY-RUN] Simularía: pm2 restart ${app.pm2}`);
     push(`[DRY-RUN] OK — sin cambios reales`);
     return {
@@ -259,6 +262,24 @@ function updateOne(
     push("db:sync OK");
   } else if (!doSync) {
     push("db:sync omitido");
+  }
+
+  if (app.build) {
+    push("npm run build…");
+    const build = run("npm", ["run", "build"], app.root, { timeout: 600_000 });
+    if (build.status !== 0) {
+      return {
+        id: app.id,
+        title: app.title,
+        ok: false,
+        skipped: false,
+        dryRun: false,
+        reason: build.stderr || build.stdout || "npm run build falló",
+        log,
+        status: statusOf(app, { fetchRemote: false }),
+      };
+    }
+    push("build OK");
   }
 
   if (doPm2 && app.pm2) {
@@ -341,21 +362,24 @@ function main() {
     doPm2,
   } = parseArgs(process.argv.slice(2));
   const dryRun = resolveDryRun(dryFlag);
-  const wantFetch = mode !== "status" && !dryRun && doGit;
+  // status también hace git fetch para “Verificar” en la UI
+  const wantFetch = !dryRun && doGit;
   const trioStatuses = TRIO.map((id) =>
     statusOf(APPS[id], { fetchRemote: wantFetch }),
   );
 
   if (mode === "status") {
+    const gestorStatus = statusOf(APPS.gestor, { fetchRemote: wantFetch });
     const payload = {
       ok: true,
       systemVersion: SYSTEM_VERSION,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
       dryRunDefault: dryRun,
+      gestor: gestorStatus,
       apps: [
         ...trioStatuses,
-        statusOf(APPS.raptor, { fetchRemote: false }),
-        statusOf(APPS.gestor, { fetchRemote: false }),
+        statusOf(APPS.raptor, { fetchRemote: wantFetch }),
+        gestorStatus,
       ],
       missing: trioStatuses.filter((s) => s.needsUpdate).map((s) => s.id),
     };

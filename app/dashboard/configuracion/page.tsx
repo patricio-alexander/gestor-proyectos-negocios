@@ -95,7 +95,14 @@ function ConfigContent() {
             <strong>Backups</strong>.
           </p>
           <p className="mt-3 text-sm text-[var(--gp-text)]">
-            Versión del sistema: <strong>v{SYSTEM_VERSION}</strong>
+            Versión del gestor: <strong>v{SYSTEM_VERSION}</strong>
+            {" · "}
+            <Link
+              href="/dashboard/info"
+              className="underline underline-offset-2 text-[var(--gp-primary)]"
+            >
+              Información y actualizaciones
+            </Link>
           </p>
           <p className="mt-1 text-sm text-[var(--gp-text-muted)]">
             Producción:{" "}
