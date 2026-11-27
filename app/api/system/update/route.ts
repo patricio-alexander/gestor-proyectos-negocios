@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 /** Trio apps aún esperan el script; el self-update del gestor responde 202 al toque. */
 export const maxDuration = 300;
 
-const GESTOR_ROOT = path.resolve(process.cwd());
+const GESTOR_ROOT = path.resolve(/* turbopackIgnore: true */ process.cwd());
 const SCRIPT = path.join(GESTOR_ROOT, "scripts", "update-apps.mjs");
 
 type Mode = "status" | "all" | "missing" | "one";

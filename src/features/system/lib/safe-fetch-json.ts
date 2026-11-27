@@ -115,14 +115,17 @@ export function isRestartLikeFailure(
   err?: unknown,
 ): boolean {
   if (result) {
-    if (
-      result.reason === "gateway" ||
-      result.reason === "html" ||
-      result.reason === "empty" ||
-      result.reason === "parse" ||
-      result.reason === "not-json"
-    ) {
-      return true;
+    if (!result.ok) {
+      if (
+        result.reason === "gateway" ||
+        result.reason === "html" ||
+        result.reason === "empty" ||
+        result.reason === "parse" ||
+        result.reason === "not-json" ||
+        result.reason === "network"
+      ) {
+        return true;
+      }
     }
     if (GATEWAY.has(result.status)) return true;
   }

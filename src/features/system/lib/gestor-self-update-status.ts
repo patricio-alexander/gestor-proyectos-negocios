@@ -12,7 +12,11 @@ export type {
 } from "@/src/features/system/lib/gestor-self-update-types";
 
 function filePath() {
-  return path.join(process.cwd(), "data", "gestor-self-update.json");
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    "data",
+    "gestor-self-update.json",
+  );
 }
 
 export function readGestorSelfUpdateState(): GestorSelfUpdateState {
@@ -47,5 +51,9 @@ export function writeGestorSelfUpdateState(
 }
 
 export function gestorSelfUpdateLogPath() {
-  return path.join(process.cwd(), "data", "gestor-self-update.log");
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    "data",
+    "gestor-self-update.log",
+  );
 }
