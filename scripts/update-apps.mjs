@@ -81,17 +81,129 @@ const APPS = {
 
 const TRIO = ["eddeli", "store", "tienda"];
 
+/** Staging build del gestor: no pisa el .next que sirve next start. */
+const GESTOR_STAGING_DIR = ".next-staging";
+const GESTOR_PREV_DIR = ".next-prev";
+const SELF_UPDATE_STATUS = path.join(
+  GESTOR_ROOT,
+  "data",
+  "gestor-self-update.json",
+);
+
 function say(msg) {
   process.stderr.write(`[update-apps] ${msg}\n`);
 }
 
-function run(cmd, args, cwd, { inherit = false, timeout = 180_000 } = {}) {
+function writeSelfUpdateState(patch) {
+  try {
+    fs.mkdirSync(path.dirname(SELF_UPDATE_STATUS), { recursive: true });
+    let prev = {};
+    try {
+      prev = JSON.parse(fs.readFileSync(SELF_UPDATE_STATUS, "utf8"));
+    } catch {
+      prev = {};
+    }
+    const next = { ...prev, ...patch };
+    const tmp = `${SELF_UPDATE_STATUS}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2), "utf8");
+    fs.renameSync(tmp, SELF_UPDATE_STATUS);
+  } catch (e) {
+    say(`no se pudo escribir self-update status: ${e?.message || e}`);
+  }
+}
+
+function appendSelfLog(msg) {
+  try {
+    let prev = {};
+    try {
+      prev = JSON.parse(fs.readFileSync(SELF_UPDATE_STATUS, "utf8"));
+    } catch {
+      prev = {};
+    }
+    const log = Array.isArray(prev.log) ? [...prev.log, msg] : [msg];
+    writeSelfUpdateState({ log, status: prev.status || "updating" });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Build Next en carpeta staging y swap atómico a .next antes del restart. */
+function buildGestorSafe(root, push) {
+  const staging = path.join(root, GESTOR_STAGING_DIR);
+  const live = path.join(root, ".next");
+  const prev = path.join(root, GESTOR_PREV_DIR);
+
+  // Limpiar solo staging/prev — nunca rm -rf .next en vivo
+  try {
+    fs.rmSync(staging, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+  try {
+    fs.rmSync(prev, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+
+  push(`npm run build (distDir=${GESTOR_STAGING_DIR})…`);
+  const build = run("npm", ["run", "build"], root, {
+    timeout: 600_000,
+    envExtra: { NEXT_DIST_DIR: GESTOR_STAGING_DIR },
+  });
+  if (build.status !== 0) {
+    return {
+      ok: false,
+      reason: build.stderr || build.stdout || "npm run build falló",
+    };
+  }
+  if (!fs.existsSync(staging)) {
+    return { ok: false, reason: `No se generó ${GESTOR_STAGING_DIR}` };
+  }
+  push("build staging OK — swap a .next");
+
+  // Swap: .next → .next-prev, staging → .next (sin borrar el live primero)
+  try {
+    if (fs.existsSync(live)) {
+      fs.renameSync(live, prev);
+    }
+    fs.renameSync(staging, live);
+  } catch (e) {
+    // Intentar restaurar si el swap a medias
+    try {
+      if (!fs.existsSync(live) && fs.existsSync(prev)) {
+        fs.renameSync(prev, live);
+      }
+    } catch {
+      /* ignore */
+    }
+    return {
+      ok: false,
+      reason: e?.message || "swap .next falló",
+    };
+  }
+
+  // Limpieza best-effort del build anterior (ya no sirve el proceso viejo tras restart)
+  try {
+    fs.rmSync(prev, { recursive: true, force: true });
+  } catch {
+    push("aviso: no se pudo borrar .next-prev (se puede limpiar luego)");
+  }
+  push("swap .next OK");
+  return { ok: true };
+}
+
+function run(
+  cmd,
+  args,
+  cwd,
+  { inherit = false, timeout = 180_000, envExtra = {} } = {},
+) {
   const r = spawnSync(cmd, args, {
     cwd,
     encoding: "utf8",
     stdio: inherit ? "inherit" : "pipe",
     shell: false,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0", ...envExtra },
     timeout,
   });
   return {
@@ -205,7 +317,13 @@ function updateOne(
     if (doSync && app.sync && app.backend && fs.existsSync(app.backend)) {
       push(`[DRY-RUN] Simularía: npm run db:sync en ${app.backend}`);
     }
-    if (app.build) push(`[DRY-RUN] Simularía: npm run build en ${app.root}`);
+    if (app.build) {
+      push(
+        app.id === "gestor"
+          ? `[DRY-RUN] Simularía: build → ${GESTOR_STAGING_DIR} → swap .next`
+          : `[DRY-RUN] Simularía: npm run build en ${app.root}`,
+      );
+    }
     if (doPm2 && app.pm2) push(`[DRY-RUN] Simularía: pm2 restart ${app.pm2}`);
     push(`[DRY-RUN] OK — sin cambios reales`);
     return {
@@ -265,28 +383,51 @@ function updateOne(
   }
 
   if (app.build) {
-    push("npm run build…");
-    const build = run("npm", ["run", "build"], app.root, { timeout: 600_000 });
-    if (build.status !== 0) {
-      return {
-        id: app.id,
-        title: app.title,
-        ok: false,
-        skipped: false,
-        dryRun: false,
-        reason: build.stderr || build.stdout || "npm run build falló",
-        log,
-        status: statusOf(app, { fetchRemote: false }),
-      };
+    if (app.id === "gestor") {
+      const built = buildGestorSafe(app.root, push);
+      if (!built.ok) {
+        return {
+          id: app.id,
+          title: app.title,
+          ok: false,
+          skipped: false,
+          dryRun: false,
+          reason: built.reason,
+          log,
+          status: statusOf(app, { fetchRemote: false }),
+        };
+      }
+    } else {
+      push("npm run build…");
+      const build = run("npm", ["run", "build"], app.root, {
+        timeout: 600_000,
+      });
+      if (build.status !== 0) {
+        return {
+          id: app.id,
+          title: app.title,
+          ok: false,
+          skipped: false,
+          dryRun: false,
+          reason: build.stderr || build.stdout || "npm run build falló",
+          log,
+          status: statusOf(app, { fetchRemote: false }),
+        };
+      }
+      push("build OK");
     }
-    push("build OK");
   }
 
   if (doPm2 && app.pm2) {
+    // Solo restart del proceso indicado (PM2_APP / nombre de la app). Nunca kill/delete/all.
     push(`pm2 restart ${app.pm2}…`);
-    const pm2 = run("pm2", ["restart", app.pm2], GESTOR_ROOT);
+    const pm2 = run("pm2", ["restart", app.pm2], GESTOR_ROOT, {
+      timeout: 120_000,
+    });
     if (pm2.status !== 0) {
-      push(`aviso: pm2 restart falló (${pm2.stderr || pm2.stdout || pm2.status})`);
+      push(
+        `aviso: pm2 restart falló (${pm2.stderr || pm2.stdout || pm2.status})`,
+      );
     } else {
       push("pm2 OK");
     }
@@ -430,9 +571,37 @@ function main() {
   // all / one: siempre intentar pull. missing: solo las atrasadas.
   const useForce = force || mode === "one" || mode === "all";
   say(`Pasos: git=${doGit} sync=${doSync} pm2=${doPm2}`);
-  const results = targets.map((app) =>
-    updateOne(app, { force: useForce, dryRun, doGit, doSync, doPm2 }),
-  );
+
+  const updatingGestor = targets.some((t) => t.id === "gestor");
+  const headBefore = updatingGestor
+    ? headOf(APPS.gestor.root)?.slice(0, 7) || null
+    : null;
+  if (updatingGestor) {
+    writeSelfUpdateState({
+      status: "updating",
+      acceptedAt: new Date().toISOString(),
+      headBefore,
+      headAfter: null,
+      error: null,
+      dryRun,
+      pid: process.pid,
+      log: [`Script iniciado pid=${process.pid}`],
+    });
+  }
+
+  const results = targets.map((app) => {
+    const r = updateOne(app, {
+      force: useForce,
+      dryRun,
+      doGit,
+      doSync,
+      doPm2,
+    });
+    if (app.id === "gestor") {
+      for (const line of r.log || []) appendSelfLog(line);
+    }
+    return r;
+  });
 
   const worst = results.some((r) => !r.ok && !r.skipped);
   const payload = {
@@ -446,6 +615,23 @@ function main() {
       .filter((s) => s.needsUpdate)
       .map((s) => s.id),
   };
+
+  if (updatingGestor) {
+    const gestorResult = results.find((r) => r.id === "gestor");
+    const headAfter = headOf(APPS.gestor.root)?.slice(0, 7) || null;
+    writeSelfUpdateState({
+      status: worst ? "error" : "ok",
+      finishedAt: new Date().toISOString(),
+      headBefore,
+      headAfter,
+      error: worst
+        ? gestorResult?.reason || "La actualización terminó con errores"
+        : null,
+      dryRun,
+      pid: process.pid,
+      log: gestorResult?.log || [],
+    });
+  }
 
   say(`Fin ok=${payload.ok} apps=${results.length} dryRun=${dryRun}`);
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);

@@ -9,6 +9,7 @@ import { PRODUCTION_SITE_URL, SITE_URL } from "@/src/config/site";
 import { SYSTEM_VERSION } from "@/src/config/systemVersion";
 import { ConfirmModal } from "@/src/features/system/components/ConfirmModal";
 import { pm2NameFor } from "@/src/features/system/lib/pm2-names";
+import { readSafeJson } from "@/src/features/system/lib/safe-fetch-json";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 
@@ -86,10 +87,16 @@ export function SystemUpdatePanel() {
     try {
       const res = await fetch(apiUrl("/api/system/update"), {
         credentials: "include",
+        cache: "no-store",
       });
-      const data = (await res.json()) as StatusPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo leer el estado");
-      setStatus(data);
+      const parsed = await readSafeJson<StatusPayload>(res);
+      if (!parsed.ok) {
+        throw new Error(parsed.error || "No se pudo leer el estado");
+      }
+      if (!res.ok) {
+        throw new Error(parsed.data.error || "No se pudo leer el estado");
+      }
+      setStatus(parsed.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al consultar estado");
     } finally {
@@ -143,10 +150,13 @@ export function SystemUpdatePanel() {
           force: mode === "all" || mode === "one",
         }),
       });
-      const data = (await res.json()) as UpdatePayload;
-      setLastRun(data);
-      if (!res.ok && !data.ok) {
-        setError(data.error || "La actualización terminó con errores");
+      const parsed = await readSafeJson<UpdatePayload>(res);
+      if (!parsed.ok) {
+        throw new Error(parsed.error || "Respuesta inválida del servidor");
+      }
+      setLastRun(parsed.data);
+      if (!res.ok && !parsed.data.ok) {
+        setError(parsed.data.error || "La actualización terminó con errores");
       }
       confirmState.close();
       setPending(null);

@@ -9,6 +9,12 @@ import CircleXmark from "@gravity-ui/icons/CircleXmark";
 import { PRODUCTION_SITE_URL, SITE_URL } from "@/src/config/site";
 import { SYSTEM_VERSION } from "@/src/config/systemVersion";
 import { ConfirmModal } from "@/src/features/system/components/ConfirmModal";
+import type { GestorSelfUpdateState } from "@/src/features/system/lib/gestor-self-update-types";
+import {
+  isRestartLikeFailure,
+  readSafeJson,
+  sleep,
+} from "@/src/features/system/lib/safe-fetch-json";
 import { gp } from "@/src/shared/ui/theme";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { appToast } from "@/src/shared/utils/app-toast";
@@ -31,10 +37,13 @@ type StatusPayload = {
   gestor?: GestorStatus;
   apps?: GestorStatus[];
   error?: string;
+  selfUpdate?: GestorSelfUpdateState;
 };
 
 type UpdatePayload = {
   ok: boolean;
+  accepted?: boolean;
+  status?: string;
   dryRun?: boolean;
   results?: {
     id: string;
@@ -46,6 +55,7 @@ type UpdatePayload = {
   }[];
   error?: string;
   message?: string;
+  selfUpdate?: GestorSelfUpdateState;
 };
 
 const btnPrimary =
@@ -53,10 +63,17 @@ const btnPrimary =
 const btnSecondary =
   "inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface)] px-3 py-2 text-sm font-medium text-[var(--gp-text)] transition-colors hover:border-[var(--gp-primary)] disabled:opacity-50";
 
+const POLL_MAX_MS = 12 * 60 * 1000;
+const POLL_START_MS = 1500;
+const POLL_MAX_STEP_MS = 8000;
+
 export function GestorInfoPanel() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [checking, setChecking] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "updating" | "restarting">(
+    "idle",
+  );
   const [lastUpdate, setLastUpdate] = useState<UpdatePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const confirmState = useOverlayState();
@@ -66,17 +83,54 @@ export function GestorInfoPanel() {
     return data.apps?.find((a) => a.id === "gestor") || null;
   }, []);
 
+  const fetchStatus = useCallback(async (): Promise<{
+    payload: StatusPayload | null;
+    restarting: boolean;
+    err?: string;
+  }> => {
+    try {
+      const res = await fetch(apiUrl("/api/system/update"), {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const parsed = await readSafeJson<StatusPayload>(res);
+      if (!parsed.ok) {
+        return {
+          payload: null,
+          restarting: isRestartLikeFailure(parsed),
+          err: parsed.error,
+        };
+      }
+      if (!res.ok && parsed.data?.ok === false) {
+        return {
+          payload: parsed.data,
+          restarting: false,
+          err: parsed.data.error || "No se pudo verificar",
+        };
+      }
+      return { payload: parsed.data, restarting: false };
+    } catch (e) {
+      return {
+        payload: null,
+        restarting: isRestartLikeFailure(null, e),
+        err: e instanceof Error ? e.message : "Error de red",
+      };
+    }
+  }, []);
+
   const verify = useCallback(async () => {
     setChecking(true);
     setError(null);
     try {
-      const res = await fetch(apiUrl("/api/system/update"), {
-        credentials: "include",
-      });
-      const data = (await res.json()) as StatusPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo verificar");
-      setStatus(data);
-      const g = gestorFrom(data);
+      const { payload, restarting, err } = await fetchStatus();
+      if (restarting) {
+        setError(null);
+        appToast.warning("El servidor está reiniciando; reintentá en unos segundos");
+        return;
+      }
+      if (!payload) throw new Error(err || "No se pudo verificar");
+      setStatus(payload);
+      const g = gestorFrom(payload);
       if (g?.needsUpdate) {
         appToast.warning(
           `Hay actualización: ${g.behind} commit${g.behind === 1 ? "" : "s"} pendiente${g.behind === 1 ? "" : "s"} en git`,
@@ -93,42 +147,164 @@ export function GestorInfoPanel() {
     } finally {
       setChecking(false);
     }
-  }, [gestorFrom]);
+  }, [fetchStatus, gestorFrom]);
+
+  const pollUntilDone = useCallback(
+    async (headBefore: string | null) => {
+      setPhase("restarting");
+      const started = Date.now();
+      let delay = POLL_START_MS;
+
+      while (Date.now() - started < POLL_MAX_MS) {
+        await sleep(delay);
+        delay = Math.min(Math.round(delay * 1.35), POLL_MAX_STEP_MS);
+
+        const { payload, restarting } = await fetchStatus();
+        if (restarting || !payload) continue;
+
+        setStatus(payload);
+        const self = payload.selfUpdate;
+        const g = gestorFrom(payload);
+
+        if (self?.status === "error") {
+          throw new Error(self.error || "La autoactualización falló");
+        }
+
+        if (self?.status === "ok") {
+          setLastUpdate({
+            ok: true,
+            status: "ok",
+            dryRun: self.dryRun,
+            message: "Actualización del gestor completada",
+            results: [
+              {
+                id: "gestor",
+                title: "Raptor Solutions (gestor)",
+                ok: true,
+                reason: self.dryRun ? "Simulado (dry-run)" : "Actualizado",
+                log: self.log,
+              },
+            ],
+            selfUpdate: self,
+          });
+          return;
+        }
+
+        if (self?.status === "updating") {
+          setPhase("updating");
+          continue;
+        }
+
+        // Servidor vivo otra vez: éxito si head cambió o ya no necesita update
+        const headNow = g?.head || null;
+        if (
+          (headBefore && headNow && headNow !== headBefore) ||
+          (g?.ok && !g.needsUpdate)
+        ) {
+          setLastUpdate({
+            ok: true,
+            status: "ok",
+            message: "Servidor de vuelta tras reinicio",
+            results: [
+              {
+                id: "gestor",
+                title: "Raptor Solutions (gestor)",
+                ok: true,
+                reason: "Actualizado",
+                log: self?.log,
+              },
+            ],
+            selfUpdate: self,
+          });
+          return;
+        }
+
+        // idle sin cambio todavía: seguir un poco por si el job no escribió ok
+        if (self?.status === "idle" || !self) {
+          continue;
+        }
+      }
+
+      throw new Error(
+        "Se agotó la espera tras el reinicio. Revisá pm2 logs / data/gestor-self-update.log",
+      );
+    },
+    [fetchStatus, gestorFrom],
+  );
 
   async function runUpdate() {
     setUpdating(true);
+    setPhase("updating");
     setError(null);
     setLastUpdate(null);
+    const headBefore = status ? gestorFrom(status)?.head || null : null;
+
     try {
-      const res = await fetch(apiUrl("/api/system/update"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "one",
-          app: "gestor",
-          force: true,
-        }),
-      });
-      const data = (await res.json()) as UpdatePayload;
-      setLastUpdate(data);
-      if (!res.ok || data.ok === false) {
-        throw new Error(data.error || "La actualización terminó con errores");
+      let accepted = false;
+      try {
+        const res = await fetch(apiUrl("/api/system/update"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "one",
+            app: "gestor",
+            force: true,
+          }),
+        });
+        const parsed = await readSafeJson<UpdatePayload>(res);
+
+        if (parsed.ok) {
+          setLastUpdate(parsed.data);
+          if (res.status === 202 || parsed.data.accepted) {
+            accepted = true;
+          } else if (!res.ok || parsed.data.ok === false) {
+            throw new Error(
+              parsed.data.error || "La actualización terminó con errores",
+            );
+          } else {
+            // 200 síncrono (p. ej. dry-run antiguo): éxito directo
+            appToast.success(
+              parsed.data.dryRun
+                ? "Simulación OK (dry-run)"
+                : "Raptor Solutions actualizado",
+            );
+            confirmState.close();
+            await verify();
+            return;
+          }
+        } else if (isRestartLikeFailure(parsed)) {
+          // El POST pudo haberse aceptado y el restart ya cortó la respuesta
+          accepted = true;
+        } else {
+          throw new Error(parsed.error || "Respuesta inválida del servidor");
+        }
+      } catch (e) {
+        if (isRestartLikeFailure(null, e)) {
+          accepted = true;
+        } else {
+          throw e;
+        }
       }
-      appToast.success(
-        data.dryRun
-          ? "Simulación OK (dry-run)"
-          : "Raptor Solutions actualizado (git pull + build + pm2)",
-      );
-      confirmState.close();
-      // Tras pm2 restart la página puede caer; igual refrescamos estado
-      await verify();
+
+      if (accepted) {
+        appToast.warning("Actualización aceptada. Reiniciando…");
+        confirmState.close();
+        await pollUntilDone(headBefore);
+        appToast.success(
+          "Raptor Solutions actualizado (git pull + build + pm2)",
+        );
+        // Refresco final del badge
+        const final = await fetchStatus();
+        if (final.payload) setStatus(final.payload);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al actualizar";
       setError(msg);
       appToast.error(msg);
     } finally {
       setUpdating(false);
+      setPhase("idle");
     }
   }
 
@@ -136,6 +312,12 @@ export function GestorInfoPanel() {
   const siteUrl = status?.siteUrl || SITE_URL || PRODUCTION_SITE_URL;
   const gestor = status ? gestorFrom(status) : null;
   const needsUpdate = Boolean(gestor?.needsUpdate);
+  const updatingLabel =
+    phase === "restarting"
+      ? "Reiniciando…"
+      : phase === "updating"
+        ? "Actualizando…"
+        : "Actualizar Raptor Solutions";
 
   return (
     <div className="flex flex-col gap-5">
@@ -241,13 +423,13 @@ export function GestorInfoPanel() {
                   : "Actualizar este gestor"
             }
           >
-            {updating ? "Actualizando…" : "Actualizar Raptor Solutions"}
+            {updating ? updatingLabel : "Actualizar Raptor Solutions"}
           </button>
         </div>
 
         <p className="text-xs text-[var(--gp-text-muted)]">
           1) Subí los cambios a git · 2) Acá pulsá Verificar · 3) Si hay
-          commits, Actualizar (git pull + build + pm2 restart). Las apps
+          commits, Actualizar (git pull + build staging + pm2 restart). Las apps
           EdDeli/Store/Tienda se actualizan en Configuración → Actualizar.
         </p>
       </div>
@@ -287,7 +469,7 @@ export function GestorInfoPanel() {
         state={confirmState}
         title="Actualizar Raptor Solutions"
         message={
-          "¿Actualizar el gestor ahora?\n\nHará git pull + npm run build + reinicio PM2.\nLa interfaz puede recargarse sola al reiniciar."
+          "¿Actualizar el gestor ahora?\n\nHará git pull + build en staging + reinicio PM2.\nLa interfaz mostrará «Reiniciando…» hasta que el servidor vuelva."
         }
         confirmLabel="Actualizar"
         busy={updating}

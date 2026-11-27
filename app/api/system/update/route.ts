@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { getAuthUser } from "@/src/shared/lib/api-auth";
 import { PRODUCTION_SITE_URL } from "@/src/config/site";
+import {
+  gestorSelfUpdateLogPath,
+  readGestorSelfUpdateState,
+  writeGestorSelfUpdateState,
+} from "@/src/features/system/lib/gestor-self-update-status";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Trio apps aún esperan el script; el self-update del gestor responde 202 al toque. */
 export const maxDuration = 300;
 
 const GESTOR_ROOT = path.resolve(process.cwd());
@@ -58,11 +65,42 @@ function runUpdate(args: string[]): Promise<{
   });
 }
 
-/** GET → estado de repos. */
+function isGestorSelfUpdate(mode: Mode, app?: string): boolean {
+  return mode === "one" && String(app || "").toLowerCase() === "gestor";
+}
+
+/** Lanza update-apps en proceso independiente (no espera build/restart). */
+function spawnGestorSelfUpdateDetached(args: string[]): {
+  pid: number | null;
+  logFile: string;
+} {
+  const logFile = gestorSelfUpdateLogPath();
+  fs.mkdirSync(path.dirname(logFile), { recursive: true });
+  const out = fs.openSync(logFile, "a");
+  fs.writeSync(
+    out,
+    `\n---- gestor self-update ${new Date().toISOString()} ----\n`,
+  );
+
+  const child = spawn(process.execPath, [SCRIPT, ...args], {
+    cwd: GESTOR_ROOT,
+    env: {
+      ...process.env,
+      GESTOR_SELF_UPDATE: "1",
+    },
+    detached: true,
+    stdio: ["ignore", out, out],
+  });
+  child.unref();
+  return { pid: child.pid ?? null, logFile };
+}
+
+/** GET → estado de repos + selfUpdate del gestor si hay. */
 export async function GET() {
   const auth = await getAuthUser();
   if (auth.error) return auth.error;
 
+  const selfUpdate = readGestorSelfUpdateState();
   const result = await runUpdate(["--mode=status"]);
   if (!result.json) {
     return NextResponse.json(
@@ -70,15 +108,20 @@ export async function GET() {
         error: "No se pudo leer el estado de actualización",
         detail: result.stderr || result.stdout,
         siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+        selfUpdate,
       },
       { status: 500 },
     );
   }
-  return NextResponse.json(result.json);
+  return NextResponse.json({
+    ...(result.json as object),
+    selfUpdate,
+  });
 }
 
 /**
  * POST → actualizar apps en el servidor (git pull + db:sync + pm2).
+ * Self-update del gestor (mode=one, app=gestor): 202 + proceso detached.
  * Por defecto es REAL. Solo simula si UPDATE_APPS_DRY_RUN=1 o body.dryRun=true.
  */
 export async function POST(request: Request) {
@@ -113,10 +156,86 @@ export async function POST(request: Request) {
   }
   if (body.force || mode === "all" || mode === "one") args.push("--force");
 
-  if (body.dryRun === true || process.env.UPDATE_APPS_DRY_RUN === "1") {
+  const dryRun =
+    body.dryRun === true || process.env.UPDATE_APPS_DRY_RUN === "1";
+  if (dryRun) {
     args.push("--dry-run");
   } else {
     args.push("--live");
+  }
+
+  // Self-update: no bloquear el next start que se va a reiniciar.
+  if (isGestorSelfUpdate(mode, body.app)) {
+    const prev = readGestorSelfUpdateState();
+    if (prev.status === "updating") {
+      return NextResponse.json(
+        {
+          ok: true,
+          accepted: true,
+          status: "updating",
+          message: "Ya hay una autoactualización en curso",
+          selfUpdate: prev,
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+        },
+        { status: 202 },
+      );
+    }
+
+    writeGestorSelfUpdateState({
+      status: "updating",
+      acceptedAt: new Date().toISOString(),
+      headBefore: prev.headAfter ?? null,
+      headAfter: null,
+      log: ["Aceptado: proceso detached iniciado"],
+      error: null,
+      pid: null,
+      dryRun,
+    });
+
+    try {
+      const { pid, logFile } = spawnGestorSelfUpdateDetached(args);
+      writeGestorSelfUpdateState({
+        status: "updating",
+        acceptedAt: new Date().toISOString(),
+        headBefore: prev.headAfter ?? null,
+        headAfter: null,
+        log: [
+          "Aceptado: proceso detached iniciado",
+          pid != null ? `pid=${pid}` : "pid=?",
+          `log=${logFile}`,
+        ],
+        error: null,
+        pid,
+        dryRun,
+      });
+      return NextResponse.json(
+        {
+          ok: true,
+          accepted: true,
+          status: "updating",
+          pid,
+          message:
+            "Actualización del gestor aceptada. El servidor se reiniciará al terminar el build.",
+          selfUpdate: readGestorSelfUpdateState(),
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+        },
+        { status: 202 },
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo lanzar el update";
+      writeGestorSelfUpdateState({
+        status: "error",
+        acceptedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        error: msg,
+        log: [msg],
+        dryRun,
+      });
+      return NextResponse.json(
+        { ok: false, error: msg, status: "error" },
+        { status: 500 },
+      );
+    }
   }
 
   const result = await runUpdate(args);

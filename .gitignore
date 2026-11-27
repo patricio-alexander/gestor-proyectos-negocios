@@ -22,7 +22,16 @@ pnpm-workspace.yaml
 
 # next.js
 /.next/
+/.next-staging/
+/.next-prev/
 /out/
+
+# self-update runtime state
+/data/gestor-self-update.json
+/data/gestor-self-update.json.tmp
+/data/gestor-self-update.log
+/data/pending-scheduled-updates.json
+/data/pending-optional-deploys.json
 
 # production
 /build
