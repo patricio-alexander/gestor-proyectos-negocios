@@ -25,6 +25,7 @@
     "news:export": "tsx scripts/export-news-json.ts",
     "db:reset": "prisma generate && prisma migrate reset --force && npm run seed",
     "worker:usage": "tsx workers/usage-reset-worker.ts",
+    "worker:joint-update": "tsx workers/joint-update-worker.ts",
     "worker:listener-folders": "tsx workers/listener-folder-worker.ts",
     "worker:polling-db-size": "tsx workers/polling-database-size.ts",
     "app:start": "pm2 start ecosystem.config.cjs",

@@ -44,6 +44,7 @@ import { GestorHowItWorks } from "@/src/shared/components/GestorHowItWorks";
 import { TablePagination } from "@/src/shared/components/TablePagination";
 import { usePaginatedSearch } from "@/src/shared/hooks/usePaginatedSearch";
 import { JointUpdateModal } from "@/src/features/system/components/JointUpdateModal";
+import { ScheduledUpdatesModal } from "@/src/features/system/components/ScheduledUpdatesModal";
 import {
   AppUpdateModal,
   runJointUpdateNow,
@@ -518,8 +519,9 @@ export default function AppsPage() {
         description="Apps web y móvil: email, sync, dispositivos, planes y mantenimiento."
         Icon={Briefcase}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <GestorHowItWorks defaultTopic="features" />
+            <ScheduledUpdatesModal />
             <JointUpdateModal />
           <Modal state={createState}>
             <Button

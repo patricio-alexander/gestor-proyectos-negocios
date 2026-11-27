@@ -9,9 +9,15 @@ import {
   TRIO_IDS,
   type TrioId,
 } from "@/src/features/system/lib/trio-apps";
-import { savePendingOptionalDeploy } from "@/src/features/system/lib/pending-optional-deploy";
+import {
+  clearPendingOptionalDeploy,
+  savePendingOptionalDeploy,
+} from "@/src/features/system/lib/pending-optional-deploy";
 import {
   clearPendingScheduledForTrios,
+  clearPendingScheduledUpdate,
+  clearPendingScheduledByJobId,
+  peekPendingScheduledUpdate,
   savePendingScheduledUpdate,
 } from "@/src/features/system/lib/pending-scheduled-update";
 
@@ -357,6 +363,93 @@ export async function executeJointUpdate(opts: {
         ? "Falló el deploy de alguna app"
         : undefined,
   };
+}
+
+/**
+ * El usuario actualizó antes de la hora programada.
+ * Quita update_scheduled_at, limpia deploys opcionales y saca el trio del job
+ * (o marca el job como hecho si no quedan apps).
+ */
+export async function acknowledgeEarlyAppUpdate(appId: number): Promise<{
+  clearedSchedule: boolean;
+  jobsTouched: number;
+}> {
+  const scheduled = peekPendingScheduledUpdate(appId);
+  clearPendingScheduledUpdate(appId);
+  clearPendingOptionalDeploy(appId);
+
+  const app = await prisma.apps.findFirst({
+    where: { id: appId, deleted_at: null },
+    select: {
+      id: true,
+      name: true,
+      path: true,
+      entitlement_url: true,
+      hash: true,
+    },
+  });
+  if (!app) {
+    return { clearedSchedule: Boolean(scheduled), jobsTouched: 0 };
+  }
+
+  const trio = matchTrioId(app);
+  let jobsTouched = 0;
+
+  if (trio) {
+    const jobs = await prisma.jointUpdateJob.findMany({
+      where: { status: { in: ["pending", "running"] } },
+      orderBy: { run_at: "asc" },
+      take: 50,
+    });
+
+    for (const job of jobs) {
+      const apps = normalizeTargets(job.targets);
+      if (!apps.includes(trio)) continue;
+
+      const remaining = apps.filter((a) => a !== trio);
+      const steps = extractSteps(job.targets);
+      const forceLogout = extractForceLogout(job.targets);
+
+      if (remaining.length === 0) {
+        await prisma.jointUpdateJob.update({
+          where: { id: job.id },
+          data: {
+            status: "done",
+            finished_at: new Date(),
+            result: {
+              early_user_ack: true,
+              completed: [trio],
+              appId,
+            },
+            error: null,
+          },
+        });
+        clearPendingScheduledByJobId(job.id);
+      } else {
+        await prisma.jointUpdateJob.update({
+          where: { id: job.id },
+          data: {
+            targets: packJobTargets(remaining, steps, forceLogout),
+          },
+        });
+      }
+      jobsTouched += 1;
+    }
+  }
+
+  // Flags limpios: sin updating / aviso / schedule
+  await ensureAppsUpdateColumns();
+  await prisma.apps.update({
+    where: { id: appId },
+    data: {
+      updating: false,
+      update_available: false,
+      update_force: true,
+      update_force_logout: false,
+    },
+  });
+
+  return { clearedSchedule: Boolean(scheduled) || jobsTouched > 0, jobsTouched };
 }
 
 /** Corre jobs pendientes cuya hora ya pasó. */

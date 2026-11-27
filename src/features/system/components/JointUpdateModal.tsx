@@ -14,6 +14,11 @@ import Clock from "@gravity-ui/icons/Clock";
 import { PRODUCTION_SITE_URL } from "@/src/config/site";
 import { pm2NameFor } from "@/src/features/system/lib/pm2-names";
 import { ConfirmModal } from "@/src/features/system/components/ConfirmModal";
+import {
+  formatGuayaquil,
+  guayaquilWallTimeToUtc,
+  utcToGuayaquilInputValue,
+} from "@/src/features/system/lib/guayaquil-time";
 import { apiUrl } from "@/src/utils/apiUrl";
 import { appToast } from "@/src/shared/utils/app-toast";
 
@@ -36,17 +41,12 @@ const TRIO_OPTS: { id: TrioId; label: string }[] = [
   { id: "tienda", label: "Tienda" },
 ];
 
-function toLocalInputValue(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export function JointUpdateModal() {
   const state = useOverlayState();
   const confirmState = useOverlayState();
   const [when, setWhen] = useState<"now" | "schedule">("schedule");
   const [runAt, setRunAt] = useState(() =>
-    toLocalInputValue(new Date(Date.now() + 15 * 60_000)),
+    utcToGuayaquilInputValue(new Date(Date.now() + 15 * 60_000)),
   );
   const [policy, setPolicy] = useState<Policy>("forced");
   const [completo, setCompleto] = useState(true);
@@ -125,7 +125,8 @@ export function JointUpdateModal() {
             }
           : {
               when: "schedule",
-              runAt: new Date(runAt).toISOString(),
+              // datetime-local como hora de Guayaquil → ISO UTC
+              runAt: guayaquilWallTimeToUtc(runAt).toISOString(),
               policy,
               deploy,
               notify,
@@ -188,7 +189,7 @@ export function JointUpdateModal() {
         : "¿Actualización con PERMISO ahora? Se envía el aviso; el deploy (git/sync/pm2) corre cuando el usuario pulse Actualizar ahora."
       : `¿Programar actualización ${
           policy === "forced" ? "forzada" : "con permiso"
-        } para ${runAt}? Las apps verán la cuenta regresiva hasta esa hora.`;
+        } para ${runAt} (hora Ecuador / Guayaquil)? Las apps verán la cuenta regresiva hasta esa hora.`;
 
   return (
     <>
@@ -260,12 +261,17 @@ export function JointUpdateModal() {
                     </Button>
                   </div>
                   {when === "schedule" ? (
-                    <input
-                      type="datetime-local"
-                      value={runAt}
-                      onChange={(e) => setRunAt(e.target.value)}
-                      className="gp-input mt-1 w-full rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface)] px-3 py-2 text-sm"
-                    />
+                    <div className="mt-1 space-y-1">
+                      <input
+                        type="datetime-local"
+                        value={runAt}
+                        onChange={(e) => setRunAt(e.target.value)}
+                        className="gp-input w-full rounded-lg border border-[var(--gp-border)] bg-[var(--gp-surface)] px-3 py-2 text-sm"
+                      />
+                      <p className="text-[11px] text-[var(--gp-text-muted)]">
+                        Hora de Ecuador (America/Guayaquil, UTC−5).
+                      </p>
+                    </div>
                   ) : null}
                 </div>
 
@@ -460,7 +466,7 @@ export function JointUpdateModal() {
                           className="flex items-center justify-between gap-2 rounded-md border border-[var(--gp-border)] px-2 py-1.5 text-xs"
                         >
                           <span>
-                            #{j.id} · {new Date(j.run_at).toLocaleString()} ·{" "}
+                            #{j.id} · {formatGuayaquil(j.run_at)} (Guayaquil) ·{" "}
                             {j.policy === "forced" ? "forzada" : "permiso"}
                             {j.deploy ? " · deploy" : ""}
                             {j.notify ? " · aviso" : ""}

@@ -14,7 +14,21 @@ import {
 import { clearPendingScheduledByJobId } from "@/src/features/system/lib/pending-scheduled-update";
 import { matchTrioId } from "@/src/features/system/lib/trio-apps";
 import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
+import { guayaquilWallTimeToUtc } from "@/src/features/system/lib/guayaquil-time";
 import { PRODUCTION_SITE_URL } from "@/src/config/site";
+
+/** ISO con Z/offset → Date; datetime-local sin zona → Guayaquil. */
+function parseRunAt(raw: string): Date {
+  const s = String(raw || "").trim();
+  if (!s) return new Date(NaN);
+  if (/Z$/i.test(s) || /[+-]\d{2}:\d{2}$/.test(s)) {
+    return new Date(s);
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+    return guayaquilWallTimeToUtc(s);
+  }
+  return new Date(s);
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,6 +86,7 @@ export async function POST(request: Request) {
     steps?: DeploySteps;
     forceLogout?: boolean;
     cancelJobId?: number;
+    rescheduleJobId?: number;
   } = {};
   try {
     body = await request.json();
@@ -98,6 +113,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, cancelled: jobId });
   }
 
+  if (body.rescheduleJobId) {
+    if (!body.runAt) {
+      return NextResponse.json(
+        { error: "Para reprogramar indicá runAt" },
+        { status: 400 },
+      );
+    }
+    const jobId = Number(body.rescheduleJobId);
+    const runAt = parseRunAt(body.runAt);
+    if (Number.isNaN(runAt.getTime()) || runAt.getTime() < Date.now() - 60_000) {
+      return NextResponse.json(
+        { error: "runAt inválida o en el pasado (hora Ecuador / Guayaquil)" },
+        { status: 400 },
+      );
+    }
+    const existing = await prisma.jointUpdateJob.findFirst({
+      where: { id: jobId, status: "pending" },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Job no encontrado o ya no está pendiente" },
+        { status: 404 },
+      );
+    }
+    const job = await prisma.jointUpdateJob.update({
+      where: { id: jobId },
+      data: { run_at: runAt },
+    });
+    const targets = normalizeTargets(existing.targets);
+    const forceLogout = Boolean(
+      existing.targets &&
+        typeof existing.targets === "object" &&
+        !Array.isArray(existing.targets) &&
+        (existing.targets as { forceLogout?: boolean }).forceLogout,
+    );
+    // Reavisar apps con la nueva hora (countdown)
+    const announced = await announceScheduledUpdate({
+      targets,
+      runAt,
+      policy: existing.policy === "optional" ? "optional" : "forced",
+      forceLogout,
+      jobId: job.id,
+    });
+    return NextResponse.json({
+      ok: true,
+      rescheduled: true,
+      job,
+      announced,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_SITE_URL,
+    });
+  }
+
   const policy: JointPolicy =
     body.policy === "optional" ? "optional" : "forced";
   const deploy = body.deploy !== false;
@@ -118,10 +185,10 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const runAt = new Date(body.runAt);
+    const runAt = parseRunAt(body.runAt);
     if (Number.isNaN(runAt.getTime()) || runAt.getTime() < Date.now() - 60_000) {
       return NextResponse.json(
-        { error: "runAt inválida o en el pasado" },
+        { error: "runAt inválida o en el pasado (usar hora Ecuador / Guayaquil)" },
         { status: 400 },
       );
     }

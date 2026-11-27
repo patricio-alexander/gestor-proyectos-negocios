@@ -22,6 +22,12 @@ module.exports = {
       autorestart: true,
     },
     {
+      name: "worker-joint-update",
+      script: "npm",
+      args: "run worker:joint-update",
+      autorestart: true,
+    },
+    {
       name: "worker-listener-folders",
       script: "npm",
       args: "run worker:listener-folders",

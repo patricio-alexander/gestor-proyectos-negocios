@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/shared/lib/prisma";
 import { validateKey } from "@/src/shared/lib/api-auth";
-import { deployTrioApp } from "@/src/features/system/lib/joint-update";
+import {
+  acknowledgeEarlyAppUpdate,
+  deployTrioApp,
+  extractSteps,
+  matchTrioId,
+} from "@/src/features/system/lib/joint-update";
 import {
   peekPendingOptionalDeploy,
   takePendingOptionalDeploy,
   savePendingOptionalDeploy,
 } from "@/src/features/system/lib/pending-optional-deploy";
-import { matchTrioId } from "@/src/features/system/lib/trio-apps";
+import { peekPendingScheduledUpdate } from "@/src/features/system/lib/pending-scheduled-update";
+import { pushEntitlementToApp } from "@/src/shared/lib/push-entitlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * La app avisa que el usuario aceptó «Actualizar ahora» (política optional).
+ * Usuario pulsó «Actualizar ahora» (opcional diferido o programada anticipada).
  * Auth: Bearer <entitlement_secret>
- * Corre el deploy pendiente (git/sync/pm2) diferido al enviar el aviso.
+ * - Corre deploy pendiente si hay
+ * - Cancela/limpia la programada para esta app (icono deja de estar rojo tras push)
  */
 export async function POST(request: NextRequest) {
   const auth = await validateKey(request);
@@ -29,65 +36,109 @@ export async function POST(request: NextRequest) {
       name: true,
       path: true,
       entitlement_url: true,
+      hash: true,
     },
   });
   if (!app) {
     return NextResponse.json({ error: "App no encontrada" }, { status: 404 });
   }
 
+  const trio = matchTrioId(app);
+  const scheduled = peekPendingScheduledUpdate(app.id);
   let pending = peekPendingOptionalDeploy(app.id);
-  if (!pending) {
-    const trio = matchTrioId(app);
-    if (!trio) {
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        reason: "no_pending_deploy",
-      });
-    }
-    // Sin pendiente explícito: no inventar deploy (aviso pudo ser solo notify).
-    return NextResponse.json({
-      ok: true,
-      skipped: true,
-      reason: "no_pending_deploy",
-      trio,
+
+  // Si hay programada con deploy y no hay optional pending, usar pasos del job
+  let deployFromSchedule = false;
+  let scheduleSteps = { git: true, sync: true, pm2: true };
+  if (!pending && scheduled?.jobId && trio) {
+    const job = await prisma.jointUpdateJob.findFirst({
+      where: { id: scheduled.jobId, status: { in: ["pending", "running"] } },
     });
+    if (job?.deploy) {
+      deployFromSchedule = true;
+      const steps = extractSteps(job.targets);
+      scheduleSteps = {
+        git: steps?.git !== false,
+        sync: steps?.sync !== false,
+        pm2: steps?.pm2 !== false,
+      };
+    }
   }
 
-  // Reservar el pendiente para no lanzar dos deploys en paralelo
-  pending = takePendingOptionalDeploy(app.id) || pending;
+  let deployResult: unknown = null;
+  let deployed = false;
 
-  try {
-    const { ok, result } = await deployTrioApp(pending.trio, pending.steps);
-    if (!ok) {
-      // Reponer para reintento si el usuario reabre el flujo
+  if (pending) {
+    pending = takePendingOptionalDeploy(app.id) || pending;
+    try {
+      const { ok, result } = await deployTrioApp(pending.trio, pending.steps);
+      deployResult = result;
+      deployed = true;
+      if (!ok) {
+        savePendingOptionalDeploy(pending);
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Falló el deploy diferido",
+            trio: pending.trio,
+            result,
+          },
+          { status: 500 },
+        );
+      }
+    } catch (e) {
       savePendingOptionalDeploy(pending);
       return NextResponse.json(
         {
           ok: false,
-          error: "Falló el deploy diferido",
-          trio: pending.trio,
-          result,
+          error: e instanceof Error ? e.message : String(e),
         },
         { status: 500 },
       );
     }
-    console.log(
-      `[update-apply] app=${app.name || app.id} trio=${pending.trio} deploy_ok`,
-    );
-    return NextResponse.json({
-      ok: true,
-      trio: pending.trio,
-      result,
-    });
-  } catch (e) {
-    savePendingOptionalDeploy(pending);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: e instanceof Error ? e.message : String(e),
-      },
-      { status: 500 },
-    );
+  } else if (deployFromSchedule && trio) {
+    try {
+      const { ok, result } = await deployTrioApp(trio, scheduleSteps);
+      deployResult = result;
+      deployed = true;
+      if (!ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Falló el deploy de la actualización programada",
+            trio,
+            result,
+          },
+          { status: 500 },
+        );
+      }
+    } catch (e) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+        },
+        { status: 500 },
+      );
+    }
   }
+
+  // Limpiar schedule/job de esta app y empujar entitlement sin countdown
+  const early = await acknowledgeEarlyAppUpdate(app.id);
+  const push = await pushEntitlementToApp(app.hash);
+
+  console.log(
+    `[update-apply] app=${app.name || app.id} trio=${trio || "—"} deployed=${deployed} early_jobs=${early.jobsTouched} push_ok=${push.ok}`,
+  );
+
+  return NextResponse.json({
+    ok: true,
+    trio,
+    deployed,
+    skipped: !deployed,
+    reason: deployed ? undefined : "no_pending_deploy",
+    early,
+    result: deployResult,
+    push_ok: Boolean(push.ok),
+  });
 }
